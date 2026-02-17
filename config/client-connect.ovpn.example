@@ -1,0 +1,349 @@
+# OpenVPN Connect Configuration for SSO Authentication
+# For: OpenVPN Connect 3.x (Windows, macOS, iOS, Android, Linux)
+#
+# SSO Support: Excellent (built-in webview for authentication)
+#
+# Installation:
+#   - Windows/macOS: https://openvpn.net/client/
+#   - iOS: App Store → "OpenVPN Connect"
+#   - Android: Play Store → "OpenVPN Connect"
+#   - Linux: https://openvpn.net/cloud-docs/openvpn-3-client-for-linux/
+#
+# Import Methods:
+#   - Mobile: Email file to yourself, tap to import
+#   - Desktop: File → Import Profile or drag-and-drop
+#   - URL: Import via https://profile-server/profile.ovpn (enterprise)
+#
+# OpenVPN Connect Features:
+#   - Built-in browser for SSO (no external browser needed)
+#   - Automatic reconnection
+#   - Split tunneling (route specific apps through VPN)
+#   - Always-on VPN (mobile)
+#   - Per-app VPN (enterprise)
+
+##############################################
+# Client Settings
+##############################################
+
+client
+dev tun
+proto udp
+
+##############################################
+# Server Connection
+##############################################
+
+# Replace with your VPN server hostname or IP
+remote vpn.example.com 1194
+
+# Alternative: Add multiple servers for redundancy
+# remote vpn1.example.com 1194
+# remote vpn2.example.com 1194
+# remote-random
+
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+
+##############################################
+# Certificates (Embedded)
+##############################################
+
+# OpenVPN Connect requires inline certificates
+# Replace with your actual CA certificate
+
+<ca>
+-----BEGIN CERTIFICATE-----
+MIIDSzCCAjOgAwIBAgIUX1Z2Z3Z4Z5Z6Z7Z8Z9ZaZbZcZdZeMA0GCSqGSIb3DQEB
+CwUAMBYxFDASBgNVBAMMC0Vhc3ktUlNBIENBMB4XDTIzMDEwMTAwMDAwMFoXDTMz
+... (paste your complete CA certificate) ...
+-----END CERTIFICATE-----
+</ca>
+
+# Client Certificate (OPTIONAL - only needed if server requires mutual TLS)
+# Uncomment if your deployment uses client certificates + SSO
+# <cert>
+# -----BEGIN CERTIFICATE-----
+# ... your client certificate ...
+# -----END CERTIFICATE-----
+# </cert>
+
+# Client Private Key (OPTIONAL - only needed with client certificate)
+# <key>
+# -----BEGIN PRIVATE KEY-----
+# ... your client private key ...
+# -----END PRIVATE KEY-----
+# </key>
+
+##############################################
+# Authentication
+##############################################
+
+# Enable username/password authentication
+# For SSO: username is your Keycloak username, password can be anything
+auth-user-pass
+
+# Allow interactive retry (required for SSO)
+auth-retry interact
+
+##############################################
+# Security
+##############################################
+
+# Verify server certificate
+remote-cert-tls server
+
+# Modern cipher suite (AES-GCM preferred)
+data-ciphers AES-256-GCM:AES-128-GCM:AES-256-CBC
+
+# Minimum TLS version
+tls-version-min 1.2
+
+# Optional: TLS authentication for extra security
+# Uncomment if your server uses tls-auth
+# <tls-auth>
+# -----BEGIN OpenVPN Static key V1-----
+# ... your ta.key contents ...
+# -----END OpenVPN Static key V1-----
+# </tls-auth>
+# key-direction 1
+
+##############################################
+# Performance
+##############################################
+
+# Buffer sizes
+sndbuf 393216
+rcvbuf 393216
+
+# Optional: Enable compression (if server supports it)
+# Note: Modern networks usually don't benefit from compression
+# compress lz4-v2
+
+##############################################
+# Logging
+##############################################
+
+# Verbosity: 0-11 (3 = normal)
+verb 3
+mute 20
+
+##############################################
+# OpenVPN Connect-Specific Features
+##############################################
+
+# These features are configured via the OpenVPN Connect app UI,
+# not in this config file. Available options include:
+
+# - Connect on Demand (iOS)
+# - Seamless Tunnel (connection persistence)
+# - Split Tunneling (exclude apps from VPN)
+# - DNS Server (override system DNS)
+# - Private DNS (Android)
+
+##############################################
+# SSO Authentication Flow
+##############################################
+#
+# Desktop (Windows/macOS/Linux):
+#
+# 1. Import Profile:
+#    - Launch OpenVPN Connect
+#    - File → Import Profile → From Local File
+#    - Select this .ovpn file
+#    - Profile appears in the list
+#
+# 2. Connect:
+#    - Toggle the switch next to the profile name
+#    - Or click profile → Connect
+#
+# 3. Enter Credentials:
+#    - Username: Your Keycloak username
+#    - Password: Anything (e.g., "sso")
+#    - Optional: Save username for future connections
+#
+# 4. Authenticate in Built-in Browser:
+#    - OpenVPN Connect opens a webview
+#    - Log in to Keycloak
+#    - Complete MFA if required
+#    - Webview shows success message
+#
+# 5. Connected:
+#    - Webview closes automatically
+#    - VPN connection completes
+#    - Status shows "Connected"
+#
+# Mobile (iOS/Android):
+#
+# 1. Import Profile:
+#    Method 1: Email
+#      - Email this file to yourself
+#      - Open email on device
+#      - Tap .ovpn attachment
+#      - Choose "Open in OpenVPN"
+#
+#    Method 2: Cloud Storage
+#      - Upload to Dropbox/Google Drive/iCloud
+#      - Open file on device
+#      - Share → OpenVPN Connect
+#
+#    Method 3: QR Code (requires profile server)
+#      - Scan QR code in app
+#
+# 2. Connect:
+#    - Tap the profile
+#    - Tap "Connect" button
+#
+# 3. Enter Credentials:
+#    - Username: Your Keycloak username
+#    - Password: Anything (e.g., "sso")
+#    - Tap "OK"
+#
+# 4. Authenticate:
+#    - Built-in browser opens with Keycloak
+#    - Log in with your credentials
+#    - Complete MFA if enabled
+#    - Browser shows success message
+#
+# 5. Connected:
+#    - Browser closes automatically
+#    - VPN connects
+#    - Status icon appears in notification bar (Android) or status bar (iOS)
+#
+##############################################
+# Platform-Specific Notes
+##############################################
+#
+# Windows:
+#   - Requires administrator privileges for first connection
+#   - Tap adapter is installed automatically
+#   - Desktop notifications for connection status
+#   - Start on boot: Settings → General → Launch on Startup
+#
+# macOS:
+#   - Requires administrator password for first connection
+#   - Menu bar icon for quick access
+#   - Integrates with system notifications
+#   - Supports macOS VPN preferences
+#
+# iOS:
+#   - "Connect on Demand" rules available
+#   - Always-on VPN with MDM (enterprise)
+#   - Face ID/Touch ID for authentication (if enabled)
+#   - Battery efficient
+#
+# Android:
+#   - "Always-on VPN" in system settings
+#   - Per-app VPN support
+#   - Private DNS compatibility
+#   - Battery optimization exclusion recommended
+#
+# Linux:
+#   - Available via package manager or direct download
+#   - Command-line interface: openvpn3
+#   - System tray integration (GUI)
+#
+##############################################
+# Advanced Features
+##############################################
+#
+# Save Username (Desktop):
+#   - Enter username when connecting
+#   - Check "Save" next to username field
+#   - Future connections auto-fill username
+#   - Note: Password is NOT saved (SSO doesn't need it)
+#
+# Connection Profiles (Mobile):
+#   - Name profiles for easy identification
+#   - Tap profile → Edit → Change name
+#   - Use icons to differentiate profiles
+#
+# Split Tunneling (Mobile):
+#   - Settings → VPN Protocol → Split Tunneling
+#   - Choose apps to exclude from VPN
+#   - Useful for local network apps
+#
+# Always-On VPN (Mobile):
+#   iOS: Settings → VPN → Connect On Demand
+#   Android: Settings → Network → VPN → Always-on VPN
+#
+# Automatic Reconnection:
+#   - Enabled by default
+#   - Reconnects automatically after network changes
+#   - Configurable retry interval
+#
+##############################################
+# Troubleshooting
+##############################################
+#
+# Problem: Can't import profile
+# Solutions:
+#   - Verify file has .ovpn extension
+#   - Check file is valid UTF-8 encoding
+#   - Ensure certificates are properly formatted
+#   - Try importing via different method (email, cloud, etc.)
+#
+# Problem: Webview doesn't open
+# Solutions:
+#   - Update OpenVPN Connect to latest version
+#   - Check app has permission to open webviews
+#   - Verify server is OpenVPN 2.6.2+
+#   - Look for WEB_AUTH:: URL in connection log
+#
+# Problem: "Authentication failed"
+# Solutions:
+#   - Verify Keycloak username is correct
+#   - Check you completed browser authentication
+#   - Ensure you have required roles in Keycloak
+#   - Check server logs for errors
+#
+# Problem: Connection hangs
+# Solutions:
+#   - Wait for timeout (5 minutes default)
+#   - Disconnect and retry
+#   - Check network connectivity
+#   - Verify server is accessible (ping, telnet)
+#
+# Problem: Frequent disconnections
+# Solutions:
+#   - Check network stability
+#   - Disable battery optimization (Android)
+#   - Enable "Seamless Tunnel" in settings
+#   - Switch from UDP to TCP (change "proto udp" to "proto tcp-client")
+#
+# View Logs:
+#   Desktop: Profile → Settings → Log
+#   Mobile: Tap profile → Log
+#
+# Enable Verbose Logging:
+#   Change "verb 3" to "verb 4" in this file
+#   Reimport profile and reconnect
+#
+##############################################
+# Security Best Practices
+##############################################
+#
+# - Use a strong Keycloak password (12+ characters)
+# - Enable MFA in Keycloak (TOTP, WebAuthn, etc.)
+# - Don't share this profile file (contains your CA cert)
+# - Keep OpenVPN Connect updated
+# - Use Always-on VPN on mobile for protection
+# - Verify the Keycloak URL before entering credentials
+#
+##############################################
+# Support Resources
+##############################################
+#
+# OpenVPN Connect Documentation:
+#   https://openvpn.net/vpn-server-resources/openvpn-connect-for-windows/
+#   https://openvpn.net/vpn-server-resources/openvpn-connect-for-ios/
+#   https://openvpn.net/vpn-server-resources/openvpn-connect-for-android/
+#
+# OpenVPN Forums:
+#   https://forums.openvpn.net/
+#
+# Report Bugs:
+#   https://openvpn.net/support/
+#
+##############################################

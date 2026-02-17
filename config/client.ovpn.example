@@ -1,0 +1,193 @@
+# OpenVPN Client Configuration for SSO Authentication
+# Compatible with: OpenVPN CLI, OpenVPN Connect, Tunnelblick, and other modern clients
+#
+# Usage:
+#   1. Replace 'vpn.example.com' with your VPN server hostname
+#   2. Replace the CA certificate placeholder with your actual CA certificate
+#   3. Import this file into your OpenVPN client
+#   4. Connect and authenticate via browser
+
+##############################################
+# Client Settings
+##############################################
+
+# This is a client configuration
+client
+
+# Use a routed IP tunnel
+dev tun
+
+# Protocol (must match server)
+proto udp
+
+##############################################
+# Server Connection
+##############################################
+
+# Server hostname and port
+# IMPORTANT: Replace with your actual VPN server address
+remote vpn.example.com 1194
+
+# Keep trying to resolve the server hostname
+resolv-retry infinite
+
+# Don't bind to a specific local port
+nobind
+
+# Downgrade privileges after initialization (Unix/Linux only)
+# Uncomment if running as root
+# user nobody
+# group nogroup
+
+# Preserve keys and tunnel across restarts
+persist-key
+persist-tun
+
+##############################################
+# Certificates and Keys
+##############################################
+
+# Certificate Authority certificate
+# IMPORTANT: Replace with your actual CA certificate
+<ca>
+-----BEGIN CERTIFICATE-----
+MIIDSzCCAjOgAwIBAgIUX1Z2Z3Z4Z5Z6Z7Z8Z9ZaZbZcZdZeMA0GCSqGSIb3DQEB
+CwUAMBYxFDASBgNVBAMMC0Vhc3ktUlNBIENBMB4XDTIzMDEwMTAwMDAwMFoXDTMz
+... (rest of your CA certificate) ...
+-----END CERTIFICATE-----
+</ca>
+
+# Client Certificate (OPTIONAL - only if using mutual TLS + SSO)
+# Uncomment and paste your client certificate if required
+# <cert>
+# -----BEGIN CERTIFICATE-----
+# ... your client certificate ...
+# -----END CERTIFICATE-----
+# </cert>
+
+# Client Private Key (OPTIONAL - only if using mutual TLS + SSO)
+# Uncomment and paste your client private key if required
+# <key>
+# -----BEGIN PRIVATE KEY-----
+# ... your client private key ...
+# -----END PRIVATE KEY-----
+# </key>
+
+##############################################
+# Authentication
+##############################################
+
+# Enable username/password authentication
+# For SSO: username is your Keycloak username, password can be anything (e.g., "sso")
+auth-user-pass
+
+# Retry authentication interactively on failure
+# CRITICAL: Required for SSO to work properly
+auth-retry interact
+
+##############################################
+# Security
+##############################################
+
+# Verify server certificate is a server certificate
+remote-cert-tls server
+
+# Use modern ciphers (AES-GCM preferred)
+data-ciphers AES-256-GCM:AES-128-GCM:AES-256-CBC
+
+# Require minimum TLS version 1.2
+tls-version-min 1.2
+
+# Optional: TLS authentication (additional security layer)
+# Uncomment and paste ta.key if your server uses TLS authentication
+# <tls-auth>
+# -----BEGIN OpenVPN Static key V1-----
+# ... your ta.key contents ...
+# -----END OpenVPN Static key V1-----
+# </tls-auth>
+# key-direction 1
+
+##############################################
+# Performance Tuning
+##############################################
+
+# Socket buffer sizes (improves throughput on high-speed connections)
+sndbuf 393216
+rcvbuf 393216
+
+# Fragment size (optional, uncomment if needed)
+# fragment 1400
+# mssfix 1400
+
+# Compression (optional, uncomment if server supports it)
+# Note: Modern networks often don't benefit from compression
+# compress lz4-v2
+
+##############################################
+# Logging
+##############################################
+
+# Logging verbosity (0-11)
+# 3 = normal, 4 = verbose, 0 = silent except fatal errors
+verb 3
+
+# Silence repeating messages
+mute 20
+
+##############################################
+# SSO Authentication Notes
+##############################################
+#
+# How SSO Authentication Works:
+#
+# 1. Connect to VPN:
+#    - Your OpenVPN client will prompt for username/password
+#    - Enter your Keycloak username (e.g., "john.doe")
+#    - Password can be anything (e.g., "sso") - it will be ignored
+#
+# 2. Browser Opens:
+#    - Modern clients (OpenVPN Connect, Tunnelblick) will open your browser automatically
+#    - CLI clients will display a URL that you must copy and open manually
+#    - The URL will look like: WEB_AUTH::https://keycloak.example.com/realms/...
+#
+# 3. Authenticate:
+#    - Log in to Keycloak in your browser
+#    - Complete any MFA challenges if enabled
+#
+# 4. Complete:
+#    - After successful authentication, the browser page will confirm success
+#    - Return to your VPN client - connection will complete automatically
+#    - You can close the browser tab
+#
+# Client-Specific Notes:
+#
+# - OpenVPN Connect (Windows/macOS/iOS/Android):
+#   Best SSO experience with built-in browser support
+#
+# - Tunnelblick (macOS):
+#   Excellent SSO support, opens Safari automatically (requires v3.8.7+)
+#
+# - OpenVPN CLI (Linux/Unix):
+#   Displays WEB_AUTH:: URL - copy and paste into browser manually
+#
+# - NetworkManager (Linux):
+#   SSO support varies by version - may require manual browser opening
+#
+# Troubleshooting:
+#
+# - Browser doesn't open:
+#   * Check that your client supports WEB_AUTH:: URLs
+#   * For CLI clients, manually copy the WEB_AUTH:: URL
+#   * Update to the latest client version
+#
+# - Authentication hangs:
+#   * Ensure you completed the browser login
+#   * Check that auth-retry is set to "interact"
+#   * Verify server is running OpenVPN 2.6.2 or later
+#
+# - "Auth failed" message:
+#   * Verify your Keycloak username is correct
+#   * Check that you have required roles/groups in Keycloak
+#   * Check server logs for detailed error messages
+#
+##############################################

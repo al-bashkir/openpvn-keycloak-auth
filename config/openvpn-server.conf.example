@@ -1,0 +1,399 @@
+# ============================================================
+# OpenVPN Server Configuration for SSO Authentication
+# ============================================================
+#
+# This configuration enables Keycloak SSO authentication for
+# OpenVPN Community Server 2.6.19+ on Rocky Linux 9
+#
+# Copy this file to: /etc/openvpn/server/server.conf
+# Then customize for your environment
+#
+# Documentation: See docs/openvpn-server-setup.md
+#
+
+# ============================================================
+# Network Configuration
+# ============================================================
+
+# Port and protocol
+# Default: UDP port 1194
+# TCP is more reliable but slower; UDP is faster but may drop packets
+port 1194
+proto udp
+
+# Device type (tun = routed, tap = bridged)
+# Use 'tun' for most VPN scenarios
+dev tun
+
+# ============================================================
+# Certificates and Keys (PKI)
+# ============================================================
+#
+# Generate certificates with Easy-RSA:
+#   cd /etc/openvpn/easy-rsa
+#   ./easyrsa init-pki
+#   ./easyrsa build-ca
+#   ./easyrsa build-server-full server nopass
+#   ./easyrsa gen-dh
+#   openvpn --genkey secret ta.key
+#
+
+# Certificate Authority certificate
+ca /etc/openvpn/server/ca.crt
+
+# Server certificate
+cert /etc/openvpn/server/server.crt
+
+# Server private key (keep secret!)
+key /etc/openvpn/server/server.key
+
+# Diffie-Hellman parameters (2048 or 4096 bit)
+dh /etc/openvpn/server/dh.pem
+
+# TLS authentication for additional security
+# Optional but recommended
+# Generates with: openvpn --genkey secret ta.key
+tls-auth /etc/openvpn/server/ta.key 0
+
+# ============================================================
+# SSO Authentication (Keycloak) - CRITICAL SECTION
+# ============================================================
+#
+# These directives enable script-based deferred authentication
+# which is required for SSO to work with OpenVPN 2.6+
+#
+
+# Enable script execution with maximum security level
+# Level 3: Allow password scripts and user-defined scripts
+script-security 3
+
+# Authentication script
+# - Called for each connection attempt
+# - via-file: Credentials passed in temporary file (more secure than via-env)
+# - Script must be executable: chmod +x /etc/openvpn/scripts/auth-keycloak.sh
+auth-user-pass-verify /etc/openvpn/scripts/auth-keycloak.sh via-file
+
+# Allow clients to connect without password in client config
+# Users will still authenticate via SSO (browser)
+# This is safe because auth-user-pass-verify validates via Keycloak
+auth-user-pass-optional
+
+# Generate authentication token for reconnections
+# - First parameter: Token lifetime in seconds (0 = no expiry)
+# - external-auth: Token is only valid for this specific user
+# This allows clients to reconnect without re-authenticating via SSO
+auth-gen-token 0 external-auth
+
+# Increase handshake window to allow time for SSO browser flow
+# Default is 60 seconds; SSO may take longer
+# 120 seconds = 2 minutes (adjust based on your needs)
+hand-window 120
+
+# Prevent clients from caching credentials (SSO tokens should not be reused raw)
+auth-nocache
+
+# Use a shared tmp-dir so the SSO daemon can write auth_control_file,
+# auth_pending_file, and auth_failed_reason_file.
+#
+# IMPORTANT: Both the OpenVPN and SSO daemon systemd units use PrivateTmp=true.
+# OpenVPN creates temporary auth files in its tmp-dir. If both services use
+# /tmp, their private namespaces will differ and the daemon cannot see the files.
+#
+# The solution is to set tmp-dir to a directory under the daemon's work_dir
+# (e.g., /var/lib/openvpn-keycloak-sso/tmp). Both services can then access
+# the same auth files via ReadWritePaths in their systemd units.
+#
+# Create this directory during installation:
+#   mkdir -p /var/lib/openvpn-keycloak-sso/tmp
+#   chown openvpn:openvpn /var/lib/openvpn-keycloak-sso/tmp
+#   chmod 0750 /var/lib/openvpn-keycloak-sso/tmp
+tmp-dir /var/lib/openvpn-keycloak-sso/tmp
+
+# auth-gen-token requires a finite renegotiation interval
+reneg-sec 3600
+
+# Optional: Timeout for auth script execution
+# Increase if your network to Keycloak is slow
+# Default is 60 seconds
+# script-timeout 90
+
+# ============================================================
+# Network Topology and IP Addressing
+# ============================================================
+
+# Network topology
+# subnet: Each client gets a /30 subnet (recommended)
+# net30: Legacy mode (use only for old clients)
+# p2p: Point-to-point (not recommended for multi-client)
+topology subnet
+
+# VPN subnet for clients
+# Server will be 10.8.0.1, clients get 10.8.0.2+
+# Adjust to avoid conflicts with your network
+server 10.8.0.0 255.255.255.0
+
+# Maintain a record of client <-> virtual IP address associations
+# Allows clients to reconnect and get the same IP
+ifconfig-pool-persist /var/log/openvpn/ipp.txt
+
+# ============================================================
+# Routes and Client Configuration
+# ============================================================
+
+# Push routes to client
+# This makes the client route all traffic through the VPN (full tunnel)
+push "redirect-gateway def1 bypass-dhcp"
+
+# Alternative: Route only specific networks (split tunnel)
+# Uncomment and adjust for your internal networks
+# push "route 10.0.0.0 255.255.0.0"
+# push "route 192.168.1.0 255.255.255.0"
+
+# Push DNS servers to clients
+# Use your internal DNS servers for split tunnel
+# Use public DNS for full tunnel
+push "dhcp-option DNS 8.8.8.8"
+push "dhcp-option DNS 8.8.4.4"
+
+# Alternative: Use your internal DNS
+# push "dhcp-option DNS 192.168.1.1"
+# push "dhcp-option DNS 192.168.1.2"
+
+# Push search domain
+# push "dhcp-option DOMAIN example.com"
+
+# Allow client-to-client communication
+# Uncomment to allow VPN clients to see each other
+# Disable if clients should only access the server/network
+# client-to-client
+
+# Allow multiple clients with the same certificate
+# NOT recommended for production (security risk)
+# Each user should have their own certificate
+# duplicate-cn
+
+# ============================================================
+# Security Settings
+# ============================================================
+
+# Use modern ciphers (OpenVPN 2.6+ supports data-ciphers)
+# Negotiates the best cipher supported by both client and server
+# Listed in order of preference
+data-ciphers AES-256-GCM:AES-128-GCM:AES-256-CBC:AES-128-CBC
+
+# Fallback cipher for older clients (OpenVPN 2.4 and earlier)
+# Modern clients will use data-ciphers instead
+data-ciphers-fallback AES-256-CBC
+
+# TLS cipher suite (for control channel)
+# Use strong ciphers only
+tls-cipher TLS-ECDHE-RSA-WITH-AES-256-GCM-SHA384:TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256
+
+# Minimum TLS version (1.2 or higher)
+# TLS 1.3 is preferred but not all clients support it yet
+tls-version-min 1.2
+
+# Require client certificate (recommended)
+# Comment out if using SSO only (no client certs)
+# remote-cert-tls client
+
+# Certificate verification (optional)
+# Verify client certificate matches expected subject
+# verify-x509-name "client.example.com" name
+
+# ============================================================
+# User/Group Permissions
+# ============================================================
+
+# Drop privileges after initialization (security hardening)
+# OpenVPN will run as this user/group instead of root
+# Recommended for production
+user openvpn
+group openvpn
+
+# Keep these resources after dropping privileges
+# Required for proper operation
+persist-key
+persist-tun
+
+# ============================================================
+# Logging and Monitoring
+# ============================================================
+
+# Log file location
+# Logs to file instead of syslog
+# log /var/log/openvpn/openvpn.log
+
+# Append to log file (don't overwrite)
+# log-append /var/log/openvpn/openvpn.log
+
+# Status file (shows current connections)
+# Useful for monitoring
+status /var/log/openvpn/openvpn-status.log
+
+# Update status file every N seconds
+status-version 2
+
+# Verbosity level (0-9)
+# 0 = quiet, 3 = normal, 5 = verbose, 9 = extremely verbose
+# Use 3-4 for production, 5+ for debugging
+verb 3
+
+# Limit consecutive messages of the same type
+# Prevents log spam
+mute 20
+
+# Optional: Send USR1 signal on client disconnect
+# Useful for scripts
+# client-disconnect /etc/openvpn/client-disconnect.sh
+
+# ============================================================
+# Performance and Connection Settings
+# ============================================================
+
+# Keepalive - send ping every 10 seconds, timeout after 120 seconds
+# Helps detect dead connections
+keepalive 10 120
+
+# Maximum number of clients
+# Adjust based on server resources
+max-clients 100
+
+# Compression (optional)
+# Note: Compression has security implications (VORACLE attack)
+# Only enable if you trust all clients
+# compress lz4-v2
+# push "compress lz4-v2"
+
+# Allow compression from clients
+# comp-lzo no
+
+# Fast I/O (use epoll on Linux)
+# Improves performance
+# fast-io
+
+# TCP/UDP socket buffer sizes
+# Increase for better throughput
+# sndbuf 393216
+# rcvbuf 393216
+# push "sndbuf 393216"
+# push "rcvbuf 393216"
+
+# Fragment large UDP packets
+# Only needed for UDP and MTU issues
+# fragment 1300
+
+# MSS fix for TCP connections over the VPN
+# Prevents MTU issues
+# mssfix 1420
+
+# ============================================================
+# Advanced Options
+# ============================================================
+
+# Client configuration directory
+# Each file is named with the client's common name
+# Allows per-client settings (IP, routes, etc.)
+# client-config-dir /etc/openvpn/ccd
+
+# Learn client IP addresses from DHCP
+# Useful in bridged mode (tap)
+# learn-address /etc/openvpn/learn-address.sh
+
+# Custom environment variables for scripts
+# setenv KEY VALUE
+
+# Renegotiate data channel every N seconds
+# Default is 3600 (1 hour) — see reneg-sec directive in the SSO section above.
+# Increase for performance, decrease for security.
+
+# ============================================================
+# IPv6 Support (Optional)
+# ============================================================
+
+# Enable IPv6 on the VPN
+# Requires IPv6 support on server
+# proto udp6
+# server-ipv6 fd00:1234:5678::/64
+# push "route-ipv6 2000::/3"
+
+# ============================================================
+# Management Interface (Optional)
+# ============================================================
+#
+# Allows remote management of OpenVPN via telnet-like interface
+# WARNING: Only bind to localhost or use authentication!
+#
+
+# management localhost 7505
+
+# Management password file
+# management-client-auth
+
+# ============================================================
+# Systemd Integration
+# ============================================================
+#
+# When running via systemd, you can use:
+#   systemctl start openvpn-server@server
+#   systemctl enable openvpn-server@server
+#   systemctl status openvpn-server@server
+#
+# This assumes the config file is at:
+#   /etc/openvpn/server/server.conf
+#
+
+# ============================================================
+# Example Client-Specific Configuration
+# ============================================================
+#
+# Create /etc/openvpn/ccd/username with content like:
+#
+# # Assign specific IP to this client
+# ifconfig-push 10.8.0.10 255.255.255.0
+#
+# # Push specific routes to this client only
+# push "route 192.168.100.0 255.255.255.0"
+#
+# # Disable redirect-gateway for this client
+# push "redirect-gateway def1 bypass-dhcp"
+#
+
+# ============================================================
+# Troubleshooting Tips
+# ============================================================
+#
+# 1. Check service status:
+#    systemctl status openvpn-server@server
+#
+# 2. View logs:
+#    journalctl -u openvpn-server@server -f
+#
+# 3. Test configuration:
+#    openvpn --config /etc/openvpn/server/server.conf --test-crypto
+#
+# 4. Check daemon:
+#    systemctl status openvpn-keycloak-sso
+#    journalctl -u openvpn-keycloak-sso -f
+#
+# 5. Common issues:
+#    - Browser not opening: Client needs IV_SSO capability
+#    - Auth timeout: Increase hand-window
+#    - Connection drops: Check keepalive settings
+#    - DNS not working: Verify pushed DNS settings
+#
+# 6. Verify auth script is executable:
+#    ls -l /etc/openvpn/scripts/auth-keycloak.sh
+#    # Should be: -rwxr-xr-x ... /etc/openvpn/scripts/auth-keycloak.sh
+#
+# 7. Test auth script manually:
+#    export username="testuser"
+#    export auth_control_file="/tmp/test_acf"
+#    export auth_pending_file="/tmp/test_apf"
+#    export auth_failed_reason_file="/tmp/test_arf"
+#    export untrusted_ip="192.0.2.1"
+#    echo -e "testuser\nsso" > /tmp/test_creds
+#    /etc/openvpn/scripts/auth-keycloak.sh /tmp/test_creds
+#    echo "Exit code: $?"
+#    cat /tmp/test_apf
+#
