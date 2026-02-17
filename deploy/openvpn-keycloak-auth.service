@@ -1,0 +1,123 @@
+[Unit]
+Description=OpenVPN Keycloak Authentication Daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=openvpn
+Group=openvpn
+
+# Binary and configuration
+ExecStart=/usr/local/bin/openvpn-keycloak-auth serve --config /etc/openvpn/keycloak-sso.yaml
+
+# Validate configuration before starting
+ExecStartPre=/usr/local/bin/openvpn-keycloak-auth check-config --config /etc/openvpn/keycloak-sso.yaml
+
+# Working directory
+WorkingDirectory=/var/lib/openvpn-keycloak-auth
+
+# Runtime directory for Unix socket
+# Creates /run/openvpn-keycloak-auth with correct permissions
+RuntimeDirectory=openvpn-keycloak-auth
+RuntimeDirectoryMode=0770
+RuntimeDirectoryPreserve=no
+
+# Restart policy
+Restart=on-failure
+RestartSec=5s
+StartLimitInterval=600s
+StartLimitBurst=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=openvpn-keycloak-auth
+
+# Environment
+Environment="LANG=en_US.UTF-8"
+Environment="TZ=UTC"
+
+##############################################
+# Security Hardening
+##############################################
+
+# Prevent privilege escalation
+NoNewPrivileges=true
+
+# Private /tmp
+PrivateTmp=true
+
+# Filesystem protection
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/openvpn-keycloak-auth
+
+# Protect kernel
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+
+# Restrict namespaces
+RestrictNamespaces=true
+
+# Restrict real-time scheduling
+RestrictRealtime=true
+
+# Prevent SUID/SGID bits
+RestrictSUIDSGID=true
+
+# Lock personality (prevent execution domain changes)
+LockPersonality=true
+
+# Memory protection
+MemoryDenyWriteExecute=true
+
+# Restrict address families (only IPv4, IPv6, Unix sockets)
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# System call filtering
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources @obsolete @debug @mount
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+
+# Capabilities
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# Prevent access to /proc and /sys
+ProtectProc=invisible
+ProcSubset=pid
+
+# Device access control
+DevicePolicy=closed
+DeviceAllow=/dev/null rw
+DeviceAllow=/dev/random r
+DeviceAllow=/dev/urandom r
+
+# Inaccessible paths
+InaccessiblePaths=/home
+InaccessiblePaths=/root
+InaccessiblePaths=/boot
+InaccessiblePaths=/media
+InaccessiblePaths=/mnt
+
+# Prevent access to other users' processes
+
+# NOTE: Do not enable PrivateUsers here.
+# The OpenVPN auth helper process must be able to connect to the daemon's
+# Unix socket in /run, and user namespace mappings can break permission checks.
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=512
+TasksMax=512
+
+# Timeout for start
+TimeoutStartSec=30s
+TimeoutStopSec=30s
+
+[Install]
+WantedBy=multi-user.target

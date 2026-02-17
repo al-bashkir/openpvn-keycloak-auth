@@ -1,0 +1,210 @@
+# OpenVPN CLI Client Configuration for SSO Authentication
+# For: OpenVPN command-line client on Linux/Unix/macOS
+#
+# Usage with CLI:
+#   openvpn --config client-cli.ovpn
+#
+# Usage with credentials file (recommended):
+#   echo "your-keycloak-username" > /tmp/vpn-creds.txt
+#   echo "sso" >> /tmp/vpn-creds.txt
+#   chmod 600 /tmp/vpn-creds.txt
+#   openvpn --config client-cli.ovpn --auth-user-pass /tmp/vpn-creds.txt
+#
+# Important: CLI clients do NOT automatically open browsers
+# You must manually copy the WEB_AUTH:: URL and open it in your browser
+
+##############################################
+# Client Settings
+##############################################
+
+client
+dev tun
+proto udp
+
+##############################################
+# Server Connection
+##############################################
+
+# Replace with your VPN server hostname
+remote vpn.example.com 1194
+
+resolv-retry infinite
+nobind
+
+# Preserve state across restarts
+persist-key
+persist-tun
+
+# Optional: Run as unprivileged user after initialization
+# user nobody
+# group nogroup
+
+##############################################
+# Certificates and Keys
+##############################################
+
+# CA certificate file path
+# Option 1: External file (recommended for CLI)
+ca /etc/openvpn/client/ca.crt
+
+# Option 2: Embedded certificate (uncomment to use inline)
+# <ca>
+# -----BEGIN CERTIFICATE-----
+# ... your CA certificate ...
+# -----END CERTIFICATE-----
+# </ca>
+
+# Client certificate (OPTIONAL - only if using mutual TLS)
+# cert /etc/openvpn/client/client.crt
+# key /etc/openvpn/client/client.key
+
+# Or embed client cert/key inline:
+# <cert>
+# -----BEGIN CERTIFICATE-----
+# ... your client certificate ...
+# -----END CERTIFICATE-----
+# </cert>
+#
+# <key>
+# -----BEGIN PRIVATE KEY-----
+# ... your client private key ...
+# -----END PRIVATE KEY-----
+# </key>
+
+##############################################
+# Authentication
+##############################################
+
+# Enable username/password authentication
+# For SSO:
+#   - Username: Your Keycloak username
+#   - Password: Anything (e.g., "sso") - will be ignored
+auth-user-pass
+
+# CRITICAL: Required for SSO to work
+# Allows interactive retry when auth is pending
+auth-retry interact
+
+##############################################
+# Security
+##############################################
+
+# Verify server certificate
+remote-cert-tls server
+
+# Modern cipher suite
+data-ciphers AES-256-GCM:AES-128-GCM:AES-256-CBC
+
+# Minimum TLS version
+tls-version-min 1.2
+
+# Optional: TLS authentication
+# tls-auth /etc/openvpn/client/ta.key 1
+
+##############################################
+# Performance
+##############################################
+
+# Buffer sizes
+sndbuf 393216
+rcvbuf 393216
+
+##############################################
+# Logging
+##############################################
+
+# Verbosity: 0-11 (3 = normal, 4 = verbose)
+verb 3
+
+# Suppress repeated messages
+mute 20
+
+##############################################
+# CLI SSO Authentication Flow
+##############################################
+#
+# Step-by-Step Instructions:
+#
+# 1. Start the VPN connection:
+#    $ openvpn --config client-cli.ovpn
+#
+# 2. When prompted for credentials:
+#    Enter Auth Username: your-keycloak-username
+#    Enter Auth Password: sso
+#
+# 3. Look for output like this:
+#    AUTH_PENDING,timeout:300,openurl,WEB_AUTH::https://keycloak.example.com/realms/...
+#
+# 4. Copy the URL (everything after WEB_AUTH::)
+#
+# 5. Open the URL in your browser:
+#    $ firefox "https://keycloak.example.com/realms/..."
+#    Or copy/paste into any browser
+#
+# 6. Log in to Keycloak in the browser
+#
+# 7. Return to the terminal - connection will complete automatically
+#    You should see:
+#    Initialization Sequence Completed
+#
+# Alternative: Skip username prompt by using a credentials file
+#
+# Create credentials file:
+#    $ cat > ~/vpn-creds.txt <<EOF
+#    your-keycloak-username
+#    sso
+#    EOF
+#    $ chmod 600 ~/vpn-creds.txt
+#
+# Connect with credentials file:
+#    $ openvpn --config client-cli.ovpn --auth-user-pass ~/vpn-creds.txt
+#
+# Now you'll only need to open the browser URL - no username prompt!
+#
+##############################################
+# Troubleshooting
+##############################################
+#
+# Problem: No WEB_AUTH:: URL appears
+# Solution:
+#   - Check server is running OpenVPN 2.6.2+
+#   - Verify auth-retry is set to "interact"
+#   - Check server logs for errors
+#
+# Problem: AUTH_FAILED after browser login
+# Solution:
+#   - Verify Keycloak username matches exactly
+#   - Check you have required roles/groups
+#   - Check server daemon is running
+#   - Check server logs: journalctl -u openvpn-keycloak-auth
+#
+# Problem: Connection timeout
+# Solution:
+#   - Browser authentication must complete within 5 minutes (default)
+#   - Check network connectivity to Keycloak
+#   - Verify Keycloak redirect URI is correct
+#
+# Problem: "TLS Error: TLS handshake failed"
+# Solution:
+#   - Verify CA certificate is correct
+#   - Check server hostname matches certificate
+#   - Ensure TLS version compatibility
+#
+##############################################
+# File Locations (Typical)
+##############################################
+#
+# Certificate files:
+#   /etc/openvpn/client/ca.crt
+#   /etc/openvpn/client/client.crt   (optional)
+#   /etc/openvpn/client/client.key   (optional)
+#   /etc/openvpn/client/ta.key       (optional)
+#
+# This config file:
+#   /etc/openvpn/client/client-cli.ovpn
+#
+# Credentials file:
+#   ~/.openvpn/vpn-creds.txt (user-specific, mode 600)
+#   or /etc/openvpn/client/vpn-creds.txt (system-wide, mode 600)
+#
+##############################################
