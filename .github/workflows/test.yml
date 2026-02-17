@@ -1,0 +1,261 @@
+name: Test and Build
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+  actions: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.txt | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Total coverage: $COVERAGE%"
+          if (( $(echo "$COVERAGE < 70" | bc -l) )); then
+            echo "❌ Coverage below 70% threshold"
+            exit 1
+          fi
+          echo "✅ Coverage OK ($COVERAGE% >= 70%)"
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.txt
+          flags: unittests
+          fail_ci_if_error: false
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: latest
+          args: --timeout=5m --verbose
+          only-new-issues: false
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux]
+        goarch: [amd64, arm64]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          make build
+          mv openvpn-keycloak-auth openvpn-keycloak-auth-${{ matrix.goos }}-${{ matrix.goarch }}
+
+      - name: Check binary (amd64 only)
+        if: matrix.goarch == 'amd64'
+        run: |
+          file openvpn-keycloak-auth-${{ matrix.goos }}-${{ matrix.goarch }}
+          ./openvpn-keycloak-auth-${{ matrix.goos }}-${{ matrix.goarch }} version
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openvpn-keycloak-auth-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: openvpn-keycloak-auth-${{ matrix.goos }}-${{ matrix.goarch }}
+          retention-days: 30
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          args: "-no-fail -fmt sarif -out results.sarif ./..."
+
+      - name: Sanitize gosec SARIF
+        run: |
+          cp results.sarif gosec-clean.sarif
+          python3 - <<'PY'
+          import json
+
+          path = "gosec-clean.sarif"
+          with open(path, "r", encoding="utf-8") as f:
+              data = json.load(f)
+
+          for run in data.get("runs", []) or []:
+              tool = run.get("tool", {}) or {}
+              driver = tool.get("driver", {}) or {}
+              rules = driver.get("rules", []) or []
+              for rule in rules:
+                  rel = rule.get("relationships")
+                  if isinstance(rel, list):
+                      rel = [r for r in rel if r is not None]
+                      if rel:
+                          rule["relationships"] = rel
+                      else:
+                          rule.pop("relationships", None)
+
+          with open(path, "w", encoding="utf-8") as f:
+              json.dump(data, f)
+          PY
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true
+        with:
+          sarif_file: gosec-clean.sarif
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-results.sarif"
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true
+        with:
+          sarif_file: "trivy-results.sarif"
+
+  integration-test:
+    name: Integration Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: Start Keycloak (dev mode)
+        run: |
+          docker run -d --name keycloak \
+            -p 8080:8080 \
+            -e KEYCLOAK_ADMIN=admin \
+            -e KEYCLOAK_ADMIN_PASSWORD=admin \
+            quay.io/keycloak/keycloak:25.0.6 \
+            start-dev --http-port=8080 --hostname-strict=false
+
+      - name: Build binary
+        run: make build
+
+      - name: Wait for Keycloak
+        run: |
+          for i in {1..60}; do
+            if curl -sf http://localhost:8080/realms/master/.well-known/openid-configuration > /dev/null; then
+              echo "Keycloak is ready"
+              exit 0
+            fi
+            echo "Waiting for Keycloak... ($i/60)"
+            sleep 2
+          done
+          echo "Keycloak failed to start"
+          docker logs keycloak
+          exit 1
+
+      - name: Test OIDC Discovery
+        run: |
+          curl -f http://localhost:8080/realms/master/.well-known/openid-configuration
+
+      - name: Test daemon startup
+        run: |
+          # Create minimal config
+          cat > /tmp/test-config.yaml <<EOF
+          listen:
+            http: "127.0.0.1:9000"
+            socket: "/tmp/openvpn-test.sock"
+          oidc:
+            issuer: "http://localhost:8080/realms/master"
+            client_id: "test-client"
+            redirect_uri: "http://localhost:9000/callback"
+            scopes:
+              - openid
+          auth:
+            session_timeout: 300
+            username_claim: "preferred_username"
+          tls:
+            enabled: false
+          log:
+            level: "info"
+            format: "json"
+          EOF
+
+          # Test config validation
+          ./openvpn-keycloak-auth check-config --config /tmp/test-config.yaml
+
+          # Note: Full integration test would require:
+          # 1. Creating test realm and client in Keycloak
+          # 2. Creating test user
+          # 3. Running full auth flow
+          # This is left for manual testing
+
+      - name: Stop Keycloak
+        if: always()
+        run: |
+          docker rm -f keycloak || true

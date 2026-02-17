@@ -1,0 +1,278 @@
+# OpenVPN Configuration for Tunnelblick (macOS)
+# For: Tunnelblick 3.8.7 or later
+#
+# SSO Support: Excellent (automatically opens Safari for authentication)
+#
+# Installation:
+#   1. Download Tunnelblick from https://tunnelblick.net/
+#   2. Double-click this .ovpn file to import
+#   3. Click "Only Me" when asked who can use this configuration
+#   4. Connect and authenticate via browser
+#
+# Tunnelblick-Specific Features:
+#   - Automatic browser opening (Safari)
+#   - Menu bar integration
+#   - Connection monitoring
+#   - DNS leak protection
+
+##############################################
+# Client Settings
+##############################################
+
+client
+dev tun
+proto udp
+
+##############################################
+# Server Connection
+##############################################
+
+# Replace with your VPN server hostname
+remote vpn.example.com 1194
+
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+
+##############################################
+# Certificates (Embedded)
+##############################################
+
+# Tunnelblick requires inline certificates
+# Paste your actual certificates between the BEGIN/END markers
+
+<ca>
+-----BEGIN CERTIFICATE-----
+MIIDSzCCAjOgAwIBAgIUX1Z2Z3Z4Z5Z6Z7Z8Z9ZaZbZcZdZeMA0GCSqGSIb3DQEB
+CwUAMBYxFDASBgNVBAMMC0Vhc3ktUlNBIENBMB4XDTIzMDEwMTAwMDAwMFoXDTMz
+... (rest of your CA certificate) ...
+-----END CERTIFICATE-----
+</ca>
+
+# Client Certificate (OPTIONAL - only if using mutual TLS + SSO)
+# Uncomment and paste your client certificate if required
+# <cert>
+# -----BEGIN CERTIFICATE-----
+# ... your client certificate ...
+# -----END CERTIFICATE-----
+# </cert>
+
+# Client Private Key (OPTIONAL - only if using mutual TLS + SSO)
+# Uncomment and paste your client private key if required
+# <key>
+# -----BEGIN PRIVATE KEY-----
+# ... your client private key ...
+# -----END PRIVATE KEY-----
+# </key>
+
+##############################################
+# Authentication
+##############################################
+
+# Enable username/password authentication
+auth-user-pass
+
+# CRITICAL: Required for SSO to work properly
+auth-retry interact
+
+##############################################
+# Security
+##############################################
+
+# Verify server certificate
+remote-cert-tls server
+
+# Modern ciphers
+data-ciphers AES-256-GCM:AES-128-GCM:AES-256-CBC
+
+# Minimum TLS version
+tls-version-min 1.2
+
+# Optional: TLS authentication for additional security
+# Uncomment and paste ta.key if your server uses it
+# <tls-auth>
+# -----BEGIN OpenVPN Static key V1-----
+# ... your ta.key contents ...
+# -----END OpenVPN Static key V1-----
+# </tls-auth>
+# key-direction 1
+
+##############################################
+# Performance
+##############################################
+
+# Buffer sizes for better throughput
+sndbuf 393216
+rcvbuf 393216
+
+##############################################
+# Logging
+##############################################
+
+# Logging verbosity
+verb 3
+mute 20
+
+##############################################
+# Tunnelblick-Specific Settings
+##############################################
+
+# These settings are optimized for Tunnelblick
+# DO NOT modify unless you know what you're doing
+
+# Route all traffic through VPN (optional, uncomment to enable)
+# redirect-gateway def1
+
+# Use VPN DNS servers (prevents DNS leaks)
+# Tunnelblick handles this via GUI - no config needed
+
+# Reconnect automatically
+# Tunnelblick handles this via GUI settings
+
+##############################################
+# SSO Authentication with Tunnelblick
+##############################################
+#
+# Step-by-Step Instructions:
+#
+# 1. Import this configuration:
+#    - Double-click this .ovpn file
+#    - Tunnelblick will prompt to install
+#    - Choose "Only Me" (recommended) or "All Users"
+#    - Enter your macOS password if prompted
+#
+# 2. Connect to VPN:
+#    - Click Tunnelblick icon in menu bar
+#    - Select this VPN configuration
+#    - Click "Connect"
+#
+# 3. Enter credentials:
+#    - Username: Your Keycloak username (e.g., "john.doe")
+#    - Password: Anything (e.g., "sso") - will be ignored
+#    - Optional: Check "Save in Keychain" to avoid re-entering username
+#
+# 4. Browser opens automatically:
+#    - Safari will open with Keycloak login page
+#    - If Safari doesn't open, check Tunnelblick version (need 3.8.7+)
+#
+# 5. Authenticate in Keycloak:
+#    - Log in with your Keycloak credentials
+#    - Complete any MFA challenges if enabled
+#    - You should see a success page
+#
+# 6. VPN connects:
+#    - Close the browser tab
+#    - Return to Tunnelblick - connection completes automatically
+#    - Menu bar icon turns solid when connected
+#
+# Saving Credentials (Optional):
+#
+# Tunnelblick can save your username in macOS Keychain:
+#   1. When connecting, check "Save in Keychain"
+#   2. Next time you connect, username is auto-filled
+#   3. You'll still need to authenticate via browser each time
+#
+# Note: Password is NOT saved because SSO doesn't use it
+#
+##############################################
+# Tunnelblick Preferences
+##############################################
+#
+# Recommended Settings (via Tunnelblick menu):
+#
+# - Set DNS/WINS:
+#   "Set nameserver" - prevents DNS leaks
+#
+# - Monitor Network Settings:
+#   Enabled - detects network changes
+#
+# - Connect automatically:
+#   Optional - auto-connect on Mac startup
+#
+# - Route All Traffic:
+#   Optional - force all traffic through VPN
+#   (Can also be set per-connection)
+#
+# - Check for Updates:
+#   Enabled - keep Tunnelblick up to date
+#
+##############################################
+# Troubleshooting
+##############################################
+#
+# Problem: Safari doesn't open automatically
+# Solutions:
+#   - Update Tunnelblick to 3.8.7 or later
+#   - Check Tunnelblick VPN Details → Log
+#   - Look for WEB_AUTH:: URL in log and open manually
+#   - Verify Safari is set as default browser
+#
+# Problem: "Authentication failed" error
+# Solutions:
+#   - Check Tunnelblick log for details (VPN Details → Log)
+#   - Verify Keycloak username is correct
+#   - Check you have required roles in Keycloak
+#   - Verify you completed browser authentication
+#
+# Problem: Connection hangs after browser login
+# Solutions:
+#   - Check auth-retry is set to "interact" (it is in this config)
+#   - Verify OpenVPN server is 2.6.2 or later
+#   - Check server logs: ssh server "journalctl -u openvpn@server"
+#
+# Problem: DNS not working while connected
+# Solutions:
+#   - In Tunnelblick → VPN Details → Settings
+#   - Ensure "Set nameserver" is enabled
+#   - Check "Monitor network settings"
+#
+# Problem: Can't import .ovpn file
+# Solutions:
+#   - Verify file extension is .ovpn (not .conf)
+#   - Check file encoding is UTF-8
+#   - Try dragging file onto Tunnelblick icon
+#   - Use Tunnelblick → VPN Details → Add Configuration
+#
+# View Logs:
+#   Tunnelblick icon → VPN Details → Log tab
+#
+# Advanced Troubleshooting:
+#   Enable verbose logging:
+#   - Change "verb 3" to "verb 4" in this file
+#   - Reconnect and check logs
+#
+##############################################
+# Security Notes
+##############################################
+#
+# - This configuration uses SSO authentication
+# - Your Keycloak password is NEVER sent to the VPN server
+# - The VPN server only receives a signed token from Keycloak
+# - Tokens are time-limited (typically 5-60 minutes)
+# - You may need to re-authenticate periodically
+#
+# - All traffic is encrypted with AES-256-GCM
+# - TLS 1.2+ is required for control channel
+# - Server certificate is verified to prevent MITM attacks
+#
+# - Optional: Enable TLS authentication (tls-auth) for additional security
+# - Optional: Use client certificates (mutual TLS) in addition to SSO
+#
+##############################################
+# Additional Resources
+##############################################
+#
+# Tunnelblick Documentation:
+#   https://tunnelblick.net/documents.html
+#
+# Tunnelblick FAQ:
+#   https://tunnelblick.net/cFAQ.html
+#
+# OpenVPN Documentation:
+#   https://openvpn.net/community-resources/
+#
+# Report Issues:
+#   https://github.com/Tunnelblick/Tunnelblick/issues
+#
+##############################################

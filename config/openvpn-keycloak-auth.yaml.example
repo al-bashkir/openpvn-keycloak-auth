@@ -1,0 +1,135 @@
+# OpenVPN Keycloak SSO Configuration
+# Copy this file to /etc/openvpn/keycloak-sso.yaml and edit with your settings
+
+# ==========================================
+# Daemon Listen Configuration
+# ==========================================
+listen:
+  # HTTP server for OIDC callbacks
+  # Use ":9000" to listen on all interfaces, "127.0.0.1:9000" for localhost only
+  http: ":9000"
+
+  # Unix socket for auth script communication
+  # Must be accessible by OpenVPN process (user: openvpn)
+  socket: "/run/openvpn-keycloak-auth/auth.sock"
+
+# ==========================================
+# OIDC / Keycloak Configuration
+# ==========================================
+oidc:
+  # Keycloak issuer URL
+  # Format: https://<keycloak-host>/realms/<realm-name>
+  # Example: https://keycloak.example.com/realms/myrealm
+  issuer: "https://keycloak.example.com/realms/myrealm"
+
+  # OIDC client ID (created in Keycloak)
+  client_id: "openvpn"
+
+  # OIDC client secret
+  # Leave empty for public clients (recommended with PKCE)
+  # Can also be set via environment variable: OVPN_SSO_OIDC_CLIENT_SECRET
+  client_secret: ""
+
+  # Redirect URI - must match Keycloak client configuration
+  # Format: http://<vpn-server>:<port>/callback
+  # Example: http://vpn.example.com:9000/callback
+  redirect_uri: "http://vpn.example.com:9000/callback"
+
+  # OIDC scopes to request
+  # 'openid' is required, others are optional
+  scopes:
+    - openid
+    - profile
+    - email
+
+  # Required roles for VPN access (optional)
+  # If specified, user must have at least one of these roles
+  # Leave empty to allow all authenticated users
+  required_roles:
+    - vpn-user
+    # - vpn-admin
+
+  # JSON path to roles in ID token
+  # For Keycloak realm roles: "realm_access.roles"
+  # For client roles: "resource_access.<client-id>.roles"
+  role_claim: "realm_access.roles"
+
+  # JWKS cache duration in seconds (default: 3600 = 1 hour)
+  # How long to cache Keycloak's public keys
+  jwks_cache_duration: 3600
+
+# ==========================================
+# Authentication Configuration
+# ==========================================
+auth:
+  # Session timeout in seconds (default: 300 = 5 minutes)
+  # How long to wait for user to complete SSO flow
+  # Recommendation: 300-600 seconds
+  session_timeout: 300
+
+  # Claim to use as username (default: "preferred_username")
+  # This claim from the ID token will be matched against the OpenVPN username
+  # Common options: "preferred_username", "email", "sub"
+  username_claim: "preferred_username"
+
+  # Allow username mismatch (default: false)
+  # If true, any authenticated user is allowed regardless of username
+  # If false, token username must match OpenVPN username
+  # Recommendation: false for production
+  allow_username_mismatch: false
+
+# ==========================================
+# TLS Configuration (Optional)
+# ==========================================
+tls:
+  # Enable TLS for the HTTP server
+  # Recommendation: Use a reverse proxy (nginx, caddy) for TLS termination
+  enabled: false
+
+  # TLS certificate file (required if enabled: true)
+  cert_file: "/etc/openvpn/tls/server.crt"
+
+  # TLS private key file (required if enabled: true)
+  key_file: "/etc/openvpn/tls/server.key"
+
+# ==========================================
+# Logging Configuration
+# ==========================================
+log:
+  # Log level: debug, info, warn, error
+  # Recommendation: info for production, debug for troubleshooting
+  # Can be overridden with --log-level flag or OVPN_SSO_LOG_LEVEL env var
+  level: "info"
+
+  # Log format: json, text
+  # json is recommended for production (structured logging)
+  # text is more readable for development
+  # Can be overridden with --log-format flag or OVPN_SSO_LOG_FORMAT env var
+  format: "json"
+
+# ==========================================
+# Notes
+# ==========================================
+#
+# Environment Variable Overrides:
+#   OVPN_SSO_OIDC_ISSUER          - Override oidc.issuer
+#   OVPN_SSO_OIDC_CLIENT_ID       - Override oidc.client_id
+#   OVPN_SSO_OIDC_CLIENT_SECRET   - Override oidc.client_secret
+#   OVPN_SSO_OIDC_REDIRECT_URI    - Override oidc.redirect_uri
+#   OVPN_SSO_LOG_LEVEL            - Override log.level
+#   OVPN_SSO_LOG_FORMAT           - Override log.format
+#   OVPN_SSO_LISTEN_HTTP          - Override listen.http
+#   OVPN_SSO_LISTEN_SOCKET        - Override listen.socket
+#
+# File Permissions:
+#   This file should be owned by root with 0600 permissions:
+#     sudo chown root:openvpn /etc/openvpn/keycloak-sso.yaml
+#     sudo chmod 0600 /etc/openvpn/keycloak-sso.yaml
+#
+# Configuration Validation:
+#   Test your configuration:
+#     openvpn-keycloak-auth check-config --config /etc/openvpn/keycloak-sso.yaml
+#
+# Documentation:
+#   See docs/keycloak-setup.md for Keycloak configuration instructions
+#   See docs/troubleshooting.md for common issues

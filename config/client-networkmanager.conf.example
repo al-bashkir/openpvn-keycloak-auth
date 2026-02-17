@@ -1,0 +1,346 @@
+# NetworkManager OpenVPN Configuration for SSO Authentication
+# For: Linux systems using NetworkManager (GNOME, KDE, etc.)
+#
+# Installation Location:
+#   /etc/NetworkManager/system-connections/vpn-sso.nmconnection
+#
+# Permissions:
+#   chmod 600 /etc/NetworkManager/system-connections/vpn-sso.nmconnection
+#   chown root:root /etc/NetworkManager/system-connections/vpn-sso.nmconnection
+#
+# Prerequisites:
+#   dnf install NetworkManager-openvpn-gnome  # Fedora/RHEL/Rocky
+#   apt install network-manager-openvpn-gnome  # Debian/Ubuntu
+#
+# Import from .ovpn:
+#   nmcli connection import type openvpn file client.ovpn
+#
+# Note: NetworkManager's SSO support varies by version
+# Best experience with NetworkManager 1.30+ and OpenVPN plugin 1.9+
+
+[connection]
+id=VPN SSO
+# Generate a new UUID with: uuidgen
+uuid=12345678-1234-5678-1234-567812345678
+type=vpn
+autoconnect=false
+permissions=
+
+[vpn]
+service-type=org.freedesktop.NetworkManager.openvpn
+
+# Connection type: tls (certificates), password, or password-tls
+# For SSO with optional client certs: password-tls
+# For SSO without client certs: password
+connection-type=password
+
+# Server settings
+remote=vpn.example.com:1194
+dev=tun
+proto-tcp=no
+
+# Certificate Authority
+ca=/etc/openvpn/client/ca.crt
+
+# Client Certificate (OPTIONAL - only if using mutual TLS + SSO)
+# Uncomment if your server requires client certificates
+# cert=/etc/openvpn/client/client.crt
+# key=/etc/openvpn/client/client.key
+
+# Authentication
+# For SSO: username is your Keycloak username
+# Password should be empty or "sso" (will be ignored)
+# IMPORTANT: auth-retry must be set to interact for SSO
+auth-retry=interact
+
+# Security
+remote-cert-tls=server
+cipher=AES-256-GCM
+tls-version-min=1.2
+
+# Optional: TLS authentication
+# tls-auth=/etc/openvpn/client/ta.key
+# key-direction=1
+
+# Performance
+sndbuf=393216
+rcvbuf=393216
+
+# Logging
+verb=3
+
+# Additional Options
+# Add any extra OpenVPN options here as comma-separated key=value pairs
+# Example: mssfix=1400,compress=lz4-v2
+
+[vpn-secrets]
+# Username: Your Keycloak username
+# Leave password empty for SSO (or set to "sso")
+# NetworkManager will prompt for username/password on first connection
+# After that, credentials are stored in system keyring
+
+[ipv4]
+method=auto
+dns-search=
+ignore-auto-dns=false
+ignore-auto-routes=false
+
+[ipv6]
+method=auto
+addr-gen-mode=stable-privacy
+
+[proxy]
+
+##############################################
+# NetworkManager Setup Instructions
+##############################################
+#
+# Method 1: Import from .ovpn file (Recommended)
+#
+# 1. Install NetworkManager OpenVPN plugin:
+#    $ sudo dnf install NetworkManager-openvpn-gnome
+#
+# 2. Import the universal client profile:
+#    $ sudo nmcli connection import type openvpn file client.ovpn
+#
+# 3. Edit the connection for SSO:
+#    $ nmcli connection edit vpn-sso
+#    nmcli> set vpn.data auth-retry=interact
+#    nmcli> save
+#    nmcli> quit
+#
+# 4. Set your Keycloak username:
+#    $ nmcli connection edit vpn-sso
+#    nmcli> set vpn.user-name your-keycloak-username
+#    nmcli> save
+#    nmcli> quit
+#
+# 5. Connect:
+#    $ nmcli connection up vpn-sso
+#    Or use the GUI: Settings → Network → VPN → Connect
+#
+# Method 2: Create connection manually
+#
+# 1. Install plugin (as above)
+#
+# 2. Create connection via GUI:
+#    Settings → Network → VPN → + (Add VPN)
+#    - Choose "Import from file" and select client.ovpn
+#    OR
+#    - Choose "OpenVPN" and configure manually
+#
+# 3. Configure SSO settings:
+#    - Gateway: vpn.example.com
+#    - Type: Password (or Password with Certificates if using client certs)
+#    - CA Certificate: Select ca.crt file
+#    - Username: Your Keycloak username
+#    - Password: Leave empty or set to "sso"
+#    - Advanced → General → Check "Use custom gateway port" → 1194
+#    - Advanced → Authentication → auth-retry: interact
+#
+# 4. Save and connect
+#
+##############################################
+# GUI Configuration (GNOME)
+##############################################
+#
+# 1. Open Settings → Network
+# 2. Click VPN → + → Import from file
+# 3. Select client.ovpn
+# 4. Connection appears in list
+# 5. Click gear icon to edit:
+#
+#    Identity Tab:
+#      - Name: VPN SSO (or any name)
+#      - Gateway: vpn.example.com
+#      - Type: Password
+#      - Username: your-keycloak-username
+#      - Password: (leave empty or type "sso")
+#      - CA Certificate: Browse to ca.crt
+#
+#    Advanced Button:
+#      General Tab:
+#        ☑ Use custom gateway port: 1194
+#        Protocol: UDP
+#
+#      Authentication Tab:
+#        ☑ auth-retry: interact
+#
+#      Security Tab:
+#        Cipher: AES-256-GCM
+#        HMAC Auth: Default
+#        TLS mode: TLS 1.2 minimum
+#
+#      TLS Authentication Tab:
+#        (Only if server uses tls-auth)
+#        ☐ Verify peer certificate
+#        ☐ Use additional TLS authentication
+#
+# 6. Click "Apply"
+# 7. Toggle VPN on to connect
+#
+##############################################
+# GUI Configuration (KDE Plasma)
+##############################################
+#
+# 1. System Settings → Network → Connections
+# 2. Click + → Import VPN connection
+# 3. Select client.ovpn
+# 4. Edit connection:
+#
+#    VPN Tab:
+#      - Connection name: VPN SSO
+#      - Gateway: vpn.example.com
+#      - Port: 1194
+#      - Connection Type: Password authentication
+#      - Username: your-keycloak-username
+#      - Password: (leave empty or "sso")
+#      - CA certificate: /etc/openvpn/client/ca.crt
+#
+#    Advanced Tab:
+#      - Auth retry: interact
+#      - Cipher: AES-256-GCM
+#      - TLS minimum version: 1.2
+#
+# 5. Click OK
+# 6. Click connection to activate
+#
+##############################################
+# Command-Line Usage
+##############################################
+#
+# List VPN connections:
+#   $ nmcli connection show
+#
+# Connect to VPN:
+#   $ nmcli connection up vpn-sso
+#
+# Disconnect from VPN:
+#   $ nmcli connection down vpn-sso
+#
+# Show connection status:
+#   $ nmcli connection show vpn-sso
+#
+# Edit connection:
+#   $ nmcli connection edit vpn-sso
+#
+# Delete connection:
+#   $ nmcli connection delete vpn-sso
+#
+# Export connection (for backup):
+#   $ sudo cat /etc/NetworkManager/system-connections/vpn-sso.nmconnection
+#
+##############################################
+# SSO Authentication Flow
+##############################################
+#
+# 1. Initiate connection (GUI or CLI)
+#
+# 2. If username/password not saved:
+#    - GUI: Dialog prompts for credentials
+#    - CLI: Connection starts, may need to check logs
+#
+# 3. Browser opening (version-dependent):
+#    - Some NetworkManager versions support automatic browser opening
+#    - Others require manual URL opening
+#
+# 4. Check logs for WEB_AUTH:: URL:
+#    $ journalctl -f -u NetworkManager
+#    Look for: AUTH_PENDING,openurl,WEB_AUTH::https://...
+#
+# 5. Open the URL in your browser:
+#    $ firefox "https://keycloak.example.com/realms/..."
+#
+# 6. Authenticate in Keycloak
+#
+# 7. Return to NetworkManager - connection completes
+#
+# Note: Experience varies significantly by NetworkManager/plugin version
+# For best SSO experience, use OpenVPN Connect or Tunnelblick instead
+#
+##############################################
+# Troubleshooting
+##############################################
+#
+# Problem: "VPN connection failed"
+# Solutions:
+#   - Check logs: journalctl -u NetworkManager -f
+#   - Verify certificate paths are correct
+#   - Test with OpenVPN CLI first to isolate issue
+#   - Check NetworkManager-openvpn plugin is installed
+#
+# Problem: No browser opens for SSO
+# Solutions:
+#   - NetworkManager SSO support is limited
+#   - Check logs for WEB_AUTH:: URL and open manually
+#   - Update to latest NetworkManager and plugin versions
+#   - Consider using OpenVPN CLI or OpenVPN Connect instead
+#
+# Problem: Connection hangs after browser login
+# Solutions:
+#   - Verify auth-retry is set to "interact"
+#   - Check server OpenVPN version is 2.6.2+
+#   - Look for errors in logs: journalctl -u NetworkManager
+#
+# Problem: Can't import .ovpn file
+# Solutions:
+#   - Check file encoding is UTF-8
+#   - Verify NetworkManager-openvpn-gnome is installed
+#   - Try manual configuration via GUI
+#
+# Problem: Username/password prompt every time
+# Solutions:
+#   - Save credentials in connection settings
+#   - Check keyring is unlocked (GNOME Keyring, KWallet)
+#   - For system-wide connection, run: sudo nmcli connection modify vpn-sso connection.permissions ""
+#
+# View detailed logs:
+#   $ journalctl -u NetworkManager -f
+#   $ journalctl -u NetworkManager --since "10 minutes ago"
+#
+# Test OpenVPN directly (bypass NetworkManager):
+#   $ sudo openvpn --config /etc/openvpn/client/client.ovpn
+#   If this works but NetworkManager doesn't, it's a NetworkManager issue
+#
+##############################################
+# File Locations
+##############################################
+#
+# Connection files:
+#   /etc/NetworkManager/system-connections/*.nmconnection (system-wide)
+#   ~/.local/share/NetworkManager/system-connections/*.nmconnection (user)
+#
+# Certificate files:
+#   /etc/openvpn/client/ca.crt
+#   /etc/openvpn/client/client.crt (optional)
+#   /etc/openvpn/client/client.key (optional)
+#   /etc/openvpn/client/ta.key (optional)
+#
+# Logs:
+#   journalctl -u NetworkManager
+#
+##############################################
+# Security Notes
+##############################################
+#
+# - Connection files should be mode 600, owned by root
+# - Credentials stored in system keyring (encrypted)
+# - Never put passwords in plain text in .nmconnection files
+# - System-wide connections: all users can use, only root can edit
+# - User connections: only that user can use
+#
+##############################################
+# Alternative: Use OpenVPN CLI with systemd
+##############################################
+#
+# If NetworkManager SSO support is insufficient, use OpenVPN CLI directly:
+#
+# 1. Install OpenVPN: sudo dnf install openvpn
+# 2. Copy config: sudo cp client-cli.ovpn /etc/openvpn/client/vpn-sso.conf
+# 3. Create systemd service: sudo systemctl enable --now openvpn-client@vpn-sso
+# 4. Check status: sudo systemctl status openvpn-client@vpn-sso
+# 5. View logs: sudo journalctl -u openvpn-client@vpn-sso -f
+#
+# This gives you better SSO support and more control
+#
+##############################################
