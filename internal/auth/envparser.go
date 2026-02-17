@@ -1,3 +1,4 @@
+// Package auth implements OpenVPN auth-script mode and environment parsing.
 package auth
 
 import (
@@ -10,7 +11,10 @@ import (
 type OpenVPNEnv struct {
 	// User credentials (may be empty when using via-file)
 	Username string
-	Password string
+	// Password is intentionally excluded from all IPC messages and logs.
+	// The json tag prevents accidental serialization should this struct ever
+	// be marshalled in the future.
+	Password string `json:"-"`
 
 	// Client information
 	CommonName    string

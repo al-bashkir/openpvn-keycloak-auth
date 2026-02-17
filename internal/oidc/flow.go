@@ -30,13 +30,14 @@ type AuthFlowData struct {
 // TokenData contains the tokens and claims returned from the OIDC provider.
 type TokenData struct {
 	// AccessToken is the OAuth2 access token
-	AccessToken string
+	AccessToken string `json:"-"`
 
 	// RefreshToken is the OAuth2 refresh token (if available)
-	RefreshToken string
+	RefreshToken string `json:"-"`
 
-	// IDToken is the raw OIDC ID token (JWT)
-	IDToken string
+	// IDToken is the raw OIDC ID token (JWT); tagged json:"-" because it
+	// encodes identity claims in a base64-decodable payload.
+	IDToken string `json:"-"`
 
 	// Claims are the parsed claims from the ID token
 	Claims map[string]interface{}

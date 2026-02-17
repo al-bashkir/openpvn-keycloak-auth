@@ -1,9 +1,11 @@
+// Package config provides loading, validation, and logging setup from config.
 package config
 
 import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -26,14 +28,14 @@ type ListenConfig struct {
 
 // OIDCConfig defines OIDC/OAuth2 settings for Keycloak
 type OIDCConfig struct {
-	Issuer            string   `yaml:"issuer"`              // Keycloak issuer URL
-	ClientID          string   `yaml:"client_id"`           // OIDC client ID
-	ClientSecret      string   `yaml:"client_secret"`       // OIDC client secret (empty for public clients)
-	RedirectURI       string   `yaml:"redirect_uri"`        // Callback URL
-	Scopes            []string `yaml:"scopes"`              // OIDC scopes
-	RequiredRoles     []string `yaml:"required_roles"`      // Required roles for VPN access
-	RoleClaim         string   `yaml:"role_claim"`          // JSON path to roles in token
-	JWKSCacheDuration int      `yaml:"jwks_cache_duration"` // JWKS cache duration in seconds
+	Issuer            string   `yaml:"issuer"`                 // Keycloak issuer URL
+	ClientID          string   `yaml:"client_id"`              // OIDC client ID
+	ClientSecret      string   `yaml:"client_secret" json:"-"` // OIDC client secret (empty for public clients)
+	RedirectURI       string   `yaml:"redirect_uri"`           // Callback URL
+	Scopes            []string `yaml:"scopes"`                 // OIDC scopes
+	RequiredRoles     []string `yaml:"required_roles"`         // Required roles for VPN access
+	RoleClaim         string   `yaml:"role_claim"`             // JSON path to roles in token
+	JWKSCacheDuration int      `yaml:"jwks_cache_duration"`    // JWKS cache duration in seconds
 }
 
 // AuthConfig defines authentication behavior
@@ -58,8 +60,13 @@ type LogConfig struct {
 
 // Load reads and parses the configuration file
 func Load(path string) (*Config, error) {
+	// Canonicalize the path (resolves ".." components and redundant separators).
+	// The path originates from a trusted source (CLI flag / systemd unit), so
+	// G304 (file inclusion via variable) is not a concern here.
+	cleanPath := filepath.Clean(path)
+
 	// Read file
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(cleanPath) // #nosec G304 -- path from trusted CLI argument
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
