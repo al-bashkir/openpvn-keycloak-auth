@@ -16,18 +16,18 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		slog.Info("http request",
-			"method", r.Method,
-			"path", r.URL.Path,
-			"remote_addr", r.RemoteAddr,
-			"user_agent", r.Header.Get("User-Agent"),
+		slog.Info("http request", // #nosec G706 -- values sanitized via sanitizeLog
+			"method", sanitizeLog(r.Method),
+			"path", sanitizeLog(r.URL.Path),
+			"remote_addr", sanitizeLog(r.RemoteAddr),
+			"user_agent", sanitizeLog(r.Header.Get("User-Agent")),
 		)
 
 		next.ServeHTTP(w, r)
 
-		slog.Debug("http request completed",
-			"method", r.Method,
-			"path", r.URL.Path,
+		slog.Debug("http request completed", // #nosec G706 -- values sanitized via sanitizeLog
+			"method", sanitizeLog(r.Method),
+			"path", sanitizeLog(r.URL.Path),
 			"duration_ms", time.Since(start).Milliseconds(),
 		)
 	})
@@ -149,7 +149,10 @@ func rateLimitMiddleware(next http.Handler) http.Handler {
 		limiter := globalLimiter.getLimiter(ip)
 
 		if !limiter.Allow() {
-			slog.Warn("rate limit exceeded", "ip", ip, "path", r.URL.Path)
+			slog.Warn("rate limit exceeded", // #nosec G706 -- values sanitized via sanitizeLog
+				"ip", sanitizeLog(ip),
+				"path", sanitizeLog(r.URL.Path),
+			)
 			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
 			return
 		}

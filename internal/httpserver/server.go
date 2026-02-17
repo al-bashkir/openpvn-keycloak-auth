@@ -1,3 +1,4 @@
+// Package httpserver serves OIDC callback, redirect, and health endpoints.
 package httpserver
 
 import (

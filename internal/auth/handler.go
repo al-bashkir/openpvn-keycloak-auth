@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/ipc"
@@ -139,7 +140,11 @@ func (h *Handler) Run(ctx context.Context, credentialsFile string) int {
 //	Line 1: username
 //	Line 2: password (may be empty or "sso" for SSO flows)
 func readCredentialsFile(path string) (username, password string, err error) {
-	data, err := os.ReadFile(path)
+	// Canonicalize the path (resolves ".." components and redundant separators).
+	// The path originates from OpenVPN's via-file $1 argument, a trusted source,
+	// so G304 (file inclusion via variable) is not a concern here.
+	cleanPath := filepath.Clean(path)
+	data, err := os.ReadFile(cleanPath) // #nosec G304 -- path from trusted OpenVPN via-file argument
 	if err != nil {
 		return "", "", fmt.Errorf("failed to read file: %w", err)
 	}

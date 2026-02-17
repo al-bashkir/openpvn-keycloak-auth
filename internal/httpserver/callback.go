@@ -27,19 +27,25 @@ func (s *Server) handleAuthRedirect(w http.ResponseWriter, r *http.Request) {
 	// Look up session by state
 	sess, err := s.sessionMgr.GetByState(state)
 	if err != nil {
-		slog.Error("auth redirect: session not found", "state", state, "error", err)
+		slog.Error("auth redirect: session not found", // #nosec G706 -- values sanitized via sanitizeLog
+			"state", sanitizeLog(state),
+			"error", err,
+		)
 		s.renderError(w, "Session not found or expired. Please try connecting again.")
 		return
 	}
 
 	if sess.AuthURL == "" {
-		slog.Error("auth redirect: no auth URL in session", "state", state, "session_id", sess.ID)
+		slog.Error("auth redirect: no auth URL in session", // #nosec G706 -- values sanitized via sanitizeLog
+			"state", sanitizeLog(state),
+			"session_id", sess.ID,
+		)
 		s.renderError(w, "Authentication flow not initialized. Please try connecting again.")
 		return
 	}
 
-	slog.Debug("auth redirect",
-		"state", state,
+	slog.Debug("auth redirect", // #nosec G706 -- values sanitized via sanitizeLog
+		"state", sanitizeLog(state),
 		"session_id", sess.ID,
 	)
 
@@ -61,7 +67,7 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 	errorParam := r.URL.Query().Get("error")
 	errorDesc := r.URL.Query().Get("error_description")
 
-	slog.Info("callback received",
+	slog.Info("callback received", // #nosec G706 -- only boolean values logged, no injection risk
 		"code_present", code != "",
 		"state_present", state != "",
 		"error_present", errorParam != "",
@@ -69,9 +75,9 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 
 	// Handle OIDC error responses
 	if errorParam != "" {
-		slog.Error("OIDC error in callback",
-			"error", errorParam,
-			"description", errorDesc,
+		slog.Error("OIDC error in callback", // #nosec G706 -- values sanitized via sanitizeLog
+			"error", sanitizeLog(errorParam),
+			"description", sanitizeLog(errorDesc),
 		)
 		msg := fmt.Sprintf("Authentication failed: %s", errorDesc)
 		if errorDesc == "" {
@@ -81,9 +87,9 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 		// Write auth failure immediately so OpenVPN doesn't hang until timeout
 		if state != "" && s.sessionMgr != nil {
 			if sess, err := s.sessionMgr.GetByState(state); err == nil {
-				slog.Info("writing auth failure for OIDC error",
+				slog.Info("writing auth failure for OIDC error", // #nosec G706 -- values sanitized via sanitizeLog
 					"session_id", sess.ID,
-					"error", errorParam,
+					"error", sanitizeLog(errorParam),
 				)
 				s.writeAuthFailure(sess, msg)
 			}
@@ -95,7 +101,7 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 
 	// Validate parameters
 	if code == "" || state == "" {
-		slog.Error("invalid callback parameters",
+		slog.Error("invalid callback parameters", // #nosec G706 -- only boolean values logged, no injection risk
 			"code_present", code != "",
 			"state_present", state != "",
 		)
@@ -106,7 +112,10 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 	// Look up session by state
 	session, err := s.sessionMgr.GetByState(state)
 	if err != nil {
-		slog.Error("session not found", "state", state, "error", err)
+		slog.Error("session not found", // #nosec G706 -- values sanitized via sanitizeLog
+			"state", sanitizeLog(state),
+			"error", err,
+		)
 		s.renderError(w, "Session not found or expired. Please try connecting again.")
 		return
 	}
@@ -147,7 +156,7 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 	// Exchange code for tokens
 	tokenData, err := s.oidcProvider.ExchangeCode(r.Context(), code, session.CodeVerifier)
 	if err != nil {
-		slog.Error("token exchange failed",
+		slog.Error("token exchange failed", // #nosec G706 -- session.ID is crypto/rand hex; err is from OIDC library
 			"session_id", session.ID,
 			"error", err,
 		)
@@ -161,9 +170,9 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 
 	// Always validate roles (even when username mismatch is allowed)
 	if err := validator.ValidateRoles(tokenData.Claims); err != nil {
-		slog.Error("role validation failed",
+		slog.Error("role validation failed", // #nosec G706 -- values sanitized via sanitizeLog
 			"session_id", session.ID,
-			"username", session.Username,
+			"username", sanitizeLog(session.Username),
 			"error", err,
 		)
 		s.writeAuthFailure(session, err.Error())
@@ -174,9 +183,9 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 	// Validate username match unless explicitly allowed to differ
 	if !s.cfg.Auth.AllowUsernameMismatch {
 		if err := validator.ValidateToken(tokenData.Claims, session.Username); err != nil {
-			slog.Error("token validation failed",
+			slog.Error("token validation failed", // #nosec G706 -- values sanitized via sanitizeLog
 				"session_id", session.ID,
-				"username", session.Username,
+				"username", sanitizeLog(session.Username),
 				"error", err,
 			)
 			s.writeAuthFailure(session, err.Error())
@@ -188,11 +197,11 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 	// Extract username for logging (already validated by validator if AllowUsernameMismatch is false)
 	username, _ := tokenData.Claims[s.cfg.Auth.UsernameClaim].(string)
 
-	slog.Info("user authenticated successfully",
+	slog.Info("user authenticated successfully", // #nosec G706 -- values sanitized via sanitizeLog
 		"session_id", session.ID,
-		"username", username,
-		"expected_username", session.Username,
-		"ip", session.UntrustedIP,
+		"username", sanitizeLog(username),
+		"expected_username", sanitizeLog(session.Username),
+		"ip", sanitizeLog(session.UntrustedIP),
 	)
 
 	// Authentication successful!
@@ -231,8 +240,8 @@ func (s *Server) writeAuthSuccess(sess *session.Session) error {
 
 	slog.Info("auth success written",
 		"session_id", sess.ID,
-		"username", sess.Username,
-		"ip", sess.UntrustedIP,
+		"username", sanitizeLog(sess.Username),
+		"ip", sanitizeLog(sess.UntrustedIP),
 	)
 
 	_ = s.sessionMgr.MarkResultWritten(sess.ID)
@@ -243,23 +252,23 @@ func (s *Server) writeAuthSuccess(sess *session.Session) error {
 // writeAuthFailure writes failure to the OpenVPN control file and deletes the session.
 func (s *Server) writeAuthFailure(sess *session.Session, reason string) {
 	if s.sessionMgr == nil {
-		slog.Error("session manager is nil, cannot write auth failure",
+		slog.Error("session manager is nil, cannot write auth failure", // #nosec G706 -- values sanitized via sanitizeLog
 			"session_id", sess.ID,
-			"reason", reason,
+			"reason", sanitizeLog(reason),
 		)
 		return
 	}
 
 	written, ok := s.sessionMgr.ResultWritten(sess.ID)
 	if !ok {
-		slog.Error("session not found, cannot write auth failure",
+		slog.Error("session not found, cannot write auth failure", // #nosec G706 -- values sanitized via sanitizeLog
 			"session_id", sess.ID,
-			"reason", reason,
+			"reason", sanitizeLog(reason),
 		)
 		return
 	}
 	if written {
-		slog.Warn("session already completed, skipping auth failure write",
+		slog.Warn("session already completed, skipping auth failure write", // #nosec G706 -- session.ID is crypto/rand hex
 			"session_id", sess.ID,
 		)
 		return
@@ -270,7 +279,7 @@ func (s *Server) writeAuthFailure(sess *session.Session, reason string) {
 		sess.AuthFailedReasonFile,
 		reason,
 	); err != nil {
-		slog.Error("failed to write auth failure",
+		slog.Error("failed to write auth failure", // #nosec G706 -- session.ID is crypto/rand hex; err is internal
 			"session_id", sess.ID,
 			"error", err,
 		)
@@ -278,10 +287,10 @@ func (s *Server) writeAuthFailure(sess *session.Session, reason string) {
 		return
 	}
 
-	slog.Info("auth failure written",
+	slog.Info("auth failure written", // #nosec G706 -- values sanitized via sanitizeLog
 		"session_id", sess.ID,
-		"username", sess.Username,
-		"reason", reason,
+		"username", sanitizeLog(sess.Username),
+		"reason", sanitizeLog(reason),
 	)
 
 	_ = s.sessionMgr.MarkResultWritten(sess.ID)

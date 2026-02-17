@@ -1,3 +1,4 @@
+// Package ipc implements Unix-socket communication between auth and daemon modes.
 package ipc
 
 import (
@@ -36,10 +37,10 @@ func NewServer(socketPath string, handler AuthRequestHandler) *Server {
 // Start starts the IPC server
 func (s *Server) Start(ctx context.Context) error {
 	// Ensure the directory exists.
-	// Use 0755 so any local process can traverse the directory.
-	// Access control is enforced at the socket level.
+	// Use 0750 so owner and group can traverse. Access control is
+	// enforced at the socket level (0660 for owner+group only).
 	dir := filepath.Dir(s.socketPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		return fmt.Errorf("failed to create socket directory: %w", err)
 	}
 
@@ -58,7 +59,7 @@ func (s *Server) Start(ctx context.Context) error {
 	// The daemon should run in the same group as OpenVPN (e.g., openvpn)
 	// so that the auth script can connect. World access is denied to
 	// prevent untrusted local users from submitting forged auth requests.
-	if err := os.Chmod(s.socketPath, 0660); err != nil {
+	if err := os.Chmod(s.socketPath, 0660); err != nil { // #nosec G302 -- 0660 intentional: owner+group (openvpn) need socket access
 		_ = listener.Close()
 		return fmt.Errorf("failed to set socket permissions: %w", err)
 	}
@@ -126,10 +127,12 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 		return
 	}
 
+	// Username, IP and CommonName originate from the VPN client and client
+	// certificate, both of which are external inputs. Sanitize before logging.
 	slog.Info("auth request received",
-		"username", req.Username,
-		"ip", req.UntrustedIP,
-		"common_name", req.CommonName,
+		"username", sanitizeIPCValue(req.Username),
+		"ip", sanitizeIPCValue(req.UntrustedIP),
+		"common_name", sanitizeIPCValue(req.CommonName),
 	)
 
 	// Call handler

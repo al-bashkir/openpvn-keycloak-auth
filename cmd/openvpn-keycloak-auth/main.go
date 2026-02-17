@@ -1,3 +1,4 @@
+// Package main provides the CLI entrypoint for openvpn-keycloak-auth.
 package main
 
 import (
