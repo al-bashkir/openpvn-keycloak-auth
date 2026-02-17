@@ -168,7 +168,7 @@ sudo ./easyrsa build-client-full client1 nopass
 
 ```bash
 # Copy example configuration
-sudo cp /path/to/openvpn-keycloak-sso/config/openvpn-server.conf.example \
+sudo cp /path/to/openvpn-keycloak-auth/config/openvpn-server.conf.example \
         /etc/openvpn/server/server.conf
 ```
 
@@ -244,7 +244,7 @@ hand-window 120
 
 ```bash
 # Copy the shell wrapper
-sudo cp /path/to/openvpn-keycloak-sso/scripts/auth-keycloak.sh \
+sudo cp /path/to/openvpn-keycloak-auth/scripts/auth-keycloak.sh \
         /etc/openvpn/auth-keycloak.sh
 
 # Make it executable
@@ -253,7 +253,7 @@ sudo chmod +x /etc/openvpn/auth-keycloak.sh
 
 ### Step 2: Verify Binary Location
 
-The script expects the binary at `/usr/local/bin/openvpn-keycloak-sso`.
+The script expects the binary at `/usr/local/bin/openvpn-keycloak-auth`.
 
 Edit if your binary is elsewhere:
 
@@ -263,7 +263,7 @@ sudo vi /etc/openvpn/auth-keycloak.sh
 
 Change this line if needed:
 ```bash
-BINARY="/usr/local/bin/openvpn-keycloak-sso"
+BINARY="/usr/local/bin/openvpn-keycloak-auth"
 ```
 
 ### Step 3: Test Auth Script
@@ -321,11 +321,11 @@ sudo setsebool -P openvpn_run_unconfined 1
 
 ```bash
 # Ensure daemon is running first
-sudo systemctl start openvpn-keycloak-sso
-sudo systemctl status openvpn-keycloak-sso
+sudo systemctl start openvpn-keycloak-auth
+sudo systemctl status openvpn-keycloak-auth
 
 # Enable on boot
-sudo systemctl enable openvpn-keycloak-sso
+sudo systemctl enable openvpn-keycloak-auth
 ```
 
 ### Step 5: Start OpenVPN Server
@@ -420,10 +420,10 @@ sudo journalctl -u openvpn-server@server -n 50
 
 ```bash
 # Verify daemon is reachable
-sudo systemctl status openvpn-keycloak-sso
+sudo systemctl status openvpn-keycloak-auth
 
 # Test Unix socket
-ls -l /run/openvpn-keycloak-sso/auth.sock
+ls -l /run/openvpn-keycloak-auth/auth.sock
 # Should exist with permissions: srw-rw---- openvpn openvpn
 ```
 
@@ -500,18 +500,18 @@ sudo journalctl -u openvpn-server@server -xe
 
 2. **Binary path is correct:**
    ```bash
-   which openvpn-keycloak-sso
-   # Should be: /usr/local/bin/openvpn-keycloak-sso
+   which openvpn-keycloak-auth
+   # Should be: /usr/local/bin/openvpn-keycloak-auth
    ```
 
 3. **Daemon is running:**
    ```bash
-   systemctl status openvpn-keycloak-sso
+   systemctl status openvpn-keycloak-auth
    ```
 
 4. **Check daemon logs:**
    ```bash
-   sudo journalctl -u openvpn-keycloak-sso -f
+   sudo journalctl -u openvpn-keycloak-auth -f
    ```
 
 ### Issue: Client Can Connect But No Internet
@@ -686,7 +686,7 @@ watch -n 1 'sudo cat /var/log/openvpn/openvpn-status.log'
 sudo journalctl -u openvpn-server@server -f
 
 # Check authentication events
-sudo journalctl -u openvpn-keycloak-sso | grep "auth"
+sudo journalctl -u openvpn-keycloak-auth | grep "auth"
 ```
 
 ---
@@ -713,7 +713,7 @@ After OpenVPN server is configured:
 | `/etc/openvpn/server/*.crt, *.key` | Certificates and keys |
 | `/etc/openvpn/auth-keycloak.sh` | Auth script wrapper |
 | `/var/log/openvpn/` | Log files |
-| `/run/openvpn-keycloak-sso/` | Daemon socket |
+| `/run/openvpn-keycloak-auth/` | Daemon socket |
 | `/etc/openvpn/ccd/` | Per-client configs |
 
 ### Useful Commands
@@ -726,7 +726,7 @@ sudo systemctl restart openvpn-server@server
 
 # View logs
 sudo journalctl -u openvpn-server@server -f
-sudo journalctl -u openvpn-keycloak-sso -f
+sudo journalctl -u openvpn-keycloak-auth -f
 
 # Check status
 sudo systemctl status openvpn-server@server

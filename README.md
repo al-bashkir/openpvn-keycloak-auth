@@ -2,9 +2,9 @@
 
 **Single Sign-On authentication for OpenVPN Community Server 2.6+ using Keycloak as the Identity Provider.**
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/al-bashkir/openvpn-keycloak)](https://go.dev/)
-[![License](https://img.shields.io/github/license/al-bashkir/openvpn-keycloak)](LICENSE)
-[![Tests](https://github.com/al-bashkir/openvpn-keycloak/workflows/Test%20and%20Build/badge.svg)](https://github.com/al-bashkir/openvpn-keycloak/actions)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/al-bashkir/openvpn-keycloak-auth)](https://go.dev/)
+[![License](https://img.shields.io/github/license/al-bashkir/openvpn-keycloak-auth)](LICENSE)
+[![Tests](https://github.com/al-bashkir/openvpn-keycloak-auth/workflows/Test%20and%20Build/badge.svg)](https://github.com/al-bashkir/openvpn-keycloak-auth/actions)
 
 ## Why This Project?
 
@@ -97,8 +97,8 @@ OpenVPN 2.6 introduced **script-based deferred authentication** (exit code 2) an
 
 ```bash
 # 1. Build and install
-git clone https://github.com/al-bashkir/openvpn-keycloak
-cd openvpn-keycloak
+git clone https://github.com/al-bashkir/openvpn-keycloak-auth
+cd openvpn-keycloak-auth
 make build
 sudo make install
 
@@ -112,7 +112,7 @@ sudo vi /etc/openvpn/keycloak-sso.yaml
 # Set issuer_url, client_id, callback_url
 
 # 4. Start daemon
-sudo systemctl enable --now openvpn-keycloak-sso
+sudo systemctl enable --now openvpn-keycloak-auth
 
 # 5. Configure OpenVPN server
 sudo cp config/openvpn-server.conf.example /etc/openvpn/server/server.conf
@@ -140,8 +140,8 @@ openvpn --config client.ovpn
 
 ```bash
 # Clone repository
-git clone https://github.com/al-bashkir/openvpn-keycloak
-cd openvpn-keycloak
+git clone https://github.com/al-bashkir/openvpn-keycloak-auth
+cd openvpn-keycloak-auth
 
 # Build binary
 make build
@@ -152,14 +152,14 @@ sudo make install
 
 ### Pre-built Binaries
 
-Download from [Releases](https://github.com/al-bashkir/openvpn-keycloak/releases):
+Download from [Releases](https://github.com/al-bashkir/openvpn-keycloak-auth/releases):
 
 ```bash
 # Download latest release
-wget https://github.com/al-bashkir/openvpn-keycloak/releases/download/v1.0.0/openvpn-keycloak-sso-linux-amd64
+wget https://github.com/al-bashkir/openvpn-keycloak-auth/releases/download/v1.0.0/openvpn-keycloak-auth-linux-amd64
 
 # Install
-sudo install -m 755 openvpn-keycloak-sso-linux-amd64 /usr/local/bin/openvpn-keycloak-sso
+sudo install -m 755 openvpn-keycloak-auth-linux-amd64 /usr/local/bin/openvpn-keycloak-auth
 
 # Run installation script
 sudo ./deploy/install.sh
@@ -181,7 +181,7 @@ http:
   callback_url: "https://vpn.example.com:9000/callback"
 
 socket:
-  path: "/run/openvpn-keycloak-sso/auth.sock"
+  path: "/run/openvpn-keycloak-auth/auth.sock"
 
 session:
   ttl: "5m"
@@ -192,7 +192,7 @@ auth:
 
 ### Full Configuration
 
-See [`config/openvpn-keycloak-sso.yaml.example`](config/openvpn-keycloak-sso.yaml.example) for all options including:
+See [`config/openvpn-keycloak-auth.yaml.example`](config/openvpn-keycloak-auth.yaml.example) for all options including:
 
 - Role enforcement (`required_roles`)
 - Custom claims (`username_claim`, `role_claim`)
@@ -284,8 +284,8 @@ make check
 ## Project Structure
 
 ```
-openvpn-keycloak-sso/
-├── cmd/openvpn-keycloak-sso/    # Main entry point
+openvpn-keycloak-auth/
+├── cmd/openvpn-keycloak-auth/    # Main entry point
 ├── internal/                     # Internal packages
 │   ├── auth/                    # Auth script mode
 │   ├── config/                  # Configuration loading
@@ -296,14 +296,14 @@ openvpn-keycloak-sso/
 │   ├── openvpn/                 # OpenVPN file writing
 │   └── session/                 # Session management
 ├── config/                      # Configuration templates
-│   ├── openvpn-keycloak-sso.yaml.example
+│   ├── openvpn-keycloak-auth.yaml.example
 │   ├── openvpn-server.conf.example
 │   └── client*.ovpn.example
 ├── scripts/                     # Shell scripts
 │   ├── auth-keycloak.sh         # Auth wrapper
 │   └── generate-client-profile.sh
 ├── deploy/                      # Deployment files
-│   ├── openvpn-keycloak-sso.service  # systemd unit
+│   ├── openvpn-keycloak-auth.service  # systemd unit
 │   ├── install.sh               # Installation script
 │   └── uninstall.sh             # Uninstallation script
 ├── docs/                        # Documentation
@@ -322,7 +322,7 @@ openvpn-keycloak-sso/
 
 **Components:**
 
-1. **openvpn-keycloak-sso binary** - Single Go binary with 4 modes:
+1. **openvpn-keycloak-auth binary** - Single Go binary with 4 modes:
    - `serve` - Daemon mode (runs as systemd service)
    - `auth` - Auth script mode (called by OpenVPN)
    - `version` - Version information
@@ -411,7 +411,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
 - [ ] Advanced policy engine
 - [ ] Web UI for administration
 
-See [issues](https://github.com/al-bashkir/openvpn-keycloak/issues) for details.
+See [issues](https://github.com/al-bashkir/openvpn-keycloak-auth/issues) for details.
 
 ## Alternatives
 
@@ -460,8 +460,8 @@ MIT License - see [LICENSE](LICENSE) file.
 ## Support
 
 - **Documentation:** See [docs/](docs/) directory
-- **Issues:** [GitHub Issues](https://github.com/al-bashkir/openvpn-keycloak/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/al-bashkir/openvpn-keycloak/discussions)
+- **Issues:** [GitHub Issues](https://github.com/al-bashkir/openvpn-keycloak-auth/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/al-bashkir/openvpn-keycloak-auth/discussions)
 - **Security:** See [SECURITY.md](SECURITY.md)
 
 ## Star History

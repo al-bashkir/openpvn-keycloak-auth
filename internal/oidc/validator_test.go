@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/al-bashkir/openvpn-keycloak/internal/config"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/config"
 )
 
 func TestValidateToken_UsernameOnly(t *testing.T) {

@@ -1,12 +1,12 @@
 # Containerfile
 #
-# Build the openvpn-keycloak-sso Go binary in a container and export it
+# Build the openvpn-keycloak-auth Go binary in a container and export it
 # to the local ./build directory:
 #
 #   podman build -f Containerfile -o type=local,dest=build .
 #
 # Output:
-#   build/openvpn-keycloak-sso
+#   build/openvpn-keycloak-auth
 #
 # Optional: embed version metadata (matches Makefile conventions):
 #
@@ -41,10 +41,10 @@ RUN mkdir -p /out && \
       -trimpath \
       -buildvcs=false \
       -ldflags="-s -w -X 'main.version=$VERSION' -X 'main.commit=$COMMIT' -X 'main.buildDate=$BUILD_DATE'" \
-      -o /out/openvpn-keycloak-sso \
-      ./cmd/openvpn-keycloak-sso
+      -o /out/openvpn-keycloak-auth \
+      ./cmd/openvpn-keycloak-auth
 
 # Minimal artifact stage (used by podman --output type=local,dest=...)
 FROM scratch AS artifact
 
-COPY --from=build /out/openvpn-keycloak-sso /openvpn-keycloak-sso
+COPY --from=build /out/openvpn-keycloak-auth /openvpn-keycloak-auth

@@ -86,7 +86,7 @@ func DefaultConfig() *Config {
 	return &Config{
 		Listen: ListenConfig{
 			HTTP:   ":9000",
-			Socket: "/run/openvpn-keycloak-sso/auth.sock",
+			Socket: "/run/openvpn-keycloak-auth/auth.sock",
 		},
 		OIDC: OIDCConfig{
 			Scopes:            []string{"openid", "profile", "email"},

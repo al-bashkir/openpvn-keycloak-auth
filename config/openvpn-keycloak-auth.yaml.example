@@ -11,7 +11,7 @@ listen:
 
   # Unix socket for auth script communication
   # Must be accessible by OpenVPN process (user: openvpn)
-  socket: "/run/openvpn-keycloak-sso/auth.sock"
+  socket: "/run/openvpn-keycloak-auth/auth.sock"
 
 # ==========================================
 # OIDC / Keycloak Configuration
@@ -128,7 +128,7 @@ log:
 #
 # Configuration Validation:
 #   Test your configuration:
-#     openvpn-keycloak-sso check-config --config /etc/openvpn/keycloak-sso.yaml
+#     openvpn-keycloak-auth check-config --config /etc/openvpn/keycloak-sso.yaml
 #
 # Documentation:
 #   See docs/keycloak-setup.md for Keycloak configuration instructions

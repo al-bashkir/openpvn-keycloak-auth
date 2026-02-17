@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/al-bashkir/openvpn-keycloak/internal/oidc"
-	"github.com/al-bashkir/openvpn-keycloak/internal/openvpn"
-	"github.com/al-bashkir/openvpn-keycloak/internal/session"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/oidc"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/openvpn"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/session"
 )
 
 // handleAuthRedirect handles short auth redirect URLs.

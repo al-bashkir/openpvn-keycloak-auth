@@ -1,4 +1,4 @@
-module github.com/al-bashkir/openvpn-keycloak
+module github.com/al-bashkir/openvpn-keycloak-auth
 
 go 1.24.0
 

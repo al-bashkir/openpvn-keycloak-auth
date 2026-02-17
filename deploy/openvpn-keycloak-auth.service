@@ -1,5 +1,5 @@
 [Unit]
-Description=OpenVPN Keycloak SSO Authentication Daemon
+Description=OpenVPN Keycloak Authentication Daemon
 After=network-online.target
 Wants=network-online.target
 
@@ -9,17 +9,17 @@ User=openvpn
 Group=openvpn
 
 # Binary and configuration
-ExecStart=/usr/local/bin/openvpn-keycloak-sso serve --config /etc/openvpn/keycloak-sso.yaml
+ExecStart=/usr/local/bin/openvpn-keycloak-auth serve --config /etc/openvpn/keycloak-sso.yaml
 
 # Validate configuration before starting
-ExecStartPre=/usr/local/bin/openvpn-keycloak-sso check-config --config /etc/openvpn/keycloak-sso.yaml
+ExecStartPre=/usr/local/bin/openvpn-keycloak-auth check-config --config /etc/openvpn/keycloak-sso.yaml
 
 # Working directory
-WorkingDirectory=/var/lib/openvpn-keycloak-sso
+WorkingDirectory=/var/lib/openvpn-keycloak-auth
 
 # Runtime directory for Unix socket
-# Creates /run/openvpn-keycloak-sso with correct permissions
-RuntimeDirectory=openvpn-keycloak-sso
+# Creates /run/openvpn-keycloak-auth with correct permissions
+RuntimeDirectory=openvpn-keycloak-auth
 RuntimeDirectoryMode=0770
 RuntimeDirectoryPreserve=no
 
@@ -32,7 +32,7 @@ StartLimitBurst=5
 # Logging
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=openvpn-keycloak-sso
+SyslogIdentifier=openvpn-keycloak-auth
 
 # Environment
 Environment="LANG=en_US.UTF-8"
@@ -51,7 +51,7 @@ PrivateTmp=true
 # Filesystem protection
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/openvpn-keycloak-sso
+ReadWritePaths=/var/lib/openvpn-keycloak-auth
 
 # Protect kernel
 ProtectKernelTunables=true

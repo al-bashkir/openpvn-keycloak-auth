@@ -13,7 +13,7 @@ set -euo pipefail
 #   2 - Auth deferred (SSO flow initiated)
 #
 
-BINARY="/usr/local/bin/openvpn-keycloak-sso"
+BINARY="/usr/local/bin/openvpn-keycloak-auth"
 CONFIG="/etc/openvpn/keycloak-sso.yaml"
 
 # --- Fix RLIMIT_NPROC for the Go runtime ---

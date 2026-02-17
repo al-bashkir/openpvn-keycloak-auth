@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/al-bashkir/openvpn-keycloak/internal/ipc"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/ipc"
 )
 
 func TestParseEnv(t *testing.T) {

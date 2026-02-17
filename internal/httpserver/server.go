@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/al-bashkir/openvpn-keycloak/internal/config"
-	"github.com/al-bashkir/openvpn-keycloak/internal/oidc"
-	"github.com/al-bashkir/openvpn-keycloak/internal/session"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/config"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/oidc"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/session"
 )
 
 //go:embed templates/*.html

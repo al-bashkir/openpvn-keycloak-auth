@@ -20,7 +20,7 @@
 # Requirements:
 #   - Rocky Linux 9 (or compatible RHEL 9 derivative)
 #   - OpenVPN 2.6+ (will be installed from EPEL if missing)
-#   - Built binary: openvpn-keycloak-sso
+#   - Built binary: openvpn-keycloak-auth
 #   - Root privileges
 
 set -e
@@ -32,11 +32,11 @@ set -e
 INSTALL_DIR="/usr/local/bin"
 CONFIG_DIR="/etc/openvpn"
 SCRIPTS_DIR="/etc/openvpn/scripts"
-DATA_DIR="/var/lib/openvpn-keycloak-sso"
-TMP_DIR="/var/lib/openvpn-keycloak-sso/tmp"
-RUN_DIR="/run/openvpn-keycloak-sso"
-BINARY_NAME="openvpn-keycloak-sso"
-SERVICE_FILE="openvpn-keycloak-sso.service"
+DATA_DIR="/var/lib/openvpn-keycloak-auth"
+TMP_DIR="/var/lib/openvpn-keycloak-auth/tmp"
+RUN_DIR="/run/openvpn-keycloak-auth"
+BINARY_NAME="openvpn-keycloak-auth"
+SERVICE_FILE="openvpn-keycloak-auth.service"
 HTTP_PORT="9000"  # Default HTTP callback port
 
 ##############################################
@@ -322,13 +322,13 @@ install_config() {
         log_warning "Configuration already exists: $config_file"
         log_info "Skipping configuration installation (existing file preserved)"
     else
-        if [ ! -f "config/openvpn-keycloak-sso.yaml.example" ]; then
-            log_error "Example configuration not found: config/openvpn-keycloak-sso.yaml.example"
+        if [ ! -f "config/openvpn-keycloak-auth.yaml.example" ]; then
+            log_error "Example configuration not found: config/openvpn-keycloak-auth.yaml.example"
             exit 1
         fi
 
         log_info "Installing example configuration..."
-        install -m 640 config/openvpn-keycloak-sso.yaml.example "$config_file"
+        install -m 640 config/openvpn-keycloak-auth.yaml.example "$config_file"
         chown root:openvpn "$config_file"
         log_success "Configuration installed: $config_file"
         echo ""
@@ -470,7 +470,7 @@ configure_selinux() {
 
         # Runtime / socket directory: openvpn_var_run_t so the OpenVPN
         # auth helper (openvpn_t) can connect to the daemon's Unix socket.
-        if semanage fcontext -a -t openvpn_var_run_t '/var/run/openvpn-keycloak-sso(/.*)?' &> /dev/null; then
+        if semanage fcontext -a -t openvpn_var_run_t '/var/run/openvpn-keycloak-auth(/.*)?' &> /dev/null; then
             log_success "SELinux file context added for socket directory (openvpn_var_run_t)"
         else
             log_warning "SELinux socket directory context may already exist"
@@ -488,7 +488,7 @@ configure_selinux() {
     # Restore contexts on all managed paths
     if command -v restorecon &> /dev/null; then
         restorecon -v "$INSTALL_DIR/$BINARY_NAME" &> /dev/null || true
-        restorecon -Rv /run/openvpn-keycloak-sso &> /dev/null || true
+        restorecon -Rv /run/openvpn-keycloak-auth &> /dev/null || true
         restorecon -Rv /etc/openvpn/scripts &> /dev/null || true
         log_success "SELinux contexts restored"
     fi

@@ -23,8 +23,8 @@ openvpn --version | head -1
 
 ```bash
 # Clone and build
-git clone https://github.com/al-bashkir/openvpn-keycloak
-cd openvpn-keycloak
+git clone https://github.com/al-bashkir/openvpn-keycloak-auth
+cd openvpn-keycloak-auth
 make build
 
 # Install
@@ -88,11 +88,11 @@ sudo vi /etc/openvpn/keycloak-sso.yaml
 #   callback_url: "https://vpn.example.com:9000/callback"
 
 # Validate configuration
-sudo /usr/local/bin/openvpn-keycloak-sso check-config --config /etc/openvpn/keycloak-sso.yaml
+sudo /usr/local/bin/openvpn-keycloak-auth check-config --config /etc/openvpn/keycloak-sso.yaml
 
 # Start daemon
-sudo systemctl enable --now openvpn-keycloak-sso
-sudo systemctl status openvpn-keycloak-sso
+sudo systemctl enable --now openvpn-keycloak-auth
+sudo systemctl status openvpn-keycloak-auth
 # Should show: active (running)
 ```
 
@@ -190,7 +190,7 @@ ip addr show tun0
 ping 10.8.0.1
 
 # Check logs
-sudo journalctl -u openvpn-keycloak-sso -f
+sudo journalctl -u openvpn-keycloak-auth -f
 ```
 
 ## What's Next?
@@ -218,7 +218,7 @@ If something doesn't work:
 
 1. **Check daemon logs:**
    ```bash
-   sudo journalctl -u openvpn-keycloak-sso -n 50
+   sudo journalctl -u openvpn-keycloak-auth -n 50
    ```
 
 2. **Check OpenVPN logs:**

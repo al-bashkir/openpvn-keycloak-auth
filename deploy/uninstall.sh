@@ -27,10 +27,10 @@ set -e
 INSTALL_DIR="/usr/local/bin"
 CONFIG_DIR="/etc/openvpn"
 SCRIPTS_DIR="/etc/openvpn/scripts"
-DATA_DIR="/var/lib/openvpn-keycloak-sso"
-RUN_DIR="/run/openvpn-keycloak-sso"
-BINARY_NAME="openvpn-keycloak-sso"
-SERVICE_FILE="openvpn-keycloak-sso.service"
+DATA_DIR="/var/lib/openvpn-keycloak-auth"
+RUN_DIR="/run/openvpn-keycloak-auth"
+BINARY_NAME="openvpn-keycloak-auth"
+SERVICE_FILE="openvpn-keycloak-auth.service"
 OVPN_OVERRIDE_DIR="/etc/systemd/system/openvpn-server@.service.d"
 
 ##############################################
@@ -356,7 +356,7 @@ remove_selinux() {
 
     if command -v semanage &> /dev/null; then
         semanage fcontext -d "$INSTALL_DIR/$BINARY_NAME" &> /dev/null || true
-        semanage fcontext -d '/var/run/openvpn-keycloak-sso(/.*)?' &> /dev/null || true
+        semanage fcontext -d '/var/run/openvpn-keycloak-auth(/.*)?' &> /dev/null || true
         semanage fcontext -d '/etc/openvpn/scripts(/.*)?' &> /dev/null || true
         log_success "SELinux file contexts removed"
     fi

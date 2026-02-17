@@ -100,14 +100,14 @@ auth-nocache
 # /tmp, their private namespaces will differ and the daemon cannot see the files.
 #
 # The solution is to set tmp-dir to a directory under the daemon's work_dir
-# (e.g., /var/lib/openvpn-keycloak-sso/tmp). Both services can then access
+# (e.g., /var/lib/openvpn-keycloak-auth/tmp). Both services can then access
 # the same auth files via ReadWritePaths in their systemd units.
 #
 # Create this directory during installation:
-#   mkdir -p /var/lib/openvpn-keycloak-sso/tmp
-#   chown openvpn:openvpn /var/lib/openvpn-keycloak-sso/tmp
-#   chmod 0750 /var/lib/openvpn-keycloak-sso/tmp
-tmp-dir /var/lib/openvpn-keycloak-sso/tmp
+#   mkdir -p /var/lib/openvpn-keycloak-auth/tmp
+#   chown openvpn:openvpn /var/lib/openvpn-keycloak-auth/tmp
+#   chmod 0750 /var/lib/openvpn-keycloak-auth/tmp
+tmp-dir /var/lib/openvpn-keycloak-auth/tmp
 
 # auth-gen-token requires a finite renegotiation interval
 reneg-sec 3600
@@ -373,8 +373,8 @@ max-clients 100
 #    openvpn --config /etc/openvpn/server/server.conf --test-crypto
 #
 # 4. Check daemon:
-#    systemctl status openvpn-keycloak-sso
-#    journalctl -u openvpn-keycloak-sso -f
+#    systemctl status openvpn-keycloak-auth
+#    journalctl -u openvpn-keycloak-auth -f
 #
 # 5. Common issues:
 #    - Browser not opening: Client needs IV_SSO capability

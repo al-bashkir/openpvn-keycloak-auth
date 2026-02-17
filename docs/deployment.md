@@ -44,7 +44,7 @@ openvpn --version | head -1
 
 - **Outbound HTTPS (443):** To Keycloak server
 - **Inbound HTTP (9000):** For OIDC callback (configurable)
-- **Unix Socket:** `/run/openvpn-keycloak-sso/auth.sock` (local only)
+- **Unix Socket:** `/run/openvpn-keycloak-auth/auth.sock` (local only)
 
 ### Firewall Configuration
 
@@ -65,14 +65,14 @@ sudo firewall-cmd --list-ports
 
 ```bash
 # Clone repository
-git clone https://github.com/al-bashkir/openvpn-keycloak
-cd openvpn-keycloak
+git clone https://github.com/al-bashkir/openvpn-keycloak-auth
+cd openvpn-keycloak-auth
 
 # Build production binary
 make build
 
 # Verify build
-./openvpn-keycloak-sso version
+./openvpn-keycloak-auth version
 ```
 
 ### Method 2: Manual Build
@@ -81,11 +81,11 @@ make build
 # Production build (static, optimized)
 CGO_ENABLED=0 go build -trimpath \
   -ldflags="-s -w" \
-  -o openvpn-keycloak-sso \
-  ./cmd/openvpn-keycloak-sso
+  -o openvpn-keycloak-auth \
+  ./cmd/openvpn-keycloak-auth
 
 # Verify
-./openvpn-keycloak-sso version
+./openvpn-keycloak-auth version
 ```
 
 ### Method 3: Development Build
@@ -95,7 +95,7 @@ CGO_ENABLED=0 go build -trimpath \
 make build-dev
 
 # Or manually
-go build -o openvpn-keycloak-sso ./cmd/openvpn-keycloak-sso
+go build -o openvpn-keycloak-auth ./cmd/openvpn-keycloak-auth
 ```
 
 ### Build Output
@@ -103,11 +103,11 @@ go build -o openvpn-keycloak-sso ./cmd/openvpn-keycloak-sso
 The build produces a single static binary:
 
 ```bash
-$ ls -lh openvpn-keycloak-sso
--rwxr-xr-x. 1 user user 9.8M Feb 15 12:00 openvpn-keycloak-sso
+$ ls -lh openvpn-keycloak-auth
+-rwxr-xr-x. 1 user user 9.8M Feb 15 12:00 openvpn-keycloak-auth
 
-$ file openvpn-keycloak-sso
-openvpn-keycloak-sso: ELF 64-bit LSB executable, x86-64, statically linked, stripped
+$ file openvpn-keycloak-auth
+openvpn-keycloak-auth: ELF 64-bit LSB executable, x86-64, statically linked, stripped
 ```
 
 ---
@@ -133,14 +133,14 @@ sudo ./deploy/install.sh
 
 1. **Checks prerequisites** - Verifies OpenVPN 2.6+ is installed
 2. **Creates user/group** - Creates `openvpn` system user and group
-3. **Installs binary** - Copies to `/usr/local/bin/openvpn-keycloak-sso`
+3. **Installs binary** - Copies to `/usr/local/bin/openvpn-keycloak-auth`
 4. **Creates directories:**
    - `/etc/openvpn` - Configuration files
-   - `/var/lib/openvpn-keycloak-sso` - Data directory
+   - `/var/lib/openvpn-keycloak-auth` - Data directory
 5. **Installs files:**
    - `/etc/openvpn/keycloak-sso.yaml` - Configuration (if not exists)
    - `/etc/openvpn/auth-keycloak.sh` - Auth script
-   - `/etc/systemd/system/openvpn-keycloak-sso.service` - systemd unit
+   - `/etc/systemd/system/openvpn-keycloak-auth.service` - systemd unit
 6. **Configures firewall** - Opens port 9000/tcp (if firewalld is running)
 7. **Configures SELinux** - Sets file contexts (if SELinux is enabled)
 
@@ -186,13 +186,13 @@ http:
   # ... other settings
 ```
 
-See [`config/openvpn-keycloak-sso.yaml.example`](../config/openvpn-keycloak-sso.yaml.example) for all available options.
+See [`config/openvpn-keycloak-auth.yaml.example`](../config/openvpn-keycloak-auth.yaml.example) for all available options.
 
 ### Validate Configuration
 
 ```bash
 # Check configuration syntax and connectivity
-sudo /usr/local/bin/openvpn-keycloak-sso check-config \
+sudo /usr/local/bin/openvpn-keycloak-auth check-config \
   --config /etc/openvpn/keycloak-sso.yaml
 ```
 
@@ -216,33 +216,33 @@ Configuration validation: PASSED
 
 ```bash
 # Enable service (start on boot)
-sudo systemctl enable openvpn-keycloak-sso
+sudo systemctl enable openvpn-keycloak-auth
 
 # Start service
-sudo systemctl start openvpn-keycloak-sso
+sudo systemctl start openvpn-keycloak-auth
 
 # Check status
-sudo systemctl status openvpn-keycloak-sso
+sudo systemctl status openvpn-keycloak-auth
 ```
 
 ### Service Status Output
 
 ```
-● openvpn-keycloak-sso.service - OpenVPN Keycloak SSO Authentication Daemon
-     Loaded: loaded (/etc/systemd/system/openvpn-keycloak-sso.service; enabled; preset: disabled)
+● openvpn-keycloak-auth.service - OpenVPN Keycloak Authentication Daemon
+     Loaded: loaded (/etc/systemd/system/openvpn-keycloak-auth.service; enabled; preset: disabled)
      Active: active (running) since Sat 2026-02-15 12:00:00 UTC; 5min ago
        Docs: https://github.com/al-bashkir/openvpn-keycloak
    Main PID: 12345 (openvpn-keycloa)
       Tasks: 8 (limit: 512)
      Memory: 12.5M
-     CGroup: /system.slice/openvpn-keycloak-sso.service
-             └─12345 /usr/local/bin/openvpn-keycloak-sso serve --config /etc/openvpn/keycloak-sso.yaml
+     CGroup: /system.slice/openvpn-keycloak-auth.service
+             └─12345 /usr/local/bin/openvpn-keycloak-auth serve --config /etc/openvpn/keycloak-sso.yaml
 
 Feb 15 12:00:00 vpn systemd[1]: Starting OpenVPN Keycloak SSO Authentication Daemon...
-Feb 15 12:00:00 vpn openvpn-keycloak-sso[12345]: INFO starting daemon version=895062d
-Feb 15 12:00:00 vpn openvpn-keycloak-sso[12345]: INFO OIDC provider discovered issuer=https://keycloak.example.com/realms/myrealm
-Feb 15 12:00:00 vpn openvpn-keycloak-sso[12345]: INFO HTTP server listening addr=0.0.0.0:9000
-Feb 15 12:00:00 vpn openvpn-keycloak-sso[12345]: INFO IPC server listening socket=/run/openvpn-keycloak-sso/auth.sock
+Feb 15 12:00:00 vpn openvpn-keycloak-auth[12345]: INFO starting daemon version=895062d
+Feb 15 12:00:00 vpn openvpn-keycloak-auth[12345]: INFO OIDC provider discovered issuer=https://keycloak.example.com/realms/myrealm
+Feb 15 12:00:00 vpn openvpn-keycloak-auth[12345]: INFO HTTP server listening addr=0.0.0.0:9000
+Feb 15 12:00:00 vpn openvpn-keycloak-auth[12345]: INFO IPC server listening socket=/run/openvpn-keycloak-auth/auth.sock
 Feb 15 12:00:00 vpn systemd[1]: Started OpenVPN Keycloak SSO Authentication Daemon.
 ```
 
@@ -250,47 +250,47 @@ Feb 15 12:00:00 vpn systemd[1]: Started OpenVPN Keycloak SSO Authentication Daem
 
 ```bash
 # Follow logs in real-time
-sudo journalctl -u openvpn-keycloak-sso -f
+sudo journalctl -u openvpn-keycloak-auth -f
 
 # View recent logs
-sudo journalctl -u openvpn-keycloak-sso -n 100
+sudo journalctl -u openvpn-keycloak-auth -n 100
 
 # View logs since specific time
-sudo journalctl -u openvpn-keycloak-sso --since "10 minutes ago"
+sudo journalctl -u openvpn-keycloak-auth --since "10 minutes ago"
 
 # View logs for specific date
-sudo journalctl -u openvpn-keycloak-sso --since "2026-02-15" --until "2026-02-16"
+sudo journalctl -u openvpn-keycloak-auth --since "2026-02-15" --until "2026-02-16"
 ```
 
 ### Service Control Commands
 
 ```bash
 # Start service
-sudo systemctl start openvpn-keycloak-sso
+sudo systemctl start openvpn-keycloak-auth
 
 # Stop service
-sudo systemctl stop openvpn-keycloak-sso
+sudo systemctl stop openvpn-keycloak-auth
 
 # Restart service
-sudo systemctl restart openvpn-keycloak-sso
+sudo systemctl restart openvpn-keycloak-auth
 
 # Reload configuration (not supported, requires restart)
-sudo systemctl restart openvpn-keycloak-sso
+sudo systemctl restart openvpn-keycloak-auth
 
 # Check status
-sudo systemctl status openvpn-keycloak-sso
+sudo systemctl status openvpn-keycloak-auth
 
 # Enable autostart
-sudo systemctl enable openvpn-keycloak-sso
+sudo systemctl enable openvpn-keycloak-auth
 
 # Disable autostart
-sudo systemctl disable openvpn-keycloak-sso
+sudo systemctl disable openvpn-keycloak-auth
 
 # Check if enabled
-sudo systemctl is-enabled openvpn-keycloak-sso
+sudo systemctl is-enabled openvpn-keycloak-auth
 
 # Check if running
-sudo systemctl is-active openvpn-keycloak-sso
+sudo systemctl is-active openvpn-keycloak-auth
 ```
 
 ---
@@ -300,7 +300,7 @@ sudo systemctl is-active openvpn-keycloak-sso
 ### Step 1: Check Service Status
 
 ```bash
-sudo systemctl status openvpn-keycloak-sso
+sudo systemctl status openvpn-keycloak-auth
 ```
 
 Should show: `Active: active (running)`
@@ -309,10 +309,10 @@ Should show: `Active: active (running)`
 
 ```bash
 # Check socket exists
-ls -l /run/openvpn-keycloak-sso/auth.sock
+ls -l /run/openvpn-keycloak-auth/auth.sock
 
 # Should show:
-srwxrwx---. 1 openvpn openvpn 0 Feb 15 12:00 /run/openvpn-keycloak-sso/auth.sock
+srwxrwx---. 1 openvpn openvpn 0 Feb 15 12:00 /run/openvpn-keycloak-auth/auth.sock
 ```
 
 ### Step 3: Verify HTTP Server
@@ -329,7 +329,7 @@ curl -v http://localhost:9000/health
 
 ```bash
 # Check logs for OIDC discovery
-sudo journalctl -u openvpn-keycloak-sso | grep "OIDC provider discovered"
+sudo journalctl -u openvpn-keycloak-auth | grep "OIDC provider discovered"
 
 # Should show:
 INFO OIDC provider discovered issuer=https://keycloak.example.com/realms/myrealm
@@ -380,7 +380,7 @@ See [docs/openvpn-server-setup.md](./openvpn-server-setup.md) section "Testing t
 
 **Check logs:**
 ```bash
-sudo journalctl -u openvpn-keycloak-sso -n 50
+sudo journalctl -u openvpn-keycloak-auth -n 50
 ```
 
 **Common issues:**
@@ -408,7 +408,7 @@ sudo journalctl -u openvpn-keycloak-sso -n 50
 
 4. **Permission denied**
    ```
-   ERROR failed to create socket: listen unix /run/openvpn-keycloak-sso/auth.sock: bind: permission denied
+ERROR failed to create socket: listen unix /run/openvpn-keycloak-auth/auth.sock: bind: permission denied
    ```
    **Solution:** Check directory permissions, ensure RuntimeDirectory in service file
 
@@ -416,13 +416,13 @@ sudo journalctl -u openvpn-keycloak-sso -n 50
 
 ```bash
 # Check if directory exists
-ls -ld /run/openvpn-keycloak-sso/
+ls -ld /run/openvpn-keycloak-auth/
 
 # Should show:
-drwxrwx---. 2 openvpn openvpn 60 Feb 15 12:00 /run/openvpn-keycloak-sso/
+drwxrwx---. 2 openvpn openvpn 60 Feb 15 12:00 /run/openvpn-keycloak-auth/
 
 # If directory missing, restart service
-sudo systemctl restart openvpn-keycloak-sso
+sudo systemctl restart openvpn-keycloak-auth
 ```
 
 ### HTTP Server Not Responding
@@ -448,13 +448,13 @@ curl http://vpn.example.com:9000/health
 sudo ausearch -m avc -ts recent
 
 # If denials found, check context
-ls -Z /usr/local/bin/openvpn-keycloak-sso
+ls -Z /usr/local/bin/openvpn-keycloak-auth
 
 # Should show:
--rwxr-xr-x. root root system_u:object_r:bin_t:s0 /usr/local/bin/openvpn-keycloak-sso
+-rwxr-xr-x. root root system_u:object_r:bin_t:s0 /usr/local/bin/openvpn-keycloak-auth
 
 # If wrong context, restore
-sudo restorecon -v /usr/local/bin/openvpn-keycloak-sso
+sudo restorecon -v /usr/local/bin/openvpn-keycloak-auth
 
 # If issues persist, create custom policy or set to permissive
 sudo semanage permissive -a openvpn_keycloak_sso_t
@@ -464,10 +464,10 @@ sudo semanage permissive -a openvpn_keycloak_sso_t
 
 ```bash
 # Check memory usage
-sudo systemctl status openvpn-keycloak-sso | grep Memory
+sudo systemctl status openvpn-keycloak-auth | grep Memory
 
 # If excessive, check for session leaks
-sudo journalctl -u openvpn-keycloak-sso | grep "cleaned up"
+sudo journalctl -u openvpn-keycloak-auth | grep "cleaned up"
 
 # Should periodically show:
 INFO cleaned up expired sessions count=X
@@ -494,10 +494,10 @@ sudo ./deploy/uninstall.sh
 
 1. **Stops service** - Stops and disables systemd service
 2. **Removes service file** - Deletes systemd unit file
-3. **Removes binary** - Deletes `/usr/local/bin/openvpn-keycloak-sso`
+3. **Removes binary** - Deletes `/usr/local/bin/openvpn-keycloak-auth`
 4. **Removes auth script** - Deletes `/etc/openvpn/auth-keycloak.sh`
 5. **Prompts for config removal** - Optionally removes `/etc/openvpn/keycloak-sso.yaml`
-6. **Prompts for data removal** - Optionally removes `/var/lib/openvpn-keycloak-sso`
+6. **Prompts for data removal** - Optionally removes `/var/lib/openvpn-keycloak-auth`
 
 ### Manual Cleanup
 
@@ -505,15 +505,15 @@ If automated uninstall fails or you need manual cleanup:
 
 ```bash
 # Stop and disable service
-sudo systemctl stop openvpn-keycloak-sso
-sudo systemctl disable openvpn-keycloak-sso
+sudo systemctl stop openvpn-keycloak-auth
+sudo systemctl disable openvpn-keycloak-auth
 
 # Remove service file
-sudo rm -f /etc/systemd/system/openvpn-keycloak-sso.service
+sudo rm -f /etc/systemd/system/openvpn-keycloak-auth.service
 sudo systemctl daemon-reload
 
 # Remove binary
-sudo rm -f /usr/local/bin/openvpn-keycloak-sso
+sudo rm -f /usr/local/bin/openvpn-keycloak-auth
 
 # Remove auth script
 sudo rm -f /etc/openvpn/auth-keycloak.sh
@@ -522,7 +522,7 @@ sudo rm -f /etc/openvpn/auth-keycloak.sh
 sudo rm -f /etc/openvpn/keycloak-sso.yaml
 
 # Remove data directory (optional)
-sudo rm -rf /var/lib/openvpn-keycloak-sso
+sudo rm -rf /var/lib/openvpn-keycloak-auth
 
 # Remove firewall rule (optional)
 sudo firewall-cmd --permanent --remove-port=9000/tcp
@@ -544,22 +544,22 @@ sudo useradd --system --shell /sbin/nologin openvpn
 ### 2. Install Binary
 
 ```bash
-sudo install -m 755 openvpn-keycloak-sso /usr/local/bin/openvpn-keycloak-sso
+sudo install -m 755 openvpn-keycloak-auth /usr/local/bin/openvpn-keycloak-auth
 ```
 
 ### 3. Create Directories
 
 ```bash
 sudo mkdir -p /etc/openvpn
-sudo mkdir -p /var/lib/openvpn-keycloak-sso
-sudo chown openvpn:openvpn /var/lib/openvpn-keycloak-sso
-sudo chmod 755 /var/lib/openvpn-keycloak-sso
+sudo mkdir -p /var/lib/openvpn-keycloak-auth
+sudo chown openvpn:openvpn /var/lib/openvpn-keycloak-auth
+sudo chmod 755 /var/lib/openvpn-keycloak-auth
 ```
 
 ### 4. Install Configuration
 
 ```bash
-sudo install -m 600 config/openvpn-keycloak-sso.yaml.example \
+sudo install -m 600 config/openvpn-keycloak-auth.yaml.example \
   /etc/openvpn/keycloak-sso.yaml
 sudo chown root:openvpn /etc/openvpn/keycloak-sso.yaml
 
@@ -576,8 +576,8 @@ sudo install -m 755 scripts/auth-keycloak.sh /etc/openvpn/auth-keycloak.sh
 ### 6. Install systemd Service
 
 ```bash
-sudo install -m 644 deploy/openvpn-keycloak-sso.service \
-  /etc/systemd/system/openvpn-keycloak-sso.service
+sudo install -m 644 deploy/openvpn-keycloak-auth.service \
+  /etc/systemd/system/openvpn-keycloak-auth.service
 sudo systemctl daemon-reload
 ```
 
@@ -591,9 +591,9 @@ sudo firewall-cmd --reload
 ### 8. Enable and Start Service
 
 ```bash
-sudo systemctl enable openvpn-keycloak-sso
-sudo systemctl start openvpn-keycloak-sso
-sudo systemctl status openvpn-keycloak-sso
+sudo systemctl enable openvpn-keycloak-auth
+sudo systemctl start openvpn-keycloak-auth
+sudo systemctl status openvpn-keycloak-auth
 ```
 
 ---
@@ -607,7 +607,7 @@ The systemd service file includes extensive security hardening. Review these set
 ```ini
 ProtectSystem=strict         # Read-only /usr, /boot, /efi
 ProtectHome=true            # Inaccessible /home
-ReadWritePaths=/var/lib/openvpn-keycloak-sso
+ReadWritePaths=/var/lib/openvpn-keycloak-auth
 PrivateTmp=true             # Private /tmp
 ```
 
@@ -694,7 +694,7 @@ To further harden the system:
    git pull
    make build
    sudo make install
-   sudo systemctl restart openvpn-keycloak-sso
+sudo systemctl restart openvpn-keycloak-auth
    ```
 
 ---
@@ -707,15 +707,15 @@ To create a distribution tarball for deployment on multiple servers:
 # Create tarball
 make dist
 
-# Creates: dist/openvpn-keycloak-sso-<version>-linux-amd64.tar.gz
+# Creates: dist/openvpn-keycloak-auth-<version>-linux-amd64.tar.gz
 ```
 
 ### Deploy from Tarball
 
 ```bash
 # On target server
-tar -xzf openvpn-keycloak-sso-<version>-linux-amd64.tar.gz
-cd openvpn-keycloak-sso-<version>-linux-amd64
+tar -xzf openvpn-keycloak-auth-<version>-linux-amd64.tar.gz
+cd openvpn-keycloak-auth-<version>-linux-amd64
 sudo ./deploy/install.sh
 ```
 

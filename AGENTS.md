@@ -25,7 +25,7 @@ OpenVPN 2.6 introduced critical features that make pure script-based SSO possibl
 
 ### Components
 
-1. **Go Binary: `openvpn-keycloak-sso`**
+1. **Go Binary: `openvpn-keycloak-auth`**
    - **Mode 1 (`auth`)**: Called by OpenVPN via `--auth-user-pass-verify`, sends auth request to daemon via Unix socket, returns exit code 2 (deferred)
    - **Mode 2 (`serve`)**: Runs as systemd service, handles OIDC flow, writes auth results to OpenVPN control files
    - **Mode 3 (`version`)**: Version information
@@ -61,8 +61,8 @@ VPN connected
    - Better testability and debugging
 
 2. **Single Go binary with subcommands**
-   - `openvpn-keycloak-sso serve` - daemon
-   - `openvpn-keycloak-sso auth` - auth script
+   - `openvpn-keycloak-auth serve` - daemon
+   - `openvpn-keycloak-auth auth` - auth script
    - Shared code between modes
 
 3. **Authorization Code Flow with PKCE**
@@ -83,14 +83,14 @@ VPN connected
 ## Project Structure
 
 ```
-openvpn-keycloak-sso/
+openvpn-keycloak-auth/
 ├── AGENTS.md                    # This file
 ├── WORKLOG.md                   # Work log
 ├── README.md                    # User-facing documentation
 ├── LICENSE                      # MIT License
 ├── go.mod, go.sum               # Go dependencies
 │
-├── cmd/openvpn-keycloak-sso/
+├── cmd/openvpn-keycloak-auth/
 │   └── main.go                  # Entry point
 │
 ├── internal/
@@ -116,19 +116,19 @@ openvpn-keycloak-sso/
 ### Development Build
 
 ```bash
-go build -o openvpn-keycloak-sso ./cmd/openvpn-keycloak-sso
+go build -o openvpn-keycloak-auth ./cmd/openvpn-keycloak-auth
 ```
 
 ### Production Build
 
 ```bash
-CGO_ENABLED=0 go build -ldflags="-s -w" -o openvpn-keycloak-sso ./cmd/openvpn-keycloak-sso
+CGO_ENABLED=0 go build -ldflags="-s -w" -o openvpn-keycloak-auth ./cmd/openvpn-keycloak-auth
 ```
 
 ### Run Daemon
 
 ```bash
-./openvpn-keycloak-sso serve --config /etc/openvpn/keycloak-sso.yaml
+./openvpn-keycloak-auth serve --config /etc/openvpn/keycloak-sso.yaml
 ```
 
 ### Test Auth Script Mode
@@ -144,7 +144,7 @@ export untrusted_port="12345"
 
 echo -e "testuser\nsso" > /tmp/test_creds
 
-./openvpn-keycloak-sso auth /tmp/test_creds
+./openvpn-keycloak-auth auth /tmp/test_creds
 echo "Exit code: $?"
 cat /tmp/test_apf
 ```

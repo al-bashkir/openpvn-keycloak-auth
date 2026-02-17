@@ -105,7 +105,7 @@ sudo grep -A5 "keycloak:" /etc/openvpn/keycloak-sso.yaml
 curl https://keycloak.example.com/realms/myrealm/.well-known/openid-configuration
 
 # Verify configuration
-/usr/local/bin/openvpn-keycloak-sso check-config --config /etc/openvpn/keycloak-sso.yaml
+/usr/local/bin/openvpn-keycloak-auth check-config --config /etc/openvpn/keycloak-sso.yaml
 ```
 
 ### Multi-Factor Authentication (8 points)
@@ -211,8 +211,8 @@ check() {
 }
 
 check "/etc/openvpn/keycloak-sso.yaml" "600" "root:openvpn"
-check "/usr/local/bin/openvpn-keycloak-sso" "755" "root:root"
-check "/var/lib/openvpn-keycloak-sso" "755" "openvpn:openvpn"
+check "/usr/local/bin/openvpn-keycloak-auth" "755" "root:root"
+check "/var/lib/openvpn-keycloak-auth" "755" "openvpn:openvpn"
 EOF
 ```
 
@@ -228,10 +228,10 @@ EOF
 **Verification:**
 ```bash
 # Check service file
-grep -E "NoNewPrivileges|ProtectSystem|PrivateTmp" /etc/systemd/system/openvpn-keycloak-sso.service
+grep -E "NoNewPrivileges|ProtectSystem|PrivateTmp" /etc/systemd/system/openvpn-keycloak-auth.service
 
 # Verify security score
-systemd-analyze security openvpn-keycloak-sso.service | head -1
+systemd-analyze security openvpn-keycloak-auth.service | head -1
 # Should show score < 3.0 (lower is better)
 ```
 
@@ -247,11 +247,11 @@ systemd-analyze security openvpn-keycloak-sso.service | head -1
 getenforce  # Should show "Enforcing"
 
 # Check file contexts
-ls -Z /usr/local/bin/openvpn-keycloak-sso
+ls -Z /usr/local/bin/openvpn-keycloak-auth
 # Should show: system_u:object_r:bin_t:s0
 
 # Check for denials
-ausearch -m avc -ts recent | grep openvpn-keycloak-sso
+ausearch -m avc -ts recent | grep openvpn-keycloak-auth
 # Should show no results
 ```
 
@@ -264,11 +264,11 @@ ausearch -m avc -ts recent | grep openvpn-keycloak-sso
 **Verification:**
 ```bash
 # Check running process
-ps aux | grep openvpn-keycloak-sso | grep -v grep
+ps aux | grep openvpn-keycloak-auth | grep -v grep
 # Should show user: openvpn (not root)
 
 # Check capabilities
-sudo cat /proc/$(pgrep openvpn-keycloak-sso)/status | grep Cap
+sudo cat /proc/$(pgrep openvpn-keycloak-auth)/status | grep Cap
 # All cap values should be 0000000000000000 (no capabilities)
 ```
 
@@ -284,12 +284,12 @@ sudo cat /proc/$(pgrep openvpn-keycloak-sso)/status | grep Cap
 **Verification:**
 ```bash
 # Check for secrets in logs
-journalctl -u openvpn-keycloak-sso --since "24 hours ago" \
+journalctl -u openvpn-keycloak-auth --since "24 hours ago" \
   | grep -iE "token.*:[[:space:]]*ey|secret.*:[[:space:]]*[^[]"
 # Should show no results
 
 # Verify audit trail
-journalctl -u openvpn-keycloak-sso --since "1 hour ago" \
+journalctl -u openvpn-keycloak-auth --since "1 hour ago" \
   | grep -E "authenticated successfully|auth failure"
 ```
 
@@ -320,7 +320,7 @@ journalctl --disk-usage
 curl http://localhost:9000/health
 
 # Monitor failed authentications
-journalctl -u openvpn-keycloak-sso --since "1 hour ago" \
+journalctl -u openvpn-keycloak-auth --since "1 hour ago" \
   | grep "auth failure" | wc -l
 ```
 
@@ -344,7 +344,7 @@ sudo dnf check-update
 openvpn --version | head -1
 
 # Check daemon version
-/usr/local/bin/openvpn-keycloak-sso version
+/usr/local/bin/openvpn-keycloak-auth version
 ```
 
 ### Backup & Recovery (3 points)
@@ -426,7 +426,7 @@ else
 fi
 
 # Config valid (2 pts)
-if /usr/local/bin/openvpn-keycloak-sso check-config --config /etc/openvpn/keycloak-sso.yaml 2>/dev/null | grep -q "PASSED"; then
+if /usr/local/bin/openvpn-keycloak-auth check-config --config /etc/openvpn/keycloak-sso.yaml 2>/dev/null | grep -q "PASSED"; then
     echo "✅ Configuration valid: OK (+2)"
     ((SCORE+=2))
 else
@@ -455,7 +455,7 @@ else
 fi
 
 # Service runs as non-root (1 pt)
-if ps aux | grep -v grep | grep openvpn-keycloak-sso | grep -q "^openvpn"; then
+if ps aux | grep -v grep | grep openvpn-keycloak-auth | grep -q "^openvpn"; then
     echo "✅ Non-root service: OK (+1)"
     ((SCORE+=1))
 else
@@ -468,7 +468,7 @@ echo ""
 echo "=== Logging & Monitoring ==="
 
 # No secrets in logs (2 pts)
-if ! journalctl -u openvpn-keycloak-sso --since "24 hours ago" 2>/dev/null \
+if ! journalctl -u openvpn-keycloak-auth --since "24 hours ago" 2>/dev/null \
   | grep -iE "token.*:[[:space:]]*ey|secret.*:[[:space:]]*[^[]" >/dev/null; then
     echo "✅ No secrets in logs: OK (+2)"
     ((SCORE+=2))

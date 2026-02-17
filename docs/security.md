@@ -422,11 +422,11 @@ All sensitive files must have restrictive permissions:
 | File/Directory | Permissions | Owner:Group | Contents |
 |----------------|-------------|-------------|----------|
 | `/etc/openvpn/keycloak-sso.yaml` | `0600` | `root:openvpn` | Keycloak client ID, issuer URL |
-| `/usr/local/bin/openvpn-keycloak-sso` | `0755` | `root:root` | Binary (world-readable OK) |
+| `/usr/local/bin/openvpn-keycloak-auth` | `0755` | `root:root` | Binary (world-readable OK) |
 | `/etc/openvpn/auth-keycloak.sh` | `0755` | `root:root` | Auth script (executable) |
-| `/var/lib/openvpn-keycloak-sso/` | `0755` | `openvpn:openvpn` | Data directory |
-| `/run/openvpn-keycloak-sso/` | `0770` | `openvpn:openvpn` | Socket directory (runtime) |
-| `/run/openvpn-keycloak-sso/auth.sock` | `0660` | `openvpn:openvpn` | Unix socket |
+| `/var/lib/openvpn-keycloak-auth/` | `0755` | `openvpn:openvpn` | Data directory |
+| `/run/openvpn-keycloak-auth/` | `0770` | `openvpn:openvpn` | Socket directory (runtime) |
+| `/run/openvpn-keycloak-auth/auth.sock` | `0660` | `openvpn:openvpn` | Unix socket |
 
 ### Verification Script
 
@@ -463,13 +463,13 @@ echo "Checking file permissions..."
 echo ""
 
 check_perms "/etc/openvpn/keycloak-sso.yaml" "600" "root:openvpn"
-check_perms "/usr/local/bin/openvpn-keycloak-sso" "755" "root:root"
+check_perms "/usr/local/bin/openvpn-keycloak-auth" "755" "root:root"
 check_perms "/etc/openvpn/auth-keycloak.sh" "755" "root:root"
-check_perms "/var/lib/openvpn-keycloak-sso" "755" "openvpn:openvpn"
+check_perms "/var/lib/openvpn-keycloak-auth" "755" "openvpn:openvpn"
 
-if [ -e "/run/openvpn-keycloak-sso/auth.sock" ]; then
-    check_perms "/run/openvpn-keycloak-sso" "770" "openvpn:openvpn"
-    check_perms "/run/openvpn-keycloak-sso/auth.sock" "660" "openvpn:openvpn"
+if [ -e "/run/openvpn-keycloak-auth/auth.sock" ]; then
+    check_perms "/run/openvpn-keycloak-auth" "770" "openvpn:openvpn"
+    check_perms "/run/openvpn-keycloak-auth/auth.sock" "660" "openvpn:openvpn"
 else
     echo "⚠️  Socket not found (daemon not running?)"
 fi
@@ -489,7 +489,7 @@ If SELinux is enabled, verify contexts:
 
 ```bash
 # Check binary context
-ls -Z /usr/local/bin/openvpn-keycloak-sso
+ls -Z /usr/local/bin/openvpn-keycloak-auth
 # Should show: system_u:object_r:bin_t:s0
 
 # Check config context
@@ -497,7 +497,7 @@ ls -Z /etc/openvpn/keycloak-sso.yaml
 # Should show: system_u:object_r:etc_t:s0 or openvpn_etc_t:s0
 
 # Restore contexts if needed
-restorecon -v /usr/local/bin/openvpn-keycloak-sso
+restorecon -v /usr/local/bin/openvpn-keycloak-auth
 restorecon -Rv /etc/openvpn/
 ```
 
@@ -601,7 +601,7 @@ The systemd service file includes extensive security hardening:
 # Filesystem protection
 ProtectSystem=strict              # /usr, /boot, /efi read-only
 ProtectHome=true                  # /home inaccessible
-ReadWritePaths=/var/lib/openvpn-keycloak-sso
+ReadWritePaths=/var/lib/openvpn-keycloak-auth
 PrivateTmp=true                   # Private /tmp namespace
 
 # Kernel protection
@@ -663,13 +663,13 @@ Verify systemd security:
 
 ```bash
 # Analyze service security
-systemd-analyze security openvpn-keycloak-sso.service
+systemd-analyze security openvpn-keycloak-auth.service
 
 # Should show low exposure score (< 3.0)
 
 # Check running process restrictions
-systemctl status openvpn-keycloak-sso
-cat /proc/$(systemctl show -p MainPID --value openvpn-keycloak-sso)/status | grep Cap
+systemctl status openvpn-keycloak-auth
+cat /proc/$(systemctl show -p MainPID --value openvpn-keycloak-auth)/status | grep Cap
 ```
 
 ---
@@ -935,7 +935,7 @@ echo "=== Security Checks ==="
 echo ""
 
 # 1. Check service is running
-if systemctl is-active --quiet openvpn-keycloak-sso; then
+if systemctl is-active --quiet openvpn-keycloak-auth; then
     echo "✅ Service is running"
 else
     echo "❌ Service is NOT running"
@@ -953,7 +953,7 @@ fi
 # 3. Check for secrets in logs
 echo ""
 echo "Checking logs for secrets..."
-if journalctl -u openvpn-keycloak-sso --since "1 day ago" | grep -iE "token.*:[[:space:]]*ey|secret.*:[[:space:]]*[^[]" > /dev/null; then
+if journalctl -u openvpn-keycloak-auth --since "1 day ago" | grep -iE "token.*:[[:space:]]*ey|secret.*:[[:space:]]*[^[]" > /dev/null; then
     echo "❌ WARNING: Possible secrets in logs!"
 else
     echo "✅ No secrets found in logs"
@@ -1000,16 +1000,16 @@ echo "=== Checks Complete ==="
 
 ```bash
 # Monitor failed authentications
-journalctl -u openvpn-keycloak-sso -f | grep -i "failed\|error"
+journalctl -u openvpn-keycloak-auth -f | grep -i "failed\|error"
 
 # Count failed attempts by IP
-journalctl -u openvpn-keycloak-sso --since "1 hour ago" \
+journalctl -u openvpn-keycloak-auth --since "1 hour ago" \
   | grep "token validation failed" \
   | grep -oP 'ip=\S+' \
   | sort | uniq -c | sort -rn
 
 # Monitor rate limiting
-journalctl -u openvpn-keycloak-sso --since "1 hour ago" \
+journalctl -u openvpn-keycloak-auth --since "1 hour ago" \
   | grep "rate limit exceeded"
 ```
 
@@ -1020,7 +1020,7 @@ journalctl -u openvpn-keycloak-sso --since "1 hour ago" \
 1. **Immediate Actions:**
    ```bash
    # Stop the service
-   sudo systemctl stop openvpn-keycloak-sso
+   sudo systemctl stop openvpn-keycloak-auth
    
    # Block suspicious IP in firewall
    sudo firewall-cmd --add-rich-rule="rule family='ipv4' source address='<IP>' reject"
@@ -1032,7 +1032,7 @@ journalctl -u openvpn-keycloak-sso --since "1 hour ago" \
 2. **Investigation:**
    ```bash
    # Collect logs
-   journalctl -u openvpn-keycloak-sso --since "24 hours ago" > incident-$(date +%Y%m%d).log
+   journalctl -u openvpn-keycloak-auth --since "24 hours ago" > incident-$(date +%Y%m%d).log
    journalctl -u openvpn@server --since "24 hours ago" >> incident-$(date +%Y%m%d).log
    
    # Check active VPN connections

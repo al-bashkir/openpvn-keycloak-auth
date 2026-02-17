@@ -551,10 +551,10 @@ podman logs -f keycloak
 
 ```bash
 # Watch daemon logs
-sudo journalctl -u openvpn-keycloak-sso -f
+sudo journalctl -u openvpn-keycloak-auth -f
 
 # Filter for errors
-sudo journalctl -u openvpn-keycloak-sso | grep ERROR
+sudo journalctl -u openvpn-keycloak-auth | grep ERROR
 
 # Show detailed OIDC flow
 # Set log level to debug in config:
@@ -617,13 +617,13 @@ sudo journalctl -u openvpn-keycloak-sso | grep ERROR
    ```
 
 2. **Check all logs**:
-   - Daemon: `journalctl -u openvpn-keycloak-sso -f`
+   - Daemon: `journalctl -u openvpn-keycloak-auth -f`
    - OpenVPN: `journalctl -u openvpn-server@server -f`
    - Keycloak: `journalctl -u keycloak -f` or `podman logs -f keycloak`
 
 3. **Verify configuration**:
    ```bash
-   openvpn-keycloak-sso check-config --config /etc/openvpn/keycloak-sso.yaml
+   openvpn-keycloak-auth check-config --config /etc/openvpn/keycloak-sso.yaml
    ```
 
 4. **Test OIDC flow manually** (see Debugging Tools above)

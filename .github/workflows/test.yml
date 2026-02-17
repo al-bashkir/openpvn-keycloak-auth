@@ -98,19 +98,19 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
         run: |
           make build
-          mv openvpn-keycloak-sso openvpn-keycloak-sso-${{ matrix.goos }}-${{ matrix.goarch }}
+          mv openvpn-keycloak-auth openvpn-keycloak-auth-${{ matrix.goos }}-${{ matrix.goarch }}
 
       - name: Check binary (amd64 only)
         if: matrix.goarch == 'amd64'
         run: |
-          file openvpn-keycloak-sso-${{ matrix.goos }}-${{ matrix.goarch }}
-          ./openvpn-keycloak-sso-${{ matrix.goos }}-${{ matrix.goarch }} version
+          file openvpn-keycloak-auth-${{ matrix.goos }}-${{ matrix.goarch }}
+          ./openvpn-keycloak-auth-${{ matrix.goos }}-${{ matrix.goarch }} version
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: openvpn-keycloak-sso-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: openvpn-keycloak-sso-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: openvpn-keycloak-auth-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: openvpn-keycloak-auth-${{ matrix.goos }}-${{ matrix.goarch }}
           retention-days: 30
 
   security:
@@ -247,7 +247,7 @@ jobs:
           EOF
 
           # Test config validation
-          ./openvpn-keycloak-sso check-config --config /tmp/test-config.yaml
+          ./openvpn-keycloak-auth check-config --config /tmp/test-config.yaml
 
           # Note: Full integration test would require:
           # 1. Creating test realm and client in Keycloak

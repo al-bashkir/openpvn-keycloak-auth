@@ -7,9 +7,9 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/al-bashkir/openvpn-keycloak/internal/auth"
-	"github.com/al-bashkir/openvpn-keycloak/internal/config"
-	"github.com/al-bashkir/openvpn-keycloak/internal/daemon"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/auth"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/config"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/daemon"
 	"github.com/spf13/cobra"
 )
 
@@ -36,7 +36,7 @@ const (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "openvpn-keycloak-sso",
+	Use:   "openvpn-keycloak-auth",
 	Short: "OpenVPN Keycloak SSO Authentication",
 	Long: `Script-based SSO authentication for OpenVPN 2.6+ using Keycloak OIDC.
 
@@ -190,7 +190,7 @@ func runAuth(cmd *cobra.Command, args []string) error {
 
 	// Load config to get socket path
 	// If config file doesn't exist, use default socket path
-	socketPath := "/run/openvpn-keycloak-sso/auth.sock"
+	socketPath := "/run/openvpn-keycloak-auth/auth.sock"
 
 	cfg, err := config.Load(configFile)
 	if err == nil {
@@ -208,7 +208,7 @@ func runAuth(cmd *cobra.Command, args []string) error {
 
 // runVersion displays version information
 func runVersion(cmd *cobra.Command, args []string) {
-	fmt.Printf("openvpn-keycloak-sso version %s\n", version)
+	fmt.Printf("openvpn-keycloak-auth version %s\n", version)
 	fmt.Printf("  Commit:     %s\n", commit)
 	fmt.Printf("  Build date: %s\n", buildDate)
 	fmt.Printf("  Go version: %s\n", getGoVersion())

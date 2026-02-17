@@ -132,7 +132,7 @@ go test -v ./internal/config
     --- PASS: TestLoadConfig/missing_issuer (0.00s)
     --- PASS: TestLoadConfig/invalid_yaml (0.00s)
 PASS
-ok  	github.com/al-bashkir/openvpn-keycloak/internal/config	0.015s	coverage: 75.7% of statements
+ok  	github.com/al-bashkir/openvpn-keycloak-auth/internal/config	0.015s	coverage: 75.7% of statements
 ```
 
 #### Session Package Tests
@@ -163,7 +163,7 @@ go test -v ./internal/session
 === RUN   TestConcurrentAccess
 --- PASS: TestConcurrentAccess (0.01s)
 PASS
-ok  	github.com/al-bashkir/openvpn-keycloak/internal/session	0.306s	coverage: 90.7% of statements
+ok  	github.com/al-bashkir/openvpn-keycloak-auth/internal/session	0.306s	coverage: 90.7% of statements
 ```
 
 #### OIDC Package Tests
@@ -198,7 +198,7 @@ go test -v ./internal/oidc
 === RUN   TestValidateRoles/user_missing_required_role
 --- PASS: TestValidateRoles (0.00s)
 PASS
-ok  	github.com/al-bashkir/openvpn-keycloak/internal/oidc	0.004s	coverage: 67.0% of statements
+ok  	github.com/al-bashkir/openvpn-keycloak-auth/internal/oidc	0.004s	coverage: 67.0% of statements
 ```
 
 ### Table-Driven Tests
@@ -314,7 +314,7 @@ auth:
 EOF
 
 # Run daemon
-./openvpn-keycloak-sso serve --config /tmp/test-config.yaml &
+./openvpn-keycloak-auth serve --config /tmp/test-config.yaml &
 DAEMON_PID=$!
 
 # Wait for startup
@@ -409,8 +409,8 @@ Before manual testing:
 
 1. **Start daemon:**
    ```bash
-   sudo systemctl start openvpn-keycloak-sso
-   sudo journalctl -u openvpn-keycloak-sso -f
+   sudo systemctl start openvpn-keycloak-auth
+   sudo journalctl -u openvpn-keycloak-auth -f
    ```
 
 2. **Start OpenVPN client:**
@@ -447,7 +447,7 @@ Before manual testing:
 **Logs to check:**
 ```bash
 # Daemon logs
-journalctl -u openvpn-keycloak-sso | grep testuser
+journalctl -u openvpn-keycloak-auth | grep testuser
 
 # Expected:
 # INFO auth request received username=testuser
@@ -476,7 +476,7 @@ journalctl -u openvpn@server | grep testuser
 
 **Logs to check:**
 ```bash
-journalctl -u openvpn-keycloak-sso | tail -20
+journalctl -u openvpn-keycloak-auth | tail -20
 
 # Expected:
 # ERROR token validation failed error="username mismatch: expected alice, got bob"
@@ -498,7 +498,7 @@ journalctl -u openvpn-keycloak-sso | tail -20
 
 **Logs to check:**
 ```bash
-journalctl -u openvpn-keycloak-sso | grep expired
+journalctl -u openvpn-keycloak-auth | grep expired
 
 # Expected:
 # ERROR session not found state=abc123 error="session expired"
@@ -524,7 +524,7 @@ journalctl -u openvpn-keycloak-sso | grep expired
 
 **Logs to check:**
 ```bash
-journalctl -u openvpn-keycloak-sso | grep role
+journalctl -u openvpn-keycloak-auth | grep role
 
 # For user without role:
 # ERROR token validation failed error="user missing required roles: [vpn-user]"
@@ -545,7 +545,7 @@ journalctl -u openvpn-keycloak-sso | grep role
 **Verification:**
 ```bash
 # Check active sessions
-journalctl -u openvpn-keycloak-sso --since "5 minutes ago" | grep "session_id" | sort | uniq
+journalctl -u openvpn-keycloak-auth --since "5 minutes ago" | grep "session_id" | sort | uniq
 
 # Should show 5-10 unique session IDs
 
@@ -562,7 +562,7 @@ sudo cat /var/log/openvpn/status.log | grep CLIENT_LIST
 **Steps:**
 
 1. Start VPN connection (don't complete authentication yet)
-2. Restart daemon: `sudo systemctl restart openvpn-keycloak-sso`
+2. Restart daemon: `sudo systemctl restart openvpn-keycloak-auth`
 3. Try to complete authentication in browser
 
 **Expected Result:** ❌ Session lost, need to reconnect
@@ -592,7 +592,7 @@ sudo cat /var/log/openvpn/status.log | grep CLIENT_LIST
 
 **Logs to check:**
 ```bash
-journalctl -u openvpn-keycloak-sso | grep "rate limit"
+journalctl -u openvpn-keycloak-auth | grep "rate limit"
 
 # Expected:
 # WARN rate limit exceeded ip=203.0.113.50 path=/callback
@@ -605,16 +605,16 @@ journalctl -u openvpn-keycloak-sso | grep "rate limit"
 **Steps:**
 
 1. Create invalid config (e.g., wrong Keycloak URL)
-2. Try to start daemon: `sudo systemctl start openvpn-keycloak-sso`
+2. Try to start daemon: `sudo systemctl start openvpn-keycloak-auth`
 
 **Expected Result:** ❌ Service fails to start
 
 **Logs to check:**
 ```bash
-sudo systemctl status openvpn-keycloak-sso
+sudo systemctl status openvpn-keycloak-auth
 
 # Expected:
-# ExecStartPre: openvpn-keycloak-sso check-config (code=exited, status=1/FAILURE)
+# ExecStartPre: openvpn-keycloak-auth check-config (code=exited, status=1/FAILURE)
 # ERROR Configuration validation: FAILED
 ```
 
@@ -631,7 +631,7 @@ sudo systemctl status openvpn-keycloak-sso
 
 **Logs to check:**
 ```bash
-journalctl -u openvpn-keycloak-sso
+journalctl -u openvpn-keycloak-auth
 
 # Expected:
 # ERROR failed to discover OIDC provider error="x509: certificate signed by unknown authority"
@@ -704,10 +704,10 @@ rm -f /tmp/vpn-client-*.log
 **Monitoring:**
 ```bash
 # Monitor daemon resources
-watch "ps aux | grep openvpn-keycloak-sso | grep -v grep"
+watch "ps aux | grep openvpn-keycloak-auth | grep -v grep"
 
 # Monitor sessions
-watch "journalctl -u openvpn-keycloak-sso --since '1 minute ago' | grep 'session_id' | wc -l"
+watch "journalctl -u openvpn-keycloak-auth --since '1 minute ago' | grep 'session_id' | wc -l"
 ```
 
 ### Session Cleanup Performance
@@ -725,7 +725,7 @@ done
 sleep 360  # 6 minutes (TTL + cleanup interval)
 
 # Check memory usage
-ps aux | grep openvpn-keycloak-sso
+ps aux | grep openvpn-keycloak-auth
 
 # Should not show memory leak
 ```
@@ -800,7 +800,7 @@ grep -r "code_challenge" internal/oidc/
 
 ```bash
 # Check logs for secrets
-journalctl -u openvpn-keycloak-sso --since "1 day ago" \
+journalctl -u openvpn-keycloak-auth --since "1 day ago" \
   | grep -iE "token.*:[[:space:]]*ey|secret.*:[[:space:]]*[^[]|password.*:[[:space:]]*[^[]"
 
 # Expected: No matches (no secrets logged)
@@ -820,8 +820,8 @@ check() {
 }
 
 check "/etc/openvpn/keycloak-sso.yaml" "600"
-check "/usr/local/bin/openvpn-keycloak-sso" "755"
-check "/run/openvpn-keycloak-sso/auth.sock" "660"
+check "/usr/local/bin/openvpn-keycloak-auth" "755"
+check "/run/openvpn-keycloak-auth/auth.sock" "660"
 EOF
 ```
 
@@ -923,14 +923,14 @@ jobs:
     
     - name: Check binary
       run: |
-        file openvpn-keycloak-sso
-        ./openvpn-keycloak-sso version
+        file openvpn-keycloak-auth
+        ./openvpn-keycloak-auth version
     
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: openvpn-keycloak-sso-linux-amd64
-        path: openvpn-keycloak-sso
+        name: openvpn-keycloak-auth-linux-amd64
+        path: openvpn-keycloak-auth
   
   security:
     name: Security Scan

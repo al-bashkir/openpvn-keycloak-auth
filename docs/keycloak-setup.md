@@ -469,7 +469,7 @@ After Keycloak is configured:
      role_claim: "realm_access.roles"
    ```
 
-2. **Start the daemon**: `sudo systemctl start openvpn-keycloak-sso`
+2. **Start the daemon**: `sudo systemctl start openvpn-keycloak-auth`
 
 3. **Configure OpenVPN server**: See [OpenVPN Server Setup](openvpn-server-setup.md)
 
@@ -524,7 +524,7 @@ User needs **at least one** of these roles to access VPN.
 If you encounter issues not covered here:
 
 1. Check the [Troubleshooting Guide](troubleshooting.md)
-2. Review daemon logs: `journalctl -u openvpn-keycloak-sso -f`
+2. Review daemon logs: `journalctl -u openvpn-keycloak-auth -f`
 3. Review Keycloak logs
 4. Open an issue on GitHub with detailed logs
 

@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/al-bashkir/openvpn-keycloak/internal/ipc"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/ipc"
 )
 
 // Exit codes for the auth script
@@ -104,7 +104,7 @@ func (h *Handler) Run(ctx context.Context, credentialsFile string) int {
 	if err != nil {
 		slog.Error("failed to communicate with daemon", "error", err)
 		fmt.Fprintf(os.Stderr, "Error: daemon communication failed: %v\n", err)
-		fmt.Fprintf(os.Stderr, "Is the daemon running? Check: systemctl status openvpn-keycloak-sso\n")
+		fmt.Fprintf(os.Stderr, "Is the daemon running? Check: systemctl status openvpn-keycloak-auth\n")
 		return ExitFailure
 	}
 

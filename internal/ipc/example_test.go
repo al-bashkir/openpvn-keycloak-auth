@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/al-bashkir/openvpn-keycloak/internal/ipc"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/ipc"
 )
 
 // ExampleServer demonstrates how to create and use the IPC server (daemon side)

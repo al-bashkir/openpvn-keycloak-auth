@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/al-bashkir/openvpn-keycloak/internal/config"
-	"github.com/al-bashkir/openvpn-keycloak/internal/session"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/config"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/session"
 )
 
 func TestNewServer(t *testing.T) {

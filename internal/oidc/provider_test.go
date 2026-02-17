@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/al-bashkir/openvpn-keycloak/internal/config"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/config"
 )
 
 func newTestIssuer(t *testing.T) string {

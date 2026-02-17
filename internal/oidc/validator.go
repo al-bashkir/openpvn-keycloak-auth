@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/al-bashkir/openvpn-keycloak/internal/config"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/config"
 )
 
 // Validator provides additional token validation beyond what go-oidc does.

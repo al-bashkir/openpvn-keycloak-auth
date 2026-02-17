@@ -8,7 +8,7 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 
-	"github.com/al-bashkir/openvpn-keycloak/internal/config"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/config"
 )
 
 // Provider wraps the OIDC provider and OAuth2 configuration.

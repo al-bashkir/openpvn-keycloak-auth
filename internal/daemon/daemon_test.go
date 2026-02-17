@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/al-bashkir/openvpn-keycloak/internal/config"
-	"github.com/al-bashkir/openvpn-keycloak/internal/ipc"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/config"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/ipc"
 )
 
 func newTestOIDCIssuer(t *testing.T) string {

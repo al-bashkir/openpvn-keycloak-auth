@@ -176,7 +176,7 @@ mute 20
 #   - Verify Keycloak username matches exactly
 #   - Check you have required roles/groups
 #   - Check server daemon is running
-#   - Check server logs: journalctl -u openvpn-keycloak-sso
+#   - Check server logs: journalctl -u openvpn-keycloak-auth
 #
 # Problem: Connection timeout
 # Solution:

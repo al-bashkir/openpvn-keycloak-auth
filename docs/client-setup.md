@@ -859,15 +859,15 @@ For reliable VPN:
 2. **Verify daemon is running:**
    ```bash
    # On VPN server
-   sudo systemctl status openvpn-keycloak-sso
+   sudo systemctl status openvpn-keycloak-auth
    ```
    - Should show "active (running)"
-   - If not running: `sudo systemctl start openvpn-keycloak-sso`
+   - If not running: `sudo systemctl start openvpn-keycloak-auth`
 
 3. **Check daemon logs:**
    ```bash
    # On VPN server
-   sudo journalctl -u openvpn-keycloak-sso -f
+   sudo journalctl -u openvpn-keycloak-auth -f
    ```
    - Look for callback errors
    - Check for token validation failures
@@ -900,7 +900,7 @@ For reliable VPN:
    - Contact IT to grant necessary permissions
 
 3. **Token validation failure:**
-   - Check server logs: `sudo journalctl -u openvpn-keycloak-sso -n 50`
+   - Check server logs: `sudo journalctl -u openvpn-keycloak-auth -n 50`
    - Look for "token validation failed" messages
    - Common causes:
      - Clock skew between server and Keycloak
@@ -1065,10 +1065,10 @@ ssh admin@vpn.example.com
 sudo journalctl -u openvpn@server -f
 
 # SSO daemon logs
-sudo journalctl -u openvpn-keycloak-sso -f
+sudo journalctl -u openvpn-keycloak-auth -f
 
 # Both together
-sudo journalctl -f -u openvpn@server -u openvpn-keycloak-sso
+sudo journalctl -f -u openvpn@server -u openvpn-keycloak-auth
 ```
 
 **Test OpenVPN connectivity (without SSO):**

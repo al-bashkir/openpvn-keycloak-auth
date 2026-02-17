@@ -66,7 +66,7 @@ Open an issue with:
 - OS: Rocky Linux 9.3
 - OpenVPN: 2.6.19
 - Keycloak: 25.0.6
-- openvpn-keycloak-sso: v1.0.0
+- openvpn-keycloak-auth: v1.0.0
 
 **Steps to Reproduce:**
 1. Start daemon with config X

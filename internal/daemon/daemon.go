@@ -13,12 +13,12 @@ import (
 
 	"net/url"
 
-	"github.com/al-bashkir/openvpn-keycloak/internal/config"
-	"github.com/al-bashkir/openvpn-keycloak/internal/httpserver"
-	"github.com/al-bashkir/openvpn-keycloak/internal/ipc"
-	"github.com/al-bashkir/openvpn-keycloak/internal/oidc"
-	"github.com/al-bashkir/openvpn-keycloak/internal/openvpn"
-	"github.com/al-bashkir/openvpn-keycloak/internal/session"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/config"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/httpserver"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/ipc"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/oidc"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/openvpn"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/session"
 )
 
 // Daemon represents the main daemon process that coordinates all components.

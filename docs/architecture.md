@@ -53,7 +53,7 @@ This document provides a technical deep dive into the architecture, design decis
 │  - Returns exit code 2                                           │
 └──────────────────────┬───────────────────────────────────────────┘
                        │
-                       │ 3. Unix socket: /run/openvpn-keycloak-sso/auth.sock
+                        │ 3. Unix socket: /run/openvpn-keycloak-auth/auth.sock
                        ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │            Daemon (Go binary, serve mode, systemd)               │
@@ -99,7 +99,7 @@ This eliminates the need for C plugins entirely!
 
 ## Components
 
-### 1. Go Binary (`openvpn-keycloak-sso`)
+### 1. Go Binary (`openvpn-keycloak-auth`)
 
 **Single executable with 4 operating modes:**
 
@@ -112,7 +112,7 @@ Runs as systemd service, handles:
 - OIDC provider integration
 - Token validation
 
-**Entry point:** `cmd/openvpn-keycloak-sso/main.go` → `serveCmd`
+**Entry point:** `cmd/openvpn-keycloak-auth/main.go` → `serveCmd`
 
 **Goroutines:**
 - Main: HTTP server listener
@@ -129,7 +129,7 @@ Called by OpenVPN for each authentication attempt:
 - Write `auth_pending_file`
 - Return exit code 2
 
-**Entry point:** `cmd/openvpn-keycloak-sso/main.go` → `authCmd`
+**Entry point:** `cmd/openvpn-keycloak-auth/main.go` → `authCmd`
 
 **Execution time:** <100ms (just IPC call)
 
@@ -195,7 +195,7 @@ internal/
 #!/bin/bash
 # Thin wrapper called by OpenVPN
 # Just execs the Go binary in auth mode
-exec /usr/local/bin/openvpn-keycloak-sso auth "$@"
+exec /usr/local/bin/openvpn-keycloak-auth auth "$@"
 ```
 
 **Why a wrapper?**
@@ -227,7 +227,7 @@ exec /usr/local/bin/openvpn-keycloak-sso auth "$@"
      │ }
      ▼
 ┌──────────────┐
-│ Unix Socket  │ /run/openvpn-keycloak-sso/auth.sock
+│ Unix Socket  │ /run/openvpn-keycloak-auth/auth.sock
 └────┬─────────┘
      │ JSON over Unix socket
      ▼
@@ -320,7 +320,7 @@ exec /usr/local/bin/openvpn-keycloak-sso auth "$@"
 ### Transport
 
 **Unix Domain Socket:**
-- Path: `/run/openvpn-keycloak-sso/auth.sock`
+- Path: `/run/openvpn-keycloak-auth/auth.sock`
 - Permissions: `0660` (rw-rw----)
 - Owner: `openvpn:openvpn`
 

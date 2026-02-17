@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/al-bashkir/openvpn-keycloak/internal/openvpn"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/openvpn"
 )
 
 // cleanupLoop runs in a background goroutine and periodically cleans up expired sessions.

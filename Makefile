@@ -12,7 +12,7 @@
 ##############################################
 
 # Binary name
-BINARY_NAME := openvpn-keycloak-sso
+BINARY_NAME := openvpn-keycloak-auth
 
 # Version information (from git or default)
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -27,14 +27,14 @@ LDFLAGS := -ldflags="-s -w \
 BUILD_FLAGS := -trimpath
 
 # Directories
-SRC_DIR := ./cmd/openvpn-keycloak-sso
+SRC_DIR := ./cmd/openvpn-keycloak-auth
 BUILD_DIR := ./build
 DIST_DIR := ./dist
 
 # Install directories
 INSTALL_DIR := /usr/local/bin
 CONFIG_DIR := /etc/openvpn
-DATA_DIR := /var/lib/openvpn-keycloak-sso
+DATA_DIR := /var/lib/openvpn-keycloak-auth
 
 ##############################################
 # Phony Targets
@@ -214,7 +214,7 @@ version:
 
 # Show help
 help:
-	@echo "OpenVPN Keycloak SSO - Makefile"
+	@echo "OpenVPN Keycloak Auth - Makefile"
 	@echo ""
 	@echo "Usage: make [target]"
 	@echo ""
@@ -291,22 +291,22 @@ update:
 .PHONY: run
 run: build-dev
 	@echo "Running $(BINARY_NAME) serve..."
-	@if [ ! -f config/openvpn-keycloak-sso.yaml ]; then \
-		echo "Error: config/openvpn-keycloak-sso.yaml not found"; \
-		echo "Copy from config/openvpn-keycloak-sso.yaml.example and edit"; \
+	@if [ ! -f config/openvpn-keycloak-auth.yaml ]; then \
+		echo "Error: config/openvpn-keycloak-auth.yaml not found"; \
+		echo "Copy from config/openvpn-keycloak-auth.yaml.example and edit"; \
 		exit 1; \
 	fi
-	./$(BINARY_NAME) serve --config config/openvpn-keycloak-sso.yaml
+	./$(BINARY_NAME) serve --config config/openvpn-keycloak-auth.yaml
 
 # Check configuration
 .PHONY: check-config
 check-config: build-dev
 	@echo "Checking configuration..."
-	@if [ ! -f config/openvpn-keycloak-sso.yaml ]; then \
-		echo "Error: config/openvpn-keycloak-sso.yaml not found"; \
+	@if [ ! -f config/openvpn-keycloak-auth.yaml ]; then \
+		echo "Error: config/openvpn-keycloak-auth.yaml not found"; \
 		exit 1; \
 	fi
-	./$(BINARY_NAME) check-config --config config/openvpn-keycloak-sso.yaml
+	./$(BINARY_NAME) check-config --config config/openvpn-keycloak-auth.yaml
 
 # Watch and rebuild on changes (requires entr)
 .PHONY: watch
@@ -334,7 +334,7 @@ docs:
 	@echo "  docs/client-setup.md           - Client setup guide"
 	@echo ""
 	@echo "Configuration examples:"
-	@echo "  config/openvpn-keycloak-sso.yaml.example  - Daemon config"
+	@echo "  config/openvpn-keycloak-auth.yaml.example  - Daemon config"
 	@echo "  config/openvpn-server.conf.example        - OpenVPN server"
 	@echo "  config/client.ovpn.example                - Universal client"
 	@echo ""
