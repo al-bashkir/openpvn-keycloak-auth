@@ -226,5 +226,5 @@ See [README.md](README.md#roadmap) for planned features in versions 1.1 and 2.0.
 
 **Note:** This changelog follows [Keep a Changelog](https://keepachangelog.com/) principles. For detailed development history, see [WORKLOG.md](WORKLOG.md).
 
-**Last Updated:** 2026-02-15  
+**Last Updated:** 2026-02-15
 **Version:** 1.0.0
