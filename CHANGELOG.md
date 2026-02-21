@@ -246,7 +246,6 @@ See [README.md](README.md#roadmap) for planned features in versions 1.1 and 2.0.
 ### Planned for v2.0
 
 - Management interface support (alternative to script mode)
-- SAML 2.0 protocol support
 - MFA enforcement options
 - Rate limiting per user
 - Session sharing across multiple OpenVPN servers
