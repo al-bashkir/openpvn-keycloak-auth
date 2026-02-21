@@ -107,7 +107,7 @@ jobs:
           ./openvpn-keycloak-auth-${{ matrix.goos }}-${{ matrix.goarch }} version
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: openvpn-keycloak-auth-${{ matrix.goos }}-${{ matrix.goarch }}
           path: openvpn-keycloak-auth-${{ matrix.goos }}-${{ matrix.goarch }}
