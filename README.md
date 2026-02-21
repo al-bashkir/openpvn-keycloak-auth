@@ -10,7 +10,7 @@
 
 Traditional VPN authentication requires managing passwords, LDAP integration, or complex PAM configurations. This project brings **modern SSO authentication** to OpenVPN using:
 
-- ✅ **Your existing identity provider** (Keycloak, any OIDC provider)
+- ✅ **Keycloak** as the Identity Provider
 - ✅ **Multi-factor authentication** (TOTP, WebAuthn, SMS)
 - ✅ **Centralized access control** (roles, groups, policies)
 - ✅ **No password exposure** to VPN server
@@ -406,7 +406,6 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
 - [ ] Helm chart for Kubernetes
 
 **v2.0 (Future):**
-- [ ] Support for other OIDC providers (Azure AD, Okta, etc.)
 - [ ] WebAuthn/FIDO2 support
 - [ ] Advanced policy engine
 - [ ] Web UI for administration
@@ -433,7 +432,7 @@ Both projects are excellent - choose based on your needs!
 A: No, this is for OpenVPN Community Server 2.6+. Access Server has its own authentication plugins.
 
 **Q: Can I use this with Azure AD / Okta / Google?**  
-A: Currently optimized for Keycloak. Other OIDC providers may work but are untested. Support planned for v2.0.
+A: No. This project is built exclusively for Keycloak and there are no plans to support other identity providers.
 
 **Q: Does this support client certificates (mutual TLS)?**  
 A: Yes! You can use client certificates AND SSO together. Just don't set `auth-user-pass-optional` in OpenVPN config.
