@@ -42,6 +42,7 @@ Thumbs.db
 !*.yml.example
 
 !/.github/workflows/*
+!/.github/dependabot.yml
 
 # Test files
 /tmp/
