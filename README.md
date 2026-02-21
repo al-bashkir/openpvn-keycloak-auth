@@ -3,7 +3,7 @@
 **Single Sign-On authentication for OpenVPN Community Server 2.6+ using Keycloak as the Identity Provider.**
 
 [![Go Version](https://img.shields.io/github/go-mod/go-version/al-bashkir/openpvn-keycloak-auth)](https://go.dev/)
-[![License](https://img.shields.io/github/license/al-bashkir/openpvn-keycloak-auth)](LICENSE)
+[![License](https://img.shields.io/badge/License-Elastic_2.0-FF6C37)](LICENSE)
 [![Tests](https://github.com/al-bashkir/openpvn-keycloak-auth/workflows/Test%20and%20Build/badge.svg)](https://github.com/al-bashkir/openpvn-keycloak-auth/actions)
 
 ## Why This Project?
