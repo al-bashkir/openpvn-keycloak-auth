@@ -4,7 +4,7 @@
 
 [![Go Version](https://img.shields.io/github/go-mod/go-version/al-bashkir/openpvn-keycloak-auth)](https://go.dev/)
 [![License](https://img.shields.io/github/license/al-bashkir/openpvn-keycloak-auth)](LICENSE)
-[![Tests](https://github.com/al-bashkir/openvpn-keycloak-auth/workflows/Test%20and%20Build/badge.svg)](https://github.com/al-bashkir/openvpn-keycloak-auth/actions)
+[![Tests](https://github.com/al-bashkir/openpvn-keycloak-auth/workflows/Test%20and%20Build/badge.svg)](https://github.com/al-bashkir/openpvn-keycloak-auth/actions)
 
 ## Why This Project?
 
