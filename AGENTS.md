@@ -87,7 +87,7 @@ openvpn-keycloak-auth/
 ├── AGENTS.md                    # This file
 ├── WORKLOG.md                   # Work log
 ├── README.md                    # User-facing documentation
-├── LICENSE                      # Elastic License 2.0 (ELv2)
+├── LICENSE                      # Mozilla Public License 2.0 (MPL-2.0)
 ├── go.mod, go.sum               # Go dependencies
 │
 ├── cmd/openvpn-keycloak-auth/
@@ -411,5 +411,4 @@ For questions or issues during development, refer to:
 
 ## License
 
-Elastic License 2.0 (ELv2) - see LICENSE file.
-Free for personal/internal use. Commercial redistribution, SaaS, or bundling requires a separate license.
+Mozilla Public License 2.0 (MPL-2.0) - see LICENSE file.

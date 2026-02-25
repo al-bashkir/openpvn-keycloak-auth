@@ -3,7 +3,7 @@
 **Single Sign-On authentication for OpenVPN Community Server 2.6+ using Keycloak as the Identity Provider.**
 
 [![Go Version](https://img.shields.io/github/go-mod/go-version/al-bashkir/openpvn-keycloak-auth)](https://go.dev/)
-[![License](https://img.shields.io/badge/License-Elastic_2.0-FF6C37)](LICENSE)
+[![License](https://img.shields.io/github/license/al-bashkir/openpvn-keycloak-auth)](LICENSE)
 [![Tests](https://github.com/al-bashkir/openpvn-keycloak-auth/workflows/Test%20and%20Build/badge.svg)](https://github.com/al-bashkir/openpvn-keycloak-auth/actions)
 
 ## Why This Project?
@@ -314,7 +314,7 @@ openvpn-keycloak-auth/
 ├── QUICKSTART.md                # 5-minute guide
 ├── CONTRIBUTING.md              # Contribution guidelines
 ├── CHANGELOG.md                 # Version history
-├── LICENSE                      # Elastic License 2.0 (ELv2)
+├── LICENSE                      # Mozilla Public License 2.0 (MPL-2.0)
 └── SECURITY.md                  # Security policy
 ```
 
@@ -448,11 +448,7 @@ A: Yes! The project has 76% test coverage, security hardening, and comprehensive
 
 ## License
 
-This project is licensed under the [Elastic License 2.0 (ELv2)](LICENSE).
-
-Free for personal use and internal business use. Redistribution, SaaS hosting,
-and bundling in commercial products require a separate commercial license —
-contact the author.
+This project is licensed under the [Mozilla Public License 2.0 (MPL-2.0)](LICENSE).
 
 ## Credits
 
