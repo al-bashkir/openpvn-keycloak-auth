@@ -1,0 +1,8 @@
+.git
+build/
+dist/
+reports/
+tasks/
+coverage.txt
+*.md
+!README.md

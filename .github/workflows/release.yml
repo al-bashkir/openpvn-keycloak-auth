@@ -101,6 +101,15 @@ jobs:
           ARCHIVE="${BINARY_NAME}-${VERSION}-${GOOS}-${GOARCH}.tar.gz"
           tar -czf "dist/${ARCHIVE}" -C package "${BINARY_NAME}"
 
+      - name: Generate SBOM
+        run: |
+          go install github.com/anchore/syft/cmd/syft@latest
+          syft dir:. -o cyclonedx-json > "dist/${BINARY_NAME}-${VERSION}-${GOOS}-${GOARCH}-sbom.json"
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          VERSION: ${{ inputs.tag || github.ref_name }}
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v6
         with:
