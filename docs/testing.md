@@ -19,21 +19,14 @@ This guide covers testing strategies, procedures, and automation for the OpenVPN
 
 ### Test Coverage Summary
 
-Current test coverage by package:
+Generate current coverage locally instead of relying on static numbers in this document:
 
-| Package | Coverage | Tests | Status |
-|---------|----------|-------|--------|
-| `internal/auth` | 76.7% | 6 tests | ✅ Good |
-| `internal/config` | 75.7% | 8 tests | ✅ Good |
-| `internal/httpserver` | 64.2% | 10 tests | ⚠️ Acceptable |
-| `internal/ipc` | 74.7% | 7 tests | ✅ Good |
-| `internal/oidc` | 67.0% | 15 tests | ✅ Good |
-| `internal/openvpn` | 85.2% | 4 tests | ✅ Excellent |
-| `internal/session` | 90.7% | 10 tests | ✅ Excellent |
-| **Overall** | **76%** | **56 tests** | ✅ **Good** |
+```bash
+go test -cover ./...
+make test-coverage
+```
 
-**Target:** >80% coverage for production packages  
-**Status:** ✅ Achieved for most critical packages
+Coverage should be reviewed before release, with particular attention to OIDC callback handling, IPC behavior, OpenVPN control-file writes, and session cleanup.
 
 ### Test Types
 
@@ -295,21 +288,17 @@ echo "Keycloak admin: http://localhost:8080/admin (admin/admin)"
 ```bash
 # Create test configuration
 cat > /tmp/test-config.yaml <<EOF
-keycloak:
-  issuer_url: "http://localhost:8080/realms/test"
+listen:
+  http: "127.0.0.1:9000"
+  socket: "/tmp/openvpn-test.sock"
+
+oidc:
+  issuer: "http://localhost:8080/realms/test"
   client_id: "openvpn-test"
-
-http:
-  listen_addr: "127.0.0.1:9000"
-  callback_url: "http://localhost:9000/callback"
-
-socket:
-  path: "/tmp/openvpn-test.sock"
-
-session:
-  ttl: "5m"
+  redirect_uri: "http://localhost:9000/callback"
 
 auth:
+  session_timeout: 300
   username_claim: "preferred_username"
 EOF
 
@@ -365,9 +354,9 @@ services:
       keycloak:
         condition: service_healthy
     environment:
-      OVPN_SSO_KEYCLOAK_ISSUER: "http://keycloak:8080/realms/test"
-      OVPN_SSO_KEYCLOAK_CLIENT_ID: "openvpn"
-      OVPN_SSO_HTTP_CALLBACK_URL: "http://localhost:9000/callback"
+      OVPN_SSO_OIDC_ISSUER: "http://keycloak:8080/realms/test"
+      OVPN_SSO_OIDC_CLIENT_ID: "openvpn"
+      OVPN_SSO_OIDC_REDIRECT_URI: "http://localhost:9000/callback"
     ports:
       - "9000:9000"
     volumes:
@@ -395,7 +384,7 @@ docker-compose down
 
 Before manual testing:
 
-- [ ] OpenVPN 2.6.19+ installed
+- [ ] OpenVPN 2.6.2+ installed
 - [ ] Keycloak instance running and configured
 - [ ] Daemon built and configured
 - [ ] Test user account created in Keycloak
@@ -420,11 +409,11 @@ Before manual testing:
 
 3. **Enter credentials:**
    - Username: `testuser`
-   - Password: `sso` (any value, will be ignored)
+   - Password: `sso` (any placeholder value; not the Keycloak password)
 
 4. **Observe output:**
    ```
-   AUTH_PENDING,timeout:300,openurl,WEB_AUTH::https://keycloak.example.com/...
+   AUTH_PENDING,timeout:300,webauth,WEB_AUTH::https://keycloak.example.com/...
    ```
 
 5. **Browser opens** (or copy URL manually)
@@ -476,11 +465,11 @@ journalctl -u openvpn@server | grep testuser
 
 **Logs to check:**
 ```bash
-journalctl -u openvpn-keycloak-auth | tail -20
+journalctl -u openvpn-keycloak-auth --since "10 minutes ago"
 
 # Expected:
-# ERROR token validation failed error="username mismatch: expected alice, got bob"
-# INFO auth failure written reason="username mismatch"
+# ERROR token validation failed error_category=username_mismatch
+# INFO auth failure written reason="Token validation failed"
 ```
 
 ### Test Case 3: Session Timeout
@@ -527,7 +516,7 @@ journalctl -u openvpn-keycloak-auth | grep expired
 journalctl -u openvpn-keycloak-auth | grep role
 
 # For user without role:
-# ERROR token validation failed error="user missing required roles: [vpn-user]"
+# ERROR token validation failed error_category=required_role_missing
 ```
 
 ### Test Case 5: Concurrent Users
@@ -819,7 +808,7 @@ check() {
     [ "$actual" = "$expected" ] && echo "✅ $file: $actual" || echo "❌ $file: $actual (expected $expected)"
 }
 
-check "/etc/openvpn/keycloak-sso.yaml" "600"
+check "/etc/openvpn/keycloak-sso.yaml" "640"
 check "/usr/local/bin/openvpn-keycloak-auth" "755"
 check "/run/openvpn-keycloak-auth/auth.sock" "660"
 EOF

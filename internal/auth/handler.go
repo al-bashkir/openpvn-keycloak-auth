@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/ipc"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/logsanitize"
 )
 
 // Exit codes for the auth script
@@ -70,18 +71,18 @@ func (h *Handler) Run(ctx context.Context, credentialsFile string) int {
 	pendingMethod := selectPendingMethod(env.SSOMethods)
 	if pendingMethod == "" {
 		slog.Error("client does not support any known SSO method",
-			"username", env.Username,
-			"iv_sso", env.SSOMethods,
+			"username", logsanitize.Sanitize(env.Username),
+			"iv_sso", sanitizeValues(env.SSOMethods),
 		)
 		fmt.Fprintf(os.Stderr, "Error: client does not support webauth or openurl (IV_SSO=%v)\n", env.SSOMethods)
 		return ExitFailure
 	}
 
 	slog.Info("auth request",
-		"username", env.Username,
-		"ip", env.UntrustedIP,
-		"port", env.UntrustedPort,
-		"common_name", env.CommonName,
+		"username", logsanitize.Sanitize(env.Username),
+		"ip", logsanitize.Sanitize(env.UntrustedIP),
+		"port", logsanitize.Sanitize(env.UntrustedPort),
+		"common_name", logsanitize.Sanitize(env.CommonName),
 		"pending_method", pendingMethod,
 	)
 
@@ -119,9 +120,9 @@ func (h *Handler) Run(ctx context.Context, credentialsFile string) int {
 	if resp.Status == ipc.StatusDeferred {
 		slog.Info("auth deferred",
 			"session_id", resp.SessionID,
-			"username", env.Username,
+			"username", logsanitize.Sanitize(env.Username),
 		)
-		slog.Debug("auth URL generated", "url", resp.AuthURL)
+		slog.Debug("auth URL generated", "url_length", len(resp.AuthURL))
 
 		// Auth is deferred - daemon will handle the SSO flow
 		// and write to auth_control_file when complete
@@ -132,6 +133,14 @@ func (h *Handler) Run(ctx context.Context, credentialsFile string) int {
 	slog.Error("unknown response status", "status", resp.Status)
 	fmt.Fprintf(os.Stderr, "Error: unexpected response from daemon\n")
 	return ExitFailure
+}
+
+func sanitizeValues(values []string) []string {
+	sanitized := make([]string, 0, len(values))
+	for _, value := range values {
+		sanitized = append(sanitized, logsanitize.Sanitize(value))
+	}
+	return sanitized
 }
 
 // readCredentialsFile reads username and password from OpenVPN's via-file

@@ -1,10 +1,10 @@
 # OpenVPN Keycloak SSO Authentication
 
-**Single Sign-On authentication for OpenVPN Community Server 2.6+ using Keycloak as the Identity Provider.**
+**Single Sign-On authentication for OpenVPN Community Server 2.6.2+ using Keycloak as the Identity Provider.**
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/al-bashkir/openpvn-keycloak-auth)](https://go.dev/)
-[![License](https://img.shields.io/github/license/al-bashkir/openpvn-keycloak-auth)](LICENSE)
-[![Tests](https://github.com/al-bashkir/openpvn-keycloak-auth/workflows/Test%20and%20Build/badge.svg)](https://github.com/al-bashkir/openpvn-keycloak-auth/actions)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/al-bashkir/openvpn-keycloak-auth)](https://go.dev/)
+[![License](https://img.shields.io/github/license/al-bashkir/openvpn-keycloak-auth)](LICENSE)
+[![Tests](https://github.com/al-bashkir/openvpn-keycloak-auth/workflows/Test%20and%20Build/badge.svg)](https://github.com/al-bashkir/openvpn-keycloak-auth/actions)
 
 ## Why This Project?
 
@@ -13,7 +13,7 @@ Traditional VPN authentication requires managing passwords, LDAP integration, or
 - ✅ **Keycloak** as the Identity Provider
 - ✅ **Multi-factor authentication** (TOTP, WebAuthn, SMS)
 - ✅ **Centralized access control** (roles, groups, policies)
-- ✅ **No password exposure** to VPN server
+- ✅ **No Keycloak password exposure** to VPN server
 - ✅ **Audit trail** via Keycloak event logging
 
 ## Features
@@ -23,7 +23,7 @@ Traditional VPN authentication requires managing passwords, LDAP integration, or
 - **PKCE (RFC 7636)** - Proof Key for Code Exchange prevents authorization code interception
 - **CSRF Protection** - State parameter validation
 - **JWT Validation** - Signature verification via JWKS, claim validation
-- **No Password Transmission** - VPN server never sees user passwords
+- **No Keycloak Password Transmission** - Keycloak passwords are entered only at Keycloak
 - **Role-Based Access** - Enforce Keycloak roles/groups
 - **Rate Limiting** - Per-IP request throttling
 - **Security Headers** - CSP, X-Frame-Options, HSTS, etc.
@@ -41,19 +41,18 @@ Traditional VPN authentication requires managing passwords, LDAP integration, or
 ### 🌐 Great User Experience
 
 - **Browser-based Auth** - Familiar login experience
-- **Automatic Browser Opening** - On compatible clients (OpenVPN Connect, Tunnelblick)
+- **Browser Launch Support** - Automatic or manual URL opening depending on client support
 - **Multi-Platform Support** - Windows, macOS, Linux, iOS, Android
 - **Session Management** - Short-lived sessions with TTL cleanup
 - **Structured Logging** - JSON logs with slog
 
-### 📊 Production Ready
+### 📊 Operational Readiness
 
-- **76% Test Coverage** - 56 unit tests across all packages
-- **Race Detector Clean** - No data races
-- **CI/CD Pipeline** - Automated testing, linting, security scanning
-- **Comprehensive Docs** - 200+ pages of documentation
-- **Security Audited** - Gosec, Trivy scans
-- **Performance Tested** - Supports concurrent authentication
+- **Unit and Race Tests** - Go packages are covered by local tests and race-detector validation
+- **CI/CD Pipeline** - Automated testing and build workflows
+- **Deployment Docs** - Guides for Keycloak, OpenVPN, clients, security, and testing
+- **Security Hardening** - PKCE, state validation, structured log sanitization, systemd sandboxing, and restrictive file permissions
+- **Concurrent Auth Support** - IPC and session manager tests cover concurrent request handling
 
 ## How It Works
 
@@ -93,7 +92,7 @@ OpenVPN 2.6 introduced **script-based deferred authentication** (exit code 2) an
 
 ## Quick Start
 
-**Prerequisites:** Rocky Linux 9, OpenVPN 2.6.19+, Keycloak instance
+**Prerequisites:** Rocky Linux 9, OpenVPN 2.6.2+, Keycloak instance
 
 ```bash
 # 1. Build and install
@@ -109,7 +108,7 @@ sudo make install
 
 # 3. Edit configuration
 sudo vi /etc/openvpn/keycloak-sso.yaml
-# Set issuer_url, client_id, callback_url
+# Set oidc.issuer, oidc.client_id, oidc.redirect_uri
 
 # 4. Start daemon
 sudo systemctl enable --now openvpn-keycloak-auth
@@ -124,8 +123,8 @@ sudo systemctl enable --now openvpn-server@server
 # 7. Connect from client
 openvpn --config client.ovpn
 # Username: your-keycloak-username
-# Password: sso (any value)
-# Browser opens → Log in to Keycloak → VPN connects!
+# Password: sso (any placeholder value; not your Keycloak password)
+# Open browser if prompted → Log in to Keycloak → VPN connects!
 ```
 
 **See [QUICKSTART.md](QUICKSTART.md) for a complete 5-minute guide.**
@@ -135,8 +134,8 @@ openvpn --config client.ovpn
 ### From Source
 
 **Requirements:**
-- Go 1.22+
-- OpenVPN 2.6.19+ (from EPEL on Rocky Linux 9)
+- Go 1.25+
+- OpenVPN 2.6.2+ (from EPEL on Rocky Linux 9)
 
 ```bash
 # Clone repository
@@ -172,21 +171,21 @@ sudo ./deploy/install.sh
 `/etc/openvpn/keycloak-sso.yaml`:
 
 ```yaml
-keycloak:
-  issuer_url: "https://keycloak.example.com/realms/myrealm"
+listen:
+  http: ":9000"
+  socket: "/run/openvpn-keycloak-auth/auth.sock"
+
+oidc:
+  issuer: "https://keycloak.example.com/realms/myrealm"
   client_id: "openvpn"
-
-http:
-  listen_addr: "0.0.0.0:9000"
-  callback_url: "https://vpn.example.com:9000/callback"
-
-socket:
-  path: "/run/openvpn-keycloak-auth/auth.sock"
-
-session:
-  ttl: "5m"
+  redirect_uri: "https://vpn.example.com:9000/callback"
+  scopes:
+    - openid
+    - profile
+    - email
 
 auth:
+  session_timeout: 300
   username_claim: "preferred_username"
 ```
 
@@ -197,7 +196,6 @@ See [`config/openvpn-keycloak-auth.yaml.example`](config/openvpn-keycloak-auth.y
 - Role enforcement (`required_roles`)
 - Custom claims (`username_claim`, `role_claim`)
 - TLS configuration
-- Rate limiting
 - Logging levels
 
 ## Documentation
@@ -228,11 +226,13 @@ See [`config/openvpn-keycloak-auth.yaml.example`](config/openvpn-keycloak-auth.y
 |--------|----------|-------------|-------|
 | **OpenVPN Connect 3.x** | Windows, macOS, iOS, Android, Linux | ✅ Excellent | Built-in webview, best experience |
 | **Tunnelblick 3.8.7+** | macOS | ✅ Excellent | Opens Safari automatically |
-| **OpenVPN CLI 2.6+** | Linux, Unix, macOS | ⚠️ Manual | Displays URL to copy/paste |
+| **OpenVPN CLI 2.6.2+** | Linux, Unix, macOS | ⚠️ Manual | Displays URL to copy/paste |
 | **NetworkManager** | Linux (GNOME, KDE) | ⚠️ Limited | May require manual browser opening |
-| **OpenVPN GUI 2.6+** | Windows | ⚠️ Manual | Displays URL to copy/paste |
+| **OpenVPN GUI 2.6.2+** | Windows | ⚠️ Manual | Displays URL to copy/paste |
 
 **Recommendation:** Use **OpenVPN Connect 3.x** for the best experience on all platforms.
+
+Client UX varies by exact OpenVPN client, server version, and Keycloak realm configuration. Validate automatic browser behavior in your target environment before relying on it operationally.
 
 ## Development
 
@@ -343,7 +343,7 @@ This project implements multiple layers of security:
   - PKCE (Proof Key for Code Exchange) - RFC 7636
   - CSRF protection via state parameter
   - Short-lived sessions (5-minute TTL)
-  - No password transmission to VPN server
+  - OpenVPN placeholder passwords are ignored for SSO and are not sent to the daemon or Keycloak
 
 - **Token Security:**
   - JWT signature verification via JWKS
@@ -353,7 +353,7 @@ This project implements multiple layers of security:
 
 - **System Security:**
   - systemd sandboxing (20+ security directives)
-  - File permissions (config 0600, socket 0660)
+  - File permissions (config 0640 root:openvpn, socket 0660)
   - SELinux support
   - Rate limiting (10 req/s per IP)
 
@@ -368,11 +368,11 @@ This project implements multiple layers of security:
 
 ## Performance
 
-**Tested with:**
-- 50+ concurrent authentication requests
-- No performance degradation
-- Memory usage: <20MB under load
-- Session cleanup: Every 60 seconds
+**Local coverage includes:**
+- Concurrent IPC requests
+- Concurrent session operations
+- Session cleanup every 60 seconds
+- Race-detector validation with `go test -race ./...`
 
 **Scalability:**
 - Current: Single daemon, in-memory sessions
@@ -429,7 +429,7 @@ Both projects are excellent - choose based on your needs!
 ## FAQ
 
 **Q: Does this work with OpenVPN Access Server?**  
-A: No, this is for OpenVPN Community Server 2.6+. Access Server has its own authentication plugins.
+A: No, this is for OpenVPN Community Server 2.6.2+. Access Server has its own authentication plugins.
 
 **Q: Can I use this with Azure AD / Okta / Google?**  
 A: No. This project is built exclusively for Keycloak and there are no plans to support other identity providers.
@@ -444,7 +444,7 @@ A: New authentications will fail. Existing VPN sessions continue working (they d
 A: Not currently recommended (in-memory sessions). v1.1 will support shared session store for multi-instance deployments.
 
 **Q: Is this production-ready?**  
-A: Yes! The project has 76% test coverage, security hardening, and comprehensive documentation. However, it's recommended to test thoroughly in your environment first.
+A: It is designed for production-style deployment with security hardening and automated tests, but you should validate the full OpenVPN + Keycloak browser flow in your own environment before relying on it.
 
 ## License
 
@@ -454,7 +454,7 @@ This project is licensed under the [Mozilla Public License 2.0 (MPL-2.0)](LICENS
 
 - **Inspired by:** [openvpn-auth-oauth2](https://github.com/jkroepke/openvpn-auth-oauth2)
 - **Built with:** [Go](https://go.dev/), [coreos/go-oidc](https://github.com/coreos/go-oidc), [spf13/cobra](https://github.com/spf13/cobra)
-- **Tested on:** Rocky Linux 9, OpenVPN 2.6.19, Keycloak 25.0.6
+- **Target platform:** Rocky Linux 9, OpenVPN 2.6.2+; deployment examples target OpenVPN 2.6.19 and Keycloak 25.0.6
 
 ## Support
 

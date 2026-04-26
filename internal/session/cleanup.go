@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/logsanitize"
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/openvpn"
 )
 
@@ -34,11 +35,11 @@ func (m *Manager) cleanup() {
 	for sessionID, session := range m.sessions {
 		if now.After(session.ExpiresAt) {
 			// Write failure for expired sessions that haven't completed
-			if !session.ResultWritten {
+			if !session.ResultWritten && !session.ResultWriteClaimed {
 				slog.Warn("session expired, writing auth failure",
 					"session_id", sessionID,
-					"username", session.Username,
-					"ip", session.UntrustedIP,
+					"username", logsanitize.Sanitize(session.Username),
+					"ip", logsanitize.Sanitize(session.UntrustedIP),
 				)
 				err := openvpn.WriteAuthFailure(
 					session.AuthControlFile,

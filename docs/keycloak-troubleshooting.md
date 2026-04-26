@@ -172,7 +172,7 @@ http://keycloak:8080/realms/openvpn/protocol/openid-connect/auth?
 
 **Symptom:**
 ```
-ERROR token exchange failed error="no id_token in token response"
+ERROR token exchange failed error_category=token_exchange_failed
 ```
 
 **Diagnosis:**
@@ -222,7 +222,7 @@ ERROR username claim 'preferred_username' not found
 
 **Diagnosis:**
 
-Decode the ID token to see what claims it contains:
+Decode the ID token to see what identity claims it contains:
 
 ```bash
 # Get ID token, then decode (without verification)
@@ -266,7 +266,7 @@ echo "PASTE_ID_TOKEN_HERE" | cut -d. -f2 | base64 -d 2>/dev/null | jq .
 
 **Symptom:**
 ```
-ERROR token validation failed error="user does not have required roles: [vpn-user] (user roles: [offline_access uma_authorization])"
+ERROR token validation failed error_category=required_role_missing
 ```
 
 **Diagnosis:**
@@ -282,9 +282,9 @@ The user's token doesn't contain the required VPN role.
 2. **Check role exists**:
    - **Realm roles** → Look for `vpn-user`
 
-3. **Check role is in token**:
-   - Decode ID token (see above)
-   - Look for `realm_access.roles` array
+3. **Check role is in token claims**:
+   - Decode the ID token and, if roles are absent there, decode the access token from the same token response
+   - Look for the configured `role_claim` path such as `realm_access.roles`
    - Should contain `"vpn-user"`
 
 **Solutions:**
@@ -307,10 +307,10 @@ The user's token doesn't contain the required VPN role.
    - **Clients** → `openvpn` → **Client scopes** tab
    - Ensure `roles` is in **Assigned default client scopes**
 
-### Roles Not Appearing in Token
+### Roles Not Appearing in Token Claims
 
 **Symptom:**
-ID token doesn't contain `realm_access.roles` at all.
+Neither the ID token nor the verified access token contains `realm_access.roles`.
 
 **Solutions:**
 
@@ -344,7 +344,7 @@ ID token doesn't contain `realm_access.roles` at all.
 
 **Symptom:**
 ```
-ERROR token exchange failed error="failed to exchange code: PKCE verification failed"
+ERROR token exchange failed error_category=token_exchange_failed
 ```
 
 **Diagnosis:**
@@ -452,24 +452,16 @@ Authentication takes longer than expected.
 
 **Diagnosis:**
 
-- Check JWKS cache settings
+- Monitor Keycloak JWKS endpoint latency
 - Monitor network latency to Keycloak
 
 **Solutions:**
 
-1. **Increase JWKS cache duration**:
-   ```yaml
-   # keycloak-sso.yaml
-   oidc:
-     jwks_cache_duration: 3600  # 1 hour (default)
-     # Increase to reduce JWKS fetches
-   ```
-
-2. **Use local Keycloak**:
+1. **Use local Keycloak**:
    - Deploy Keycloak close to VPN server
    - Reduce network latency
 
-3. **Check Keycloak performance**:
+2. **Check Keycloak performance**:
    - Monitor Keycloak database
    - Check Keycloak logs for slow queries
    - Tune Keycloak settings (connection pool, cache)

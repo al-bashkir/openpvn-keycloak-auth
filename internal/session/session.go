@@ -55,4 +55,8 @@ type Session struct {
 	// This is used to ensure we don't write multiple results for the same session
 	// and to identify expired sessions that need failure results written
 	ResultWritten bool
+
+	// ResultWriteClaimed indicates that a callback is actively writing a final
+	// result. It prevents concurrent callbacks from racing to write twice.
+	ResultWriteClaimed bool
 }

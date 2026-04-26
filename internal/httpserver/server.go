@@ -8,6 +8,8 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"path"
 	"time"
 
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/config"
@@ -45,8 +47,10 @@ func NewServer(cfg *config.Config, oidcProvider *oidc.Provider, sessionMgr *sess
 	}
 
 	// Register routes
-	s.mux.HandleFunc("/callback", s.handleCallback)
-	s.mux.HandleFunc("/auth/", s.handleAuthRedirect)
+	for _, route := range callbackAndAuthRoutes(cfg.OIDC.RedirectURI) {
+		s.mux.HandleFunc(route.callback, s.handleCallback)
+		s.mux.HandleFunc(route.auth, s.handleAuthRedirect)
+	}
 	s.mux.HandleFunc("/health", s.handleHealth)
 
 	// Wrap with middleware
@@ -81,6 +85,33 @@ func NewServer(cfg *config.Config, oidcProvider *oidc.Provider, sessionMgr *sess
 	}
 
 	return s, nil
+}
+
+type authRoutes struct {
+	callback string
+	auth     string
+}
+
+func callbackAndAuthRoutes(redirectURI string) []authRoutes {
+	u, err := url.Parse(redirectURI)
+	if err != nil {
+		return nil
+	}
+
+	callbackPath := u.Path
+	if callbackPath == "" || callbackPath == "/" || path.Clean(callbackPath) != callbackPath || callbackPath == "/health" {
+		return nil
+	}
+
+	basePath := path.Dir(callbackPath)
+	if basePath == "." {
+		basePath = "/"
+	}
+
+	return []authRoutes{{
+		callback: callbackPath,
+		auth:     path.Join(basePath, "auth") + "/",
+	}}
 }
 
 // Start starts the HTTP server

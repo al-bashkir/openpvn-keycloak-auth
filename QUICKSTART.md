@@ -14,9 +14,9 @@ Get OpenVPN with Keycloak SSO authentication running in 5 minutes.
 sudo dnf install -y epel-release
 sudo dnf install -y openvpn
 
-# Verify version (must be 2.6+)
-openvpn --version | head -1
-# Should show: OpenVPN 2.6.x or later
+# Verify version (must be 2.6.2+)
+openvpn --version
+# First line should show: OpenVPN 2.6.2 or later
 ```
 
 ## Step 2: Build and Install SSO Daemon (1 minute)
@@ -31,16 +31,16 @@ make build
 sudo make install
 
 # You'll see:
-# ✓ Binary installed
-# ✓ Service installed
-# ⚠  IMPORTANT: Edit /etc/openvpn/keycloak-sso.yaml
+# Binary installed
+# Service installed
+# IMPORTANT: Edit /etc/openvpn/keycloak-sso.yaml
 ```
 
 ## Step 3: Configure Keycloak (2 minutes)
 
 ### Create Realm
 
-1. Keycloak Admin → **Create Realm**
+1. Keycloak Admin -> **Create Realm**
 2. Name: `vpn`
 3. Click **Create**
 
@@ -68,7 +68,7 @@ sudo make install
 1. Users → **Create new user**
 2. Username: `testuser`
 3. Click **Create**
-4. Credentials tab → **Set password**
+4. Credentials tab -> **Set password**
 5. Password: Choose a password
 6. Temporary: **OFF**
 7. Click **Save**
@@ -80,12 +80,10 @@ sudo make install
 sudo vi /etc/openvpn/keycloak-sso.yaml
 
 # Update these values:
-# keycloak:
-#   issuer_url: "https://keycloak.example.com/realms/vpn"
+# oidc:
+#   issuer: "https://keycloak.example.com/realms/vpn"
 #   client_id: "openvpn"
-# 
-# http:
-#   callback_url: "https://vpn.example.com:9000/callback"
+#   redirect_uri: "https://vpn.example.com:9000/callback"
 
 # Validate configuration
 sudo /usr/local/bin/openvpn-keycloak-auth check-config --config /etc/openvpn/keycloak-sso.yaml
@@ -107,10 +105,11 @@ sudo vi /etc/openvpn/server/server.conf
 
 # Essential SSO directives (add these):
 script-security 3
-auth-user-pass-verify /etc/openvpn/auth-keycloak.sh via-file
+auth-user-pass-verify /etc/openvpn/scripts/auth-keycloak.sh via-file
 auth-user-pass-optional
 auth-gen-token 0 external-auth
 hand-window 120
+tmp-dir /var/lib/openvpn-keycloak-auth/tmp
 ```
 
 **Or use our complete example:**
@@ -151,7 +150,7 @@ sudo systemctl status openvpn-server@server
 ```bash
 openvpn --config client.ovpn
 # Username: testuser
-# Password: sso (any value, ignored)
+# Password: sso (any placeholder value; not your Keycloak password)
 # Copy the WEB_AUTH:: URL and open in browser
 # Log in to Keycloak
 # VPN connects!
@@ -162,7 +161,7 @@ openvpn --config client.ovpn
 1. Import client.ovpn
 2. Click Connect
 3. Username: testuser, Password: sso
-4. Browser opens automatically
+4. Browser opens automatically if supported by this client/version
 5. Log in to Keycloak
 6. VPN connects!
 ```
@@ -172,14 +171,16 @@ openvpn --config client.ovpn
 1. Double-click client.ovpn
 2. Connect
 3. Username: testuser, Password: sso
-4. Safari opens automatically
+4. Safari opens automatically if supported by this client/version
 5. Log in to Keycloak
 6. VPN connects!
 ```
 
-## Success! 🎉
+## Success
 
 You now have OpenVPN with SSO authentication!
+
+Automatic browser behavior depends on your exact OpenVPN client, OpenVPN server version, and Keycloak realm configuration. Validate the full flow in your target environment.
 
 **Verify connection:**
 ```bash
@@ -202,7 +203,7 @@ sudo journalctl -u openvpn-keycloak-auth -f
    - See `docs/deployment.md`
 
 2. **Enable MFA** in Keycloak
-   - Realm → Authentication → Required Actions
+   - Realm -> Authentication -> Required Actions
    - Enable "Configure OTP"
 
 3. **Configure Roles** for access control
@@ -228,11 +229,11 @@ If something doesn't work:
 
 3. **Common issues:**
    - Firewall blocking port 9000: `sudo firewall-cmd --add-port=9000/tcp --permanent && sudo firewall-cmd --reload`
-   - Wrong Keycloak URL: Check `issuer_url` in config
+   - Wrong Keycloak URL: Check `oidc.issuer` in config
    - Certificate issues: Verify `ca.crt` is correct
 
 4. **Get help:**
-   - See `docs/troubleshooting.md`
+   - See `docs/keycloak-troubleshooting.md`
    - Check GitHub issues
 
 ## Documentation
@@ -253,4 +254,4 @@ Not quite 5 minutes? That's okay! The detailed guides will walk you through each
 
 ---
 
-**Happy Secure VPN-ing! 🔒**
+**Happy secure VPN-ing!**

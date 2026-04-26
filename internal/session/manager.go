@@ -17,6 +17,7 @@ type Manager struct {
 	sessionTimeout time.Duration
 	cleanupTicker  *time.Ticker
 	stopCleanup    chan struct{}
+	stopOnce       sync.Once
 }
 
 // NewManager creates a new session manager with the specified timeout.
@@ -39,8 +40,10 @@ func NewManager(sessionTimeout time.Duration) *Manager {
 // Stop stops the session manager's cleanup goroutine.
 // Call this when shutting down the daemon.
 func (m *Manager) Stop() {
-	m.cleanupTicker.Stop()
-	close(m.stopCleanup)
+	m.stopOnce.Do(func() {
+		m.cleanupTicker.Stop()
+		close(m.stopCleanup)
+	})
 }
 
 // Create creates a new session with the given parameters.
@@ -55,6 +58,8 @@ func (m *Manager) Create(username, commonName, untrustedIP, untrustedPort string
 		return nil, fmt.Errorf("failed to generate session ID: %w", err)
 	}
 
+	now := time.Now()
+
 	// Create session
 	session := &Session{
 		ID:                   sessionID,
@@ -65,8 +70,8 @@ func (m *Manager) Create(username, commonName, untrustedIP, untrustedPort string
 		AuthControlFile:      authControlFile,
 		AuthPendingFile:      authPendingFile,
 		AuthFailedReasonFile: authFailedReasonFile,
-		CreatedAt:            time.Now(),
-		ExpiresAt:            time.Now().Add(m.sessionTimeout),
+		CreatedAt:            now,
+		ExpiresAt:            now.Add(m.sessionTimeout),
 	}
 
 	// Store session
@@ -164,7 +169,36 @@ func (m *Manager) MarkResultWritten(sessionID string) bool {
 	}
 
 	session.ResultWritten = true
+	session.ResultWriteClaimed = true
 	return true
+}
+
+// ClaimResultWrite atomically reserves the session's final auth result write.
+// It returns false if the session is missing, completed, or already claimed.
+func (m *Manager) ClaimResultWrite(sessionID string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	session, ok := m.sessions[sessionID]
+	if !ok || session.ResultWritten || session.ResultWriteClaimed {
+		return false
+	}
+
+	session.ResultWriteClaimed = true
+	return true
+}
+
+// ReleaseResultWriteClaim releases a previously claimed result write after a
+// failed control-file write, allowing cleanup or a retry to write failure later.
+func (m *Manager) ReleaseResultWriteClaim(sessionID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	session, ok := m.sessions[sessionID]
+	if !ok || session.ResultWritten {
+		return
+	}
+	session.ResultWriteClaimed = false
 }
 
 // Delete removes a session from the manager.

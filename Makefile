@@ -26,6 +26,9 @@ LDFLAGS := -ldflags="-s -w \
 	-X 'main.buildDate=$(BUILD_DATE)'"
 BUILD_FLAGS := -trimpath
 
+# Tool versions
+GOLANGCI_LINT := go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+
 # Directories
 SRC_DIR := ./cmd/openvpn-keycloak-auth
 BUILD_DIR := ./build
@@ -113,15 +116,10 @@ test-one:
 # Code Quality Targets
 ##############################################
 
-# Run linter (requires golangci-lint)
+# Run linter with the local Go toolchain so it matches go.mod's Go version.
 lint:
 	@echo "Running linter..."
-	@if command -v golangci-lint >/dev/null 2>&1; then \
-		golangci-lint run; \
-	else \
-		echo "golangci-lint not installed. Install: https://golangci-lint.run/usage/install/"; \
-		exit 1; \
-	fi
+	$(GOLANGCI_LINT) run
 
 # Format code
 fmt:

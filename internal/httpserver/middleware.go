@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,7 +19,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 		slog.Info("http request", // #nosec G706 -- values sanitized via sanitizeLog
 			"method", sanitizeLog(r.Method),
-			"path", sanitizeLog(r.URL.Path),
+			"path", redactRequestPath(r.URL.Path),
 			"remote_addr", sanitizeLog(r.RemoteAddr),
 			"user_agent", sanitizeLog(r.Header.Get("User-Agent")),
 		)
@@ -27,7 +28,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 		slog.Debug("http request completed", // #nosec G706 -- values sanitized via sanitizeLog
 			"method", sanitizeLog(r.Method),
-			"path", sanitizeLog(r.URL.Path),
+			"path", redactRequestPath(r.URL.Path),
 			"duration_ms", time.Since(start).Milliseconds(),
 		)
 	})
@@ -151,7 +152,7 @@ func rateLimitMiddleware(next http.Handler) http.Handler {
 		if !limiter.Allow() {
 			slog.Warn("rate limit exceeded", // #nosec G706 -- values sanitized via sanitizeLog
 				"ip", sanitizeLog(ip),
-				"path", sanitizeLog(r.URL.Path),
+				"path", redactRequestPath(r.URL.Path),
 			)
 			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
 			return
@@ -166,8 +167,19 @@ func rateLimitMiddleware(next http.Handler) http.Handler {
 // If this service is behind a trusted reverse proxy, configure the proxy
 // to set X-Real-IP and update this function accordingly.
 func extractIP(r *http.Request) string {
-	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
 	return ip
+}
+
+func redactRequestPath(path string) string {
+	idx := strings.LastIndex(path, "/auth/")
+	if idx != -1 {
+		return sanitizeLog(path[:idx] + "/auth/{state}")
+	}
+	return sanitizeLog(path)
 }
 
 // securityHeadersMiddleware adds security headers to responses

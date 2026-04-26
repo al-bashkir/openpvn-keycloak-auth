@@ -41,7 +41,7 @@ This document provides a technical deep dive into the architecture, design decis
 │  └────────────────────────────────────────────────────────────┘ │
 └──────────────────────┬───────────────────────────────────────────┘
                        │
-                       │ 2. Calls /etc/openvpn/auth-keycloak.sh
+                       │ 2. Calls /etc/openvpn/scripts/auth-keycloak.sh
                        ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │               Auth Script (Go binary, auth mode)                 │
@@ -142,8 +142,11 @@ Display version information.
 Validate configuration file:
 - YAML syntax
 - Required fields
-- Keycloak connectivity
-- OIDC discovery
+- Known YAML keys
+- URL syntax and local TLS file paths
+- Socket path and log settings
+
+`check-config` does not contact Keycloak. OIDC discovery occurs when the daemon starts.
 
 ### 2. Internal Packages
 
@@ -189,13 +192,14 @@ internal/
 
 ### 3. Shell Wrapper
 
-`/etc/openvpn/auth-keycloak.sh`:
+`/etc/openvpn/scripts/auth-keycloak.sh`:
 
 ```bash
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 # Thin wrapper called by OpenVPN
-# Just execs the Go binary in auth mode
-exec /usr/local/bin/openvpn-keycloak-auth auth "$@"
+# Validates wrapper inputs, adjusts process limits, and execs auth mode.
+exec /usr/local/bin/openvpn-keycloak-auth --config /etc/openvpn/keycloak-sso.yaml auth "$@"
 ```
 
 **Why a wrapper?**
@@ -243,7 +247,7 @@ exec /usr/local/bin/openvpn-keycloak-auth auth "$@"
 ┌──────────────┐
 │ Auth Script  │ 7. Receive IPC response
 │              │ 8. Write auth_pending_file:
-└────┬─────────┘    300\nopenurl\nWEB_AUTH::https://...
+└────┬─────────┘    300\nwebauth\nWEB_AUTH::https://...
      │
      │ 9. Return exit code 2
      ▼
@@ -656,7 +660,7 @@ os.WriteFile(authControlFile, []byte("0\n"), 0600)
 **For deferral:**
 ```go
 // Write auth_pending_file (exactly 3 lines!)
-content := fmt.Sprintf("%d\nopenurl\nWEB_AUTH::%s\n", timeout, authURL)
+content := fmt.Sprintf("%d\n%s\nWEB_AUTH::%s\n", timeout, method, authURL)
 os.WriteFile(authPendingFile, []byte(content), 0600)
 ```
 
@@ -727,10 +731,10 @@ type IPRateLimiter struct {
 
 **Callback path:**
 ```go
-// Ensure auth_control_file is ALWAYS written
+// Best-effort final result for known sessions with OpenVPN result paths.
 defer func() {
-    if !session.ResultWritten {
-        // Safety net: write failure if nothing else did
+    if sessionMgr.ClaimResultWrite(session.ID) {
+        // Safety net: write failure if nothing else claimed the result
         writeAuthFailure(session, "Internal error")
     }
 }()
@@ -760,7 +764,7 @@ defer func() {
 
 **Cons:**
 - ❌ Slightly higher overhead (exec process)
-- ❌ Limited to OpenVPN 2.6+
+- ❌ Limited to OpenVPN 2.6.2+
 
 **Decision:** Script-based is better for maintainability and simplicity.
 

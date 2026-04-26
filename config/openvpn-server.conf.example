@@ -3,7 +3,7 @@
 # ============================================================
 #
 # This configuration enables Keycloak SSO authentication for
-# OpenVPN Community Server 2.6.19+ on Rocky Linux 9
+# OpenVPN Community Server 2.6.2+ on Rocky Linux 9
 #
 # Copy this file to: /etc/openvpn/server/server.conf
 # Then customize for your environment

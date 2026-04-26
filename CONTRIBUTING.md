@@ -117,7 +117,7 @@ We welcome pull requests for:
 ### Prerequisites
 
 ```bash
-# Go 1.22 or later
+# Go 1.25 or later
 go version
 
 # OpenVPN 2.6.19 (for testing)

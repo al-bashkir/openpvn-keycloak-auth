@@ -68,10 +68,10 @@ func TestBuildShortAuthURL(t *testing.T) {
 			want:        "https://vpn.example.com/vpn/auth/pref123",
 		},
 		{
-			name:        "preserves base path with trailing slash",
+			name:        "rejects base path with trailing slash",
 			redirectURI: "https://vpn.example.com/vpn/callback/",
 			state:       "pref456",
-			want:        "https://vpn.example.com/vpn/auth/pref456",
+			wantErr:     true,
 		},
 		{
 			name:        "http localhost",
@@ -94,6 +94,24 @@ func TestBuildShortAuthURL(t *testing.T) {
 		{
 			name:        "invalid redirect URI",
 			redirectURI: "://invalid",
+			state:       "abc",
+			wantErr:     true,
+		},
+		{
+			name:        "redirect URI without path",
+			redirectURI: "https://vpn.example.com",
+			state:       "abc",
+			wantErr:     true,
+		},
+		{
+			name:        "redirect URI with root path",
+			redirectURI: "https://vpn.example.com/",
+			state:       "abc",
+			wantErr:     true,
+		},
+		{
+			name:        "redirect URI with duplicate slash path",
+			redirectURI: "https://vpn.example.com/vpn//callback",
 			state:       "abc",
 			wantErr:     true,
 		},
@@ -120,6 +138,33 @@ func TestBuildShortAuthURL(t *testing.T) {
 			webAuthLine := "WEB_AUTH::" + got
 			if len(webAuthLine) >= 256 {
 				t.Errorf("WEB_AUTH:: line is %d chars, must be < 256", len(webAuthLine))
+			}
+		})
+	}
+}
+
+func TestValidateOpenVPNResultPath(t *testing.T) {
+	tests := []struct {
+		name     string
+		filePath string
+		wantErr  bool
+	}{
+		{name: "absolute canonical path", filePath: "/tmp/openvpn-auth/control", wantErr: false},
+		{name: "empty path", filePath: "", wantErr: true},
+		{name: "relative path", filePath: "tmp/control", wantErr: true},
+		{name: "non-canonical path", filePath: "/tmp/../etc/passwd", wantErr: true},
+		{name: "root path", filePath: "/", wantErr: true},
+		{name: "nul byte", filePath: "/tmp/control\x00bad", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateOpenVPNResultPath("test_path", tt.filePath)
+			if tt.wantErr && err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("unexpected error: %v", err)
 			}
 		})
 	}

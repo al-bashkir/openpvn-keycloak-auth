@@ -99,12 +99,12 @@ for i in {1..60}; do curl http://localhost:9000/health; done
 **Verification:**
 ```bash
 # Check daemon config
-sudo grep -A5 "keycloak:" /etc/openvpn/keycloak-sso.yaml
+sudo grep -A8 "oidc:" /etc/openvpn/keycloak-sso.yaml
 
 # Test OIDC discovery
 curl https://keycloak.example.com/realms/myrealm/.well-known/openid-configuration
 
-# Verify configuration
+# Verify local configuration syntax and values. This does not contact Keycloak.
 /usr/local/bin/openvpn-keycloak-auth check-config --config /etc/openvpn/keycloak-sso.yaml
 ```
 
@@ -143,7 +143,8 @@ curl https://keycloak.example.com/realms/myrealm/.well-known/openid-configuratio
 **Verification:**
 ```bash
 # Check daemon config
-grep -i "session_ttl" /etc/openvpn/keycloak-sso.yaml
+grep -A5 "auth:" /etc/openvpn/keycloak-sso.yaml
+# Verify auth.session_timeout is 300 seconds or less.
 
 # Check Keycloak Admin Console:
 # - Client → Settings → Access Token Lifespan
@@ -191,7 +192,7 @@ grep -A3 "required_roles" /etc/openvpn/keycloak-sso.yaml
 
 ### File Permissions (8 points)
 
-- [ ] **2 pts** - Config file: 0600, root:openvpn
+- [ ] **2 pts** - Config file: 0640, root:openvpn
 - [ ] **2 pts** - Binary: 0755, root:root
 - [ ] **2 pts** - Socket directory: 0770, openvpn:openvpn
 - [ ] **2 pts** - Data directory: 0755, openvpn:openvpn
@@ -210,7 +211,7 @@ check() {
     echo "✅ $file: $perms $owner"
 }
 
-check "/etc/openvpn/keycloak-sso.yaml" "600" "root:openvpn"
+check "/etc/openvpn/keycloak-sso.yaml" "640" "root:openvpn"
 check "/usr/local/bin/openvpn-keycloak-auth" "755" "root:root"
 check "/var/lib/openvpn-keycloak-auth" "755" "openvpn:openvpn"
 EOF
@@ -230,9 +231,8 @@ EOF
 # Check service file
 grep -E "NoNewPrivileges|ProtectSystem|PrivateTmp" /etc/systemd/system/openvpn-keycloak-auth.service
 
-# Verify security score
-systemd-analyze security openvpn-keycloak-auth.service | head -1
-# Should show score < 3.0 (lower is better)
+# Verify security score; the summary should show score < 3.0 (lower is better)
+systemd-analyze security openvpn-keycloak-auth.service
 ```
 
 ### SELinux (3 points)
@@ -340,8 +340,8 @@ journalctl -u openvpn-keycloak-auth --since "1 hour ago" \
 # Check system updates
 sudo dnf check-update
 
-# Check OpenVPN version
-openvpn --version | head -1
+# Check OpenVPN version; the first line should show the version
+openvpn --version
 
 # Check daemon version
 /usr/local/bin/openvpn-keycloak-auth version
@@ -426,7 +426,7 @@ else
 fi
 
 # Config valid (2 pts)
-if /usr/local/bin/openvpn-keycloak-auth check-config --config /etc/openvpn/keycloak-sso.yaml 2>/dev/null | grep -q "PASSED"; then
+if /usr/local/bin/openvpn-keycloak-auth check-config --config /etc/openvpn/keycloak-sso.yaml 2>/dev/null | grep -q "Configuration is valid"; then
     echo "✅ Configuration valid: OK (+2)"
     ((SCORE+=2))
 else
@@ -439,7 +439,7 @@ echo ""
 echo "=== System Hardening ==="
 
 # Config permissions (2 pts)
-if [ "$(stat -c '%a' /etc/openvpn/keycloak-sso.yaml 2>/dev/null)" = "600" ]; then
+if [ "$(stat -c '%a' /etc/openvpn/keycloak-sso.yaml 2>/dev/null)" = "640" ]; then
     echo "✅ Config permissions: OK (+2)"
     ((SCORE+=2))
 else

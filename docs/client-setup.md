@@ -2,7 +2,7 @@
 
 This guide covers installation, configuration, and usage of OpenVPN clients with SSO (Single Sign-On) authentication via Keycloak.
 
-**Important:** SSO authentication requires OpenVPN 2.6+ with `WEB_AUTH::` support. Not all clients support this feature yet.
+**Important:** SSO authentication requires OpenVPN 2.6.2+ with `WEB_AUTH::` support. Not all clients support this feature yet.
 
 ## Table of Contents
 
@@ -28,7 +28,7 @@ This guide covers installation, configuration, and usage of OpenVPN clients with
 This OpenVPN setup uses **SSO authentication** instead of traditional username/password authentication. Here's how it works:
 
 1. **Connect to VPN** - Your client initiates the connection
-2. **Enter username** - Provide your Keycloak username (password is ignored)
+2. **Enter username** - Provide your Keycloak username and any placeholder OpenVPN password
 3. **Browser opens** - Authenticate via your organization's Keycloak login page
 4. **Complete MFA** - Complete any multi-factor authentication if required
 5. **VPN connects** - Connection completes automatically after successful authentication
@@ -36,7 +36,7 @@ This OpenVPN setup uses **SSO authentication** instead of traditional username/p
 **Benefits:**
 - **Single Sign-On** - Use your organization's identity provider
 - **Stronger security** - Supports MFA, passwordless auth, hardware keys
-- **No password sharing** - VPN server never sees your password
+- **No Keycloak password sharing** - your Keycloak password is entered only on the Keycloak login page
 - **Centralized management** - IT controls access via Keycloak
 
 ---
@@ -61,6 +61,8 @@ SSO support varies by client and version:
 - ❌ **No support** - Does not work with SSO
 
 **Recommendation:** For the best experience, use **OpenVPN Connect 3.x** on all platforms.
+
+These UX notes are expected behavior, not a substitute for environment validation. Test your exact OpenVPN client version, OpenVPN server version, and Keycloak realm before relying on automatic browser opening.
 
 ---
 
@@ -113,8 +115,8 @@ sudo apt install openvpn
 # Arch Linux
 sudo pacman -S openvpn
 
-# Verify version (need 2.6+)
-openvpn --version | head -1
+# Verify version; the first line should show OpenVPN 2.6.2+
+openvpn --version
 ```
 
 **Profile Setup:**
@@ -127,9 +129,10 @@ sudo mkdir -p /etc/openvpn/client
 sudo cp ca.crt /etc/openvpn/client/ca.crt
 sudo chmod 644 /etc/openvpn/client/ca.crt
 
-# Copy client profile
+# Copy client profile. Keep it private because generated profiles may embed
+# client private keys.
 sudo cp client-cli.ovpn /etc/openvpn/client/vpn-sso.conf
-sudo chmod 644 /etc/openvpn/client/vpn-sso.conf
+sudo chmod 600 /etc/openvpn/client/vpn-sso.conf
 
 # Create credentials file (optional, skips username prompt)
 cat > ~/.openvpn-creds <<EOF
@@ -149,8 +152,8 @@ sudo openvpn --config /etc/openvpn/client/vpn-sso.conf
 Enter Auth Username: your-keycloak-username
 Enter Auth Password: sso
 
-# Look for this line in the output:
-AUTH_PENDING,timeout:300,openurl,WEB_AUTH::https://keycloak.example.com/...
+# Look for a line like this in the output. The method may be webauth or openurl.
+AUTH_PENDING,timeout:300,webauth,WEB_AUTH::https://keycloak.example.com/...
 
 # Copy the URL (everything after WEB_AUTH::)
 # Open it in your browser:
@@ -337,13 +340,13 @@ System Tray → Networks → VPN → Click connection
 3. Click **Connect**
 4. Credential prompt appears:
    - **Username:** `your-keycloak-username`
-   - **Password:** `sso` (or anything - will be ignored)
+   - **Password:** `sso` (any placeholder value; not your Keycloak password)
    - **Save in Keychain:** ☑️ (optional, saves username only)
 5. Click **OK**
 
 **SSO Authentication (Automatic):**
 
-1. **Safari opens automatically** with Keycloak login page
+1. **Safari opens automatically if supported** with Keycloak login page
 2. Log in with your Keycloak credentials
 3. Complete any MFA challenges (TOTP, WebAuthn, etc.)
 4. Success page appears in Safari
@@ -416,13 +419,13 @@ Tunnelblick icon → VPN Details → Select configuration → Settings:
 3. Or click profile name → **Connect** button
 4. Credential prompt appears:
    - **Username:** `your-keycloak-username`
-   - **Password:** `sso` (or anything - will be ignored)
+   - **Password:** `sso` (any placeholder value; not your Keycloak password)
    - **Save:** ☑️ (optional, saves username only)
 5. Click **OK**
 
 **SSO Authentication:**
 
-1. **Built-in browser opens** with Keycloak login page
+1. **Built-in browser opens if supported** with Keycloak login page
 2. Log in with your Keycloak credentials
 3. Complete MFA if required
 4. Success page displays
@@ -641,10 +644,10 @@ For reliable VPN:
 
 1. **Client prompts for credentials**
    - Username: Your Keycloak username (e.g., `john.doe`)
-   - Password: Anything (e.g., `sso`) - will be ignored by SSO
+   - Password: Any placeholder value (e.g., `sso`), not your Keycloak password
 
-2. **Browser opens** (automatic on modern clients)
-   - OpenVPN Connect, Tunnelblick: Opens automatically
+2. **Browser opens or URL is shown**
+   - OpenVPN Connect, Tunnelblick: Expected to open automatically on supported versions
    - CLI clients: Displays URL to copy/paste manually
 
 3. **Keycloak login page appears**
@@ -680,7 +683,7 @@ For reliable VPN:
 
 **Saved credentials:**
 - Most clients can save your **username** (not password)
-- Next time: just click connect, browser opens automatically
+- Next time: just click connect, then use the browser flow when prompted
 - No need to re-enter username
 
 **Token lifetime:**
@@ -733,7 +736,7 @@ For reliable VPN:
 ### Step-by-Step Technical Flow
 
 1. **Client initiates connection**
-   - Sends username (Keycloak username) and password (ignored)
+   - Sends username (Keycloak username) and placeholder OpenVPN password to the server-side auth wrapper
    - OpenVPN server calls auth script
 
 2. **Auth script defers authentication**
@@ -748,7 +751,7 @@ For reliable VPN:
 
 4. **Server sends AUTH_PENDING to client**
    - Client receives WEB_AUTH:: URL
-   - Modern clients open browser automatically
+   - Supported clients open browser automatically
    - CLI clients display URL for manual opening
 
 5. **User authenticates in browser**
@@ -1181,7 +1184,7 @@ nc -v vpn.example.com 1194
 
 1. **This documentation:**
    - `docs/client-setup.md` (this file)
-   - `docs/troubleshooting.md` (general troubleshooting)
+   - `docs/keycloak-troubleshooting.md` (Keycloak and OIDC troubleshooting)
    - `README.md` (project overview)
 
 2. **Check logs:**

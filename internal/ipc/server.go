@@ -5,11 +5,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
+)
+
+const (
+	maxRequestBytes       = 64 * 1024
+	connectionDeadline    = 10 * time.Second
+	shutdownCloseDeadline = 100 * time.Millisecond
 )
 
 // AuthRequestHandler is the function type for handling auth requests
@@ -23,6 +31,8 @@ type Server struct {
 	wg         sync.WaitGroup
 	stopChan   chan struct{}
 	mu         sync.Mutex
+	conns      map[net.Conn]struct{}
+	stopOnce   sync.Once
 }
 
 // NewServer creates a new IPC server
@@ -66,6 +76,9 @@ func (s *Server) Start(ctx context.Context) error {
 
 	s.mu.Lock()
 	s.listener = listener
+	if s.conns == nil {
+		s.conns = make(map[net.Conn]struct{})
+	}
 	s.mu.Unlock()
 
 	slog.Info("IPC server started", "socket", s.socketPath)
@@ -109,11 +122,30 @@ func (s *Server) acceptLoop(ctx context.Context) {
 // handleConnection handles a single IPC connection
 func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 	defer s.wg.Done()
-	defer func() { _ = conn.Close() }()
+	s.trackConn(conn)
+	defer func() {
+		s.untrackConn(conn)
+		_ = conn.Close()
+	}()
+	select {
+	case <-s.stopChan:
+		return
+	default:
+	}
+
+	if err := validatePeerCredentials(conn); err != nil {
+		slog.Error("unauthorized IPC peer", "error", err)
+		s.sendErrorResponse(conn, "unauthorized peer")
+		return
+	}
+
+	if err := conn.SetDeadline(time.Now().Add(connectionDeadline)); err != nil {
+		slog.Warn("failed to set IPC connection deadline", "error", err)
+	}
 
 	// Decode request
 	var req AuthRequest
-	dec := json.NewDecoder(conn)
+	dec := json.NewDecoder(io.LimitReader(conn, maxRequestBytes))
 	if err := dec.Decode(&req); err != nil {
 		slog.Error("failed to decode request", "error", err)
 		s.sendErrorResponse(conn, "invalid request format")
@@ -168,30 +200,53 @@ func (s *Server) sendErrorResponse(conn net.Conn, errMsg string) {
 	}
 }
 
+func (s *Server) trackConn(conn net.Conn) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.conns == nil {
+		s.conns = make(map[net.Conn]struct{})
+	}
+	s.conns[conn] = struct{}{}
+}
+
+func (s *Server) untrackConn(conn net.Conn) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.conns, conn)
+}
+
 // Stop stops the IPC server gracefully
 func (s *Server) Stop() error {
-	slog.Info("stopping IPC server")
+	var stopErr error
+	s.stopOnce.Do(func() {
+		slog.Info("stopping IPC server")
 
-	// Signal accept loop to stop
-	close(s.stopChan)
+		// Signal accept loop to stop
+		close(s.stopChan)
 
-	// Close listener
-	s.mu.Lock()
-	if s.listener != nil {
-		if err := s.listener.Close(); err != nil {
-			slog.Warn("failed to close listener", "error", err)
+		// Close listener and active connections to unblock readers on shutdown.
+		s.mu.Lock()
+		if s.listener != nil {
+			if err := s.listener.Close(); err != nil {
+				slog.Warn("failed to close listener", "error", err)
+			}
 		}
-	}
-	s.mu.Unlock()
+		for conn := range s.conns {
+			_ = conn.SetDeadline(time.Now().Add(shutdownCloseDeadline))
+			_ = conn.Close()
+		}
+		s.mu.Unlock()
 
-	// Wait for all connections to finish
-	s.wg.Wait()
+		// Wait for all connections to finish
+		s.wg.Wait()
 
-	// Remove socket file
-	if err := os.Remove(s.socketPath); err != nil && !os.IsNotExist(err) {
-		slog.Warn("failed to remove socket file", "error", err)
-	}
+		// Remove socket file
+		if err := os.Remove(s.socketPath); err != nil && !os.IsNotExist(err) {
+			slog.Warn("failed to remove socket file", "error", err)
+			stopErr = err
+		}
 
-	slog.Info("IPC server stopped")
-	return nil
+		slog.Info("IPC server stopped")
+	})
+	return stopErr
 }

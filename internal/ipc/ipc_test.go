@@ -2,6 +2,7 @@ package ipc
 
 import (
 	"context"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -221,6 +222,67 @@ func TestServerGracefulShutdown(t *testing.T) {
 	// Socket should be removed
 	if _, err := os.Stat(socketPath); !os.IsNotExist(err) {
 		t.Error("socket file should be removed after stop")
+	}
+}
+
+func TestServerStopIsIdempotent(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "ipc-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	socketPath := filepath.Join(tmpDir, "test.sock")
+	server := NewServer(socketPath, func(ctx context.Context, req *AuthRequest) (*AuthResponse, error) {
+		return &AuthResponse{Status: StatusDeferred}, nil
+	})
+
+	if err := server.Start(context.Background()); err != nil {
+		t.Fatalf("failed to start server: %v", err)
+	}
+	if err := server.Stop(); err != nil {
+		t.Fatalf("first Stop failed: %v", err)
+	}
+	if err := server.Stop(); err != nil {
+		t.Fatalf("second Stop failed: %v", err)
+	}
+}
+
+func TestServerStopClosesIdleConnection(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "ipc-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	socketPath := filepath.Join(tmpDir, "test.sock")
+	server := NewServer(socketPath, func(ctx context.Context, req *AuthRequest) (*AuthResponse, error) {
+		return &AuthResponse{Status: StatusDeferred}, nil
+	})
+
+	if err := server.Start(context.Background()); err != nil {
+		t.Fatalf("failed to start server: %v", err)
+	}
+
+	conn, err := net.Dial("unix", socketPath)
+	if err != nil {
+		_ = server.Stop()
+		t.Fatalf("failed to dial server: %v", err)
+	}
+	defer func() { _ = conn.Close() }()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- server.Stop()
+	}()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("Stop failed: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for Stop with idle connection")
 	}
 }
 

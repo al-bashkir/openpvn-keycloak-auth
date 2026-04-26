@@ -262,7 +262,7 @@ if !ok || username == "" {
 // Validate roles (if required)
 if len(requiredRoles) > 0 {
     if !hasRequiredRole(claims, requiredRoles) {
-        return errors.New("user missing required roles")
+        return errors.New("required role missing")
     }
 }
 ```
@@ -290,14 +290,17 @@ The user's Keycloak password is **NEVER** transmitted to the VPN server.
 Traditional VPN Auth (password sent to VPN server):
 User → [username + password] → VPN Server → LDAP/AD
 
-SSO Auth (password stays with Keycloak):
-User → [username + "sso"] → VPN Server → Daemon → Redirect to Keycloak
+SSO Auth (Keycloak password stays with Keycloak):
+User → [username + placeholder password] → VPN Server → Auth wrapper
+Auth wrapper → [username only] → Daemon → Redirect to Keycloak
 User → [password] → Keycloak → [token] → Daemon → VPN Server
 ```
 
+OpenVPN still supplies a two-line via-file credentials file to the wrapper. The wrapper reads the placeholder OpenVPN password because of OpenVPN's script interface, but ignores it for SSO and does not send it over IPC to the daemon or to Keycloak.
+
 **Benefits:**
-- VPN server never sees or stores passwords
-- Password only entered on trusted Keycloak server
+- VPN server never sees or stores Keycloak passwords
+- Keycloak password is only entered on the trusted Keycloak server
 - Reduces attack surface significantly
 - Enables passwordless auth (WebAuthn, TOTP, etc.)
 
@@ -421,9 +424,9 @@ All sensitive files must have restrictive permissions:
 
 | File/Directory | Permissions | Owner:Group | Contents |
 |----------------|-------------|-------------|----------|
-| `/etc/openvpn/keycloak-sso.yaml` | `0600` | `root:openvpn` | Keycloak client ID, issuer URL |
+| `/etc/openvpn/keycloak-sso.yaml` | `0640` | `root:openvpn` | Keycloak client ID, issuer URL |
 | `/usr/local/bin/openvpn-keycloak-auth` | `0755` | `root:root` | Binary (world-readable OK) |
-| `/etc/openvpn/auth-keycloak.sh` | `0755` | `root:root` | Auth script (executable) |
+| `/etc/openvpn/scripts/auth-keycloak.sh` | `0755` | `root:root` | Auth script (executable) |
 | `/var/lib/openvpn-keycloak-auth/` | `0755` | `openvpn:openvpn` | Data directory |
 | `/run/openvpn-keycloak-auth/` | `0770` | `openvpn:openvpn` | Socket directory (runtime) |
 | `/run/openvpn-keycloak-auth/auth.sock` | `0660` | `openvpn:openvpn` | Unix socket |
@@ -462,9 +465,9 @@ check_perms() {
 echo "Checking file permissions..."
 echo ""
 
-check_perms "/etc/openvpn/keycloak-sso.yaml" "600" "root:openvpn"
+check_perms "/etc/openvpn/keycloak-sso.yaml" "640" "root:openvpn"
 check_perms "/usr/local/bin/openvpn-keycloak-auth" "755" "root:root"
-check_perms "/etc/openvpn/auth-keycloak.sh" "755" "root:root"
+check_perms "/etc/openvpn/scripts/auth-keycloak.sh" "755" "root:root"
 check_perms "/var/lib/openvpn-keycloak-auth" "755" "openvpn:openvpn"
 
 if [ -e "/run/openvpn-keycloak-auth/auth.sock" ]; then
@@ -618,12 +621,13 @@ ProtectControlGroups=true         # /sys/fs/cgroup read-only
 NoNewPrivileges=true              # Can't gain new privileges
 RestrictSUIDSGID=true             # SUID/SGID bits ignored
 LockPersonality=true              # Can't change execution domain
-PrivateUsers=true                 # Private user namespace
 
 # Restrict namespaces
 RestrictNamespaces=true           # Limit namespace creation
 RestrictRealtime=true             # No real-time scheduling
 ```
+
+`PrivateUsers=true` is intentionally not enabled in the shipped daemon unit because it can break Unix socket ownership and peer-credential behavior between OpenVPN and the auth daemon.
 
 ### System Call Filtering
 
@@ -944,10 +948,10 @@ fi
 # 2. Check file permissions
 echo ""
 echo "Checking file permissions..."
-if [ "$(stat -c '%a' /etc/openvpn/keycloak-sso.yaml 2>/dev/null)" = "600" ]; then
-    echo "✅ Config permissions correct (600)"
+if [ "$(stat -c '%a' /etc/openvpn/keycloak-sso.yaml 2>/dev/null)" = "640" ]; then
+    echo "✅ Config permissions correct (640)"
 else
-    echo "❌ Config permissions WRONG (should be 600)"
+    echo "❌ Config permissions WRONG (should be 640)"
 fi
 
 # 3. Check for secrets in logs
