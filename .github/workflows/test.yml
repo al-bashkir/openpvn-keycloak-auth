@@ -24,7 +24,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.24"
+          go-version: "1.25"
           cache: true
 
       - name: Download dependencies
@@ -47,7 +47,7 @@ jobs:
           echo "✅ Coverage OK ($COVERAGE% >= 70%)"
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           file: ./coverage.txt
           flags: unittests
@@ -64,7 +64,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.24"
+          go-version: "1.25"
           cache: true
 
       - name: Run golangci-lint
@@ -89,7 +89,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.24"
+          go-version: "1.25"
           cache: true
 
       - name: Build binary
@@ -107,7 +107,7 @@ jobs:
           ./openvpn-keycloak-auth-${{ matrix.goos }}-${{ matrix.goarch }} version
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: openvpn-keycloak-auth-${{ matrix.goos }}-${{ matrix.goarch }}
           path: openvpn-keycloak-auth-${{ matrix.goos }}-${{ matrix.goarch }}
@@ -124,7 +124,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.24"
+          go-version: "1.25"
           cache: true
 
       - name: Run Gosec Security Scanner
@@ -166,7 +166,7 @@ jobs:
           sarif_file: gosec-clean.sarif
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0 - pinned for GHSA-69fq-xp46-6x23
         with:
           scan-type: "fs"
           scan-ref: "."
@@ -190,7 +190,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.24"
+          go-version: "1.25"
           cache: true
 
       - name: Start Keycloak (dev mode)
