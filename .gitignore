@@ -69,3 +69,8 @@ coverage.html
 /tasks/
 WORKLOG.md
 /reports/
+
+# Graphify shared output
+/graphify-out/cache/
+/graphify-out/manifest.json
+/graphify-out/cost.json

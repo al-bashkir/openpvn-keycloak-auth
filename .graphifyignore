@@ -1,0 +1,19 @@
+# Assistant and agent instruction files
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.github/copilot-instructions.md
+
+# Assistant/tool installation artifacts
+.opencode/
+.codex/
+.cursor/
+.gemini/
+.kiro/
+.agents/
+
+# Local VCS and generated Graphify internals
+.git/
+graphify-out/cache/
+graphify-out/manifest.json
+graphify-out/cost.json
