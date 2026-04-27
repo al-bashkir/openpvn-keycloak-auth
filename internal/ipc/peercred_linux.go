@@ -4,6 +4,7 @@ package ipc
 
 import (
 	"fmt"
+	"math"
 	"net"
 	"os"
 	"syscall"
@@ -23,7 +24,12 @@ func validatePeerCredentials(conn net.Conn) error {
 	var cred *syscall.Ucred
 	var controlErr error
 	if err := rawConn.Control(func(fd uintptr) {
-		cred, controlErr = syscall.GetsockoptUcred(int(fd), syscall.SOL_SOCKET, syscall.SO_PEERCRED)
+		socketFD, err := socketFileDescriptor(fd)
+		if err != nil {
+			controlErr = err
+			return
+		}
+		cred, controlErr = syscall.GetsockoptUcred(socketFD, syscall.SOL_SOCKET, syscall.SO_PEERCRED)
 	}); err != nil {
 		return fmt.Errorf("failed to read peer credentials: %w", err)
 	}
@@ -36,9 +42,28 @@ func validatePeerCredentials(conn net.Conn) error {
 
 	// The auth helper should run as the same service user as the daemon after
 	// OpenVPN drops privileges. Root is also allowed for manual/admin tests.
-	if cred.Uid == uint32(os.Geteuid()) || cred.Uid == 0 {
+	currentUID, err := currentEffectiveUID()
+	if err != nil {
+		return err
+	}
+	if cred.Uid == currentUID || cred.Uid == 0 {
 		return nil
 	}
 
 	return fmt.Errorf("peer uid %d is not allowed", cred.Uid)
+}
+
+func socketFileDescriptor(fd uintptr) (int, error) {
+	if fd > uintptr(math.MaxInt) {
+		return 0, fmt.Errorf("socket file descriptor %d exceeds max int", fd)
+	}
+	return int(fd), nil
+}
+
+func currentEffectiveUID() (uint32, error) {
+	euid := os.Geteuid()
+	if euid < 0 || euid > math.MaxUint32 {
+		return 0, fmt.Errorf("effective uid %d exceeds uint32 range", euid)
+	}
+	return uint32(euid), nil
 }

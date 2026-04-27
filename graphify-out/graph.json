@@ -54,7 +54,7 @@
       "source_file": "internal/ipc/protocol.go",
       "source_location": "L1",
       "id": "internal_ipc_protocol_go",
-      "community": 10,
+      "community": 11,
       "norm_label": "protocol.go"
     },
     {
@@ -63,7 +63,7 @@
       "source_file": "internal/ipc/protocol.go",
       "source_location": "L4",
       "id": "ipc_messagetype",
-      "community": 10,
+      "community": 11,
       "norm_label": "messagetype"
     },
     {
@@ -72,7 +72,7 @@
       "source_file": "internal/ipc/protocol.go",
       "source_location": "L17",
       "id": "ipc_authrequest",
-      "community": 10,
+      "community": 11,
       "norm_label": "authrequest"
     },
     {
@@ -81,7 +81,7 @@
       "source_file": "internal/ipc/protocol.go",
       "source_location": "L32",
       "id": "ipc_authresponse",
-      "community": 10,
+      "community": 11,
       "norm_label": "authresponse"
     },
     {
@@ -90,7 +90,7 @@
       "source_file": "internal/ipc/server.go",
       "source_location": "L1",
       "id": "internal_ipc_server_go",
-      "community": 8,
+      "community": 9,
       "norm_label": "server.go"
     },
     {
@@ -99,7 +99,7 @@
       "source_file": "internal/ipc/server.go",
       "source_location": "L24",
       "id": "ipc_authrequesthandler",
-      "community": 8,
+      "community": 9,
       "norm_label": "authrequesthandler"
     },
     {
@@ -108,7 +108,7 @@
       "source_file": "internal/ipc/server.go",
       "source_location": "L27",
       "id": "ipc_server",
-      "community": 8,
+      "community": 9,
       "norm_label": "server"
     },
     {
@@ -126,7 +126,7 @@
       "source_file": "internal/ipc/server.go",
       "source_location": "L48",
       "id": "ipc_server_start",
-      "community": 8,
+      "community": 9,
       "norm_label": ".start()"
     },
     {
@@ -135,7 +135,7 @@
       "source_file": "internal/ipc/server.go",
       "source_location": "L94",
       "id": "ipc_server_acceptloop",
-      "community": 8,
+      "community": 9,
       "norm_label": ".acceptloop()"
     },
     {
@@ -144,7 +144,7 @@
       "source_file": "internal/ipc/server.go",
       "source_location": "L123",
       "id": "ipc_server_handleconnection",
-      "community": 8,
+      "community": 9,
       "norm_label": ".handleconnection()"
     },
     {
@@ -153,7 +153,7 @@
       "source_file": "internal/ipc/server.go",
       "source_location": "L190",
       "id": "ipc_server_senderrorresponse",
-      "community": 8,
+      "community": 9,
       "norm_label": ".senderrorresponse()"
     },
     {
@@ -162,7 +162,7 @@
       "source_file": "internal/ipc/server.go",
       "source_location": "L203",
       "id": "ipc_server_trackconn",
-      "community": 8,
+      "community": 9,
       "norm_label": ".trackconn()"
     },
     {
@@ -171,7 +171,7 @@
       "source_file": "internal/ipc/server.go",
       "source_location": "L212",
       "id": "ipc_server_untrackconn",
-      "community": 8,
+      "community": 9,
       "norm_label": ".untrackconn()"
     },
     {
@@ -180,7 +180,7 @@
       "source_file": "internal/ipc/server.go",
       "source_location": "L219",
       "id": "ipc_server_stop",
-      "community": 8,
+      "community": 9,
       "norm_label": ".stop()"
     },
     {
@@ -279,7 +279,7 @@
       "source_file": "internal/ipc/peercred_other.go",
       "source_location": "L1",
       "id": "internal_ipc_peercred_other_go",
-      "community": 11,
+      "community": 12,
       "norm_label": "peercred_other.go"
     },
     {
@@ -288,7 +288,7 @@
       "source_file": "internal/ipc/peercred_other.go",
       "source_location": "L7",
       "id": "peercred_other_validatepeercredentials",
-      "community": 11,
+      "community": 12,
       "norm_label": "validatepeercredentials()"
     },
     {
@@ -297,17 +297,35 @@
       "source_file": "internal/ipc/peercred_linux.go",
       "source_location": "L1",
       "id": "internal_ipc_peercred_linux_go",
-      "community": 8,
+      "community": 9,
       "norm_label": "peercred_linux.go"
     },
     {
       "label": "validatePeerCredentials()",
       "file_type": "code",
       "source_file": "internal/ipc/peercred_linux.go",
-      "source_location": "L12",
+      "source_location": "L13",
       "id": "peercred_linux_validatepeercredentials",
-      "community": 8,
+      "community": 9,
       "norm_label": "validatepeercredentials()"
+    },
+    {
+      "label": "socketFileDescriptor()",
+      "file_type": "code",
+      "source_file": "internal/ipc/peercred_linux.go",
+      "source_location": "L56",
+      "id": "peercred_linux_socketfiledescriptor",
+      "community": 9,
+      "norm_label": "socketfiledescriptor()"
+    },
+    {
+      "label": "currentEffectiveUID()",
+      "file_type": "code",
+      "source_file": "internal/ipc/peercred_linux.go",
+      "source_location": "L63",
+      "id": "peercred_linux_currenteffectiveuid",
+      "community": 9,
+      "norm_label": "currenteffectiveuid()"
     },
     {
       "label": "sanitize.go",
@@ -315,7 +333,7 @@
       "source_file": "internal/ipc/sanitize.go",
       "source_location": "L1",
       "id": "internal_ipc_sanitize_go",
-      "community": 8,
+      "community": 9,
       "norm_label": "sanitize.go"
     },
     {
@@ -324,7 +342,7 @@
       "source_file": "internal/ipc/sanitize.go",
       "source_location": "L9",
       "id": "sanitize_sanitizeipcvalue",
-      "community": 8,
+      "community": 9,
       "norm_label": "sanitizeipcvalue()"
     },
     {
@@ -360,7 +378,7 @@
       "source_file": "internal/openvpn/authfile_test.go",
       "source_location": "L1",
       "id": "internal_openvpn_authfile_test_go",
-      "community": 3,
+      "community": 1,
       "norm_label": "authfile_test.go"
     },
     {
@@ -369,7 +387,7 @@
       "source_file": "internal/openvpn/authfile_test.go",
       "source_location": "L10",
       "id": "authfile_test_testwriteauthpending",
-      "community": 3,
+      "community": 1,
       "norm_label": "testwriteauthpending()"
     },
     {
@@ -378,7 +396,7 @@
       "source_file": "internal/openvpn/authfile_test.go",
       "source_location": "L151",
       "id": "authfile_test_testwriteauthsuccess",
-      "community": 3,
+      "community": 1,
       "norm_label": "testwriteauthsuccess()"
     },
     {
@@ -387,7 +405,7 @@
       "source_file": "internal/openvpn/authfile_test.go",
       "source_location": "L217",
       "id": "authfile_test_testwriteauthfailure",
-      "community": 3,
+      "community": 1,
       "norm_label": "testwriteauthfailure()"
     },
     {
@@ -396,7 +414,7 @@
       "source_file": "internal/openvpn/authfile_test.go",
       "source_location": "L317",
       "id": "authfile_test_testwriteorder",
-      "community": 3,
+      "community": 1,
       "norm_label": "testwriteorder()"
     },
     {
@@ -405,7 +423,7 @@
       "source_file": "internal/openvpn/authfile.go",
       "source_location": "L1",
       "id": "internal_openvpn_authfile_go",
-      "community": 3,
+      "community": 1,
       "norm_label": "authfile.go"
     },
     {
@@ -414,7 +432,7 @@
       "source_file": "internal/openvpn/authfile.go",
       "source_location": "L32",
       "id": "authfile_writeauthpending",
-      "community": 3,
+      "community": 1,
       "norm_label": "writeauthpending()"
     },
     {
@@ -423,7 +441,7 @@
       "source_file": "internal/openvpn/authfile.go",
       "source_location": "L62",
       "id": "authfile_writeauthsuccess",
-      "community": 3,
+      "community": 1,
       "norm_label": "writeauthsuccess()"
     },
     {
@@ -432,7 +450,7 @@
       "source_file": "internal/openvpn/authfile.go",
       "source_location": "L82",
       "id": "authfile_writeauthfailure",
-      "community": 3,
+      "community": 1,
       "norm_label": "writeauthfailure()"
     },
     {
@@ -441,7 +459,7 @@
       "source_file": "internal/oidc/provider_test.go",
       "source_location": "L1",
       "id": "internal_oidc_provider_test_go",
-      "community": 6,
+      "community": 4,
       "norm_label": "provider_test.go"
     },
     {
@@ -450,7 +468,7 @@
       "source_file": "internal/oidc/provider_test.go",
       "source_location": "L15",
       "id": "provider_test_newtestissuer",
-      "community": 6,
+      "community": 4,
       "norm_label": "newtestissuer()"
     },
     {
@@ -459,7 +477,7 @@
       "source_file": "internal/oidc/provider_test.go",
       "source_location": "L41",
       "id": "provider_test_testnewproviderandstartauthflow",
-      "community": 6,
+      "community": 4,
       "norm_label": "testnewproviderandstartauthflow()"
     },
     {
@@ -468,7 +486,7 @@
       "source_file": "internal/oidc/provider_test.go",
       "source_location": "L100",
       "id": "provider_test_testnewprovider_discoveryfailure",
-      "community": 6,
+      "community": 4,
       "norm_label": "testnewprovider_discoveryfailure()"
     },
     {
@@ -567,7 +585,7 @@
       "source_file": "internal/oidc/provider.go",
       "source_location": "L1",
       "id": "internal_oidc_provider_go",
-      "community": 6,
+      "community": 4,
       "norm_label": "provider.go"
     },
     {
@@ -576,7 +594,7 @@
       "source_file": "internal/oidc/flow.go",
       "source_location": "L60",
       "id": "oidc_provider",
-      "community": 5,
+      "community": 2,
       "norm_label": "provider"
     },
     {
@@ -585,7 +603,7 @@
       "source_file": "internal/oidc/provider.go",
       "source_location": "L27",
       "id": "provider_newprovider",
-      "community": 6,
+      "community": 4,
       "norm_label": "newprovider()"
     },
     {
@@ -594,7 +612,7 @@
       "source_file": "internal/oidc/flow.go",
       "source_location": "L1",
       "id": "internal_oidc_flow_go",
-      "community": 5,
+      "community": 2,
       "norm_label": "flow.go"
     },
     {
@@ -603,7 +621,7 @@
       "source_file": "internal/oidc/flow.go",
       "source_location": "L27",
       "id": "oidc_authflowdata",
-      "community": 5,
+      "community": 2,
       "norm_label": "authflowdata"
     },
     {
@@ -612,7 +630,7 @@
       "source_file": "internal/oidc/flow.go",
       "source_location": "L39",
       "id": "oidc_tokendata",
-      "community": 5,
+      "community": 2,
       "norm_label": "tokendata"
     },
     {
@@ -621,7 +639,7 @@
       "source_file": "internal/oidc/flow.go",
       "source_location": "L60",
       "id": "oidc_provider_startauthflow",
-      "community": 5,
+      "community": 2,
       "norm_label": ".startauthflow()"
     },
     {
@@ -630,7 +648,7 @@
       "source_file": "internal/oidc/flow.go",
       "source_location": "L91",
       "id": "oidc_provider_exchangecode",
-      "community": 5,
+      "community": 2,
       "norm_label": ".exchangecode()"
     },
     {
@@ -639,7 +657,7 @@
       "source_file": "internal/oidc/flow.go",
       "source_location": "L138",
       "id": "oidc_provider_mergeaccesstokenclaims",
-      "community": 5,
+      "community": 2,
       "norm_label": ".mergeaccesstokenclaims()"
     },
     {
@@ -648,7 +666,7 @@
       "source_file": "internal/oidc/flow.go",
       "source_location": "L164",
       "id": "flow_mergemissingclaim",
-      "community": 5,
+      "community": 2,
       "norm_label": "mergemissingclaim()"
     },
     {
@@ -657,7 +675,7 @@
       "source_file": "internal/oidc/flow.go",
       "source_location": "L180",
       "id": "flow_mergemissingmapvalues",
-      "community": 5,
+      "community": 2,
       "norm_label": "mergemissingmapvalues()"
     },
     {
@@ -666,7 +684,7 @@
       "source_file": "internal/oidc/flow.go",
       "source_location": "L199",
       "id": "oidc_provider_verifyaccesstokenclaims",
-      "community": 5,
+      "community": 2,
       "norm_label": ".verifyaccesstokenclaims()"
     },
     {
@@ -675,7 +693,7 @@
       "source_file": "internal/oidc/flow.go",
       "source_location": "L221",
       "id": "flow_accesstokenclaimserrorcategory",
-      "community": 5,
+      "community": 2,
       "norm_label": "accesstokenclaimserrorcategory()"
     },
     {
@@ -684,7 +702,7 @@
       "source_file": "internal/oidc/flow.go",
       "source_location": "L236",
       "id": "flow_accesstokenissuedforclient",
-      "community": 5,
+      "community": 2,
       "norm_label": "accesstokenissuedforclient()"
     },
     {
@@ -693,7 +711,7 @@
       "source_file": "internal/oidc/flow.go",
       "source_location": "L256",
       "id": "flow_decodejwtpayload",
-      "community": 5,
+      "community": 2,
       "norm_label": "decodejwtpayload()"
     },
     {
@@ -702,7 +720,7 @@
       "source_file": "internal/oidc/flow.go",
       "source_location": "L279",
       "id": "flow_generatecodeverifier",
-      "community": 5,
+      "community": 2,
       "norm_label": "generatecodeverifier()"
     },
     {
@@ -711,7 +729,7 @@
       "source_file": "internal/oidc/flow.go",
       "source_location": "L289",
       "id": "flow_generatecodechallenge",
-      "community": 9,
+      "community": 2,
       "norm_label": "generatecodechallenge()"
     },
     {
@@ -720,7 +738,7 @@
       "source_file": "internal/oidc/flow.go",
       "source_location": "L297",
       "id": "flow_generatestate",
-      "community": 5,
+      "community": 2,
       "norm_label": "generatestate()"
     },
     {
@@ -801,7 +819,7 @@
       "source_file": "internal/oidc/flow_test.go",
       "source_location": "L1",
       "id": "internal_oidc_flow_test_go",
-      "community": 5,
+      "community": 2,
       "norm_label": "flow_test.go"
     },
     {
@@ -810,7 +828,7 @@
       "source_file": "internal/oidc/flow_test.go",
       "source_location": "L18",
       "id": "flow_test_testgeneratecodeverifier",
-      "community": 5,
+      "community": 2,
       "norm_label": "testgeneratecodeverifier()"
     },
     {
@@ -819,7 +837,7 @@
       "source_file": "internal/oidc/flow_test.go",
       "source_location": "L47",
       "id": "flow_test_testgeneratecodechallenge",
-      "community": 9,
+      "community": 2,
       "norm_label": "testgeneratecodechallenge()"
     },
     {
@@ -828,7 +846,7 @@
       "source_file": "internal/oidc/flow_test.go",
       "source_location": "L94",
       "id": "flow_test_testgeneratestate",
-      "community": 5,
+      "community": 2,
       "norm_label": "testgeneratestate()"
     },
     {
@@ -837,7 +855,7 @@
       "source_file": "internal/oidc/flow_test.go",
       "source_location": "L125",
       "id": "flow_test_testpkceflowconsistency",
-      "community": 5,
+      "community": 2,
       "norm_label": "testpkceflowconsistency()"
     },
     {
@@ -846,7 +864,7 @@
       "source_file": "internal/oidc/flow_test.go",
       "source_location": "L157",
       "id": "flow_test_maketestjwt",
-      "community": 5,
+      "community": 2,
       "norm_label": "maketestjwt()"
     },
     {
@@ -855,7 +873,7 @@
       "source_file": "internal/oidc/flow_test.go",
       "source_location": "L168",
       "id": "flow_test_maketestprovider",
-      "community": 5,
+      "community": 2,
       "norm_label": "maketestprovider()"
     },
     {
@@ -864,7 +882,7 @@
       "source_file": "internal/oidc/flow_test.go",
       "source_location": "L187",
       "id": "flow_test_makesignedaccesstoken",
-      "community": 5,
+      "community": 2,
       "norm_label": "makesignedaccesstoken()"
     },
     {
@@ -873,7 +891,7 @@
       "source_file": "internal/oidc/flow_test.go",
       "source_location": "L226",
       "id": "flow_test_testdecodejwtpayload",
-      "community": 5,
+      "community": 2,
       "norm_label": "testdecodejwtpayload()"
     },
     {
@@ -882,7 +900,7 @@
       "source_file": "internal/oidc/flow_test.go",
       "source_location": "L270",
       "id": "flow_test_testmergeaccesstokenclaims",
-      "community": 5,
+      "community": 2,
       "norm_label": "testmergeaccesstokenclaims()"
     },
     {
@@ -891,7 +909,7 @@
       "source_file": "internal/httpserver/middleware.go",
       "source_location": "L1",
       "id": "internal_httpserver_middleware_go",
-      "community": 1,
+      "community": 8,
       "norm_label": "middleware.go"
     },
     {
@@ -900,7 +918,7 @@
       "source_file": "internal/httpserver/middleware.go",
       "source_location": "L16",
       "id": "middleware_loggingmiddleware",
-      "community": 1,
+      "community": 8,
       "norm_label": "loggingmiddleware()"
     },
     {
@@ -909,7 +927,7 @@
       "source_file": "internal/httpserver/middleware.go",
       "source_location": "L38",
       "id": "middleware_recoverymiddleware",
-      "community": 1,
+      "community": 8,
       "norm_label": "recoverymiddleware()"
     },
     {
@@ -918,7 +936,7 @@
       "source_file": "internal/httpserver/middleware.go",
       "source_location": "L55",
       "id": "httpserver_ipentry",
-      "community": 1,
+      "community": 8,
       "norm_label": "ipentry"
     },
     {
@@ -927,7 +945,7 @@
       "source_file": "internal/httpserver/middleware.go",
       "source_location": "L61",
       "id": "httpserver_ipratelimiter",
-      "community": 1,
+      "community": 8,
       "norm_label": "ipratelimiter"
     },
     {
@@ -936,7 +954,7 @@
       "source_file": "internal/httpserver/middleware.go",
       "source_location": "L70",
       "id": "middleware_newipratelimiter",
-      "community": 1,
+      "community": 8,
       "norm_label": "newipratelimiter()"
     },
     {
@@ -945,7 +963,7 @@
       "source_file": "internal/httpserver/middleware.go",
       "source_location": "L85",
       "id": "httpserver_ipratelimiter_getlimiter",
-      "community": 1,
+      "community": 8,
       "norm_label": ".getlimiter()"
     },
     {
@@ -954,7 +972,7 @@
       "source_file": "internal/httpserver/middleware.go",
       "source_location": "L110",
       "id": "httpserver_ipratelimiter_evictloop",
-      "community": 1,
+      "community": 8,
       "norm_label": ".evictloop()"
     },
     {
@@ -963,7 +981,7 @@
       "source_file": "internal/httpserver/middleware.go",
       "source_location": "L127",
       "id": "httpserver_ipratelimiter_evictoldest",
-      "community": 1,
+      "community": 8,
       "norm_label": ".evictoldest()"
     },
     {
@@ -972,7 +990,7 @@
       "source_file": "internal/httpserver/middleware.go",
       "source_location": "L147",
       "id": "middleware_ratelimitmiddleware",
-      "community": 1,
+      "community": 8,
       "norm_label": "ratelimitmiddleware()"
     },
     {
@@ -981,7 +999,7 @@
       "source_file": "internal/httpserver/middleware.go",
       "source_location": "L169",
       "id": "middleware_extractip",
-      "community": 1,
+      "community": 8,
       "norm_label": "extractip()"
     },
     {
@@ -990,7 +1008,7 @@
       "source_file": "internal/httpserver/middleware.go",
       "source_location": "L177",
       "id": "middleware_redactrequestpath",
-      "community": 1,
+      "community": 8,
       "norm_label": "redactrequestpath()"
     },
     {
@@ -999,7 +1017,7 @@
       "source_file": "internal/httpserver/middleware.go",
       "source_location": "L186",
       "id": "middleware_securityheadersmiddleware",
-      "community": 1,
+      "community": 8,
       "norm_label": "securityheadersmiddleware()"
     },
     {
@@ -1008,7 +1026,7 @@
       "source_file": "internal/httpserver/callback.go",
       "source_location": "L1",
       "id": "internal_httpserver_callback_go",
-      "community": 1,
+      "community": 5,
       "norm_label": "callback.go"
     },
     {
@@ -1017,7 +1035,7 @@
       "source_file": "internal/httpserver/pages.go",
       "source_location": "L9",
       "id": "httpserver_server",
-      "community": 1,
+      "community": 5,
       "norm_label": "server"
     },
     {
@@ -1026,7 +1044,7 @@
       "source_file": "internal/httpserver/callback.go",
       "source_location": "L19",
       "id": "httpserver_server_handleauthredirect",
-      "community": 1,
+      "community": 5,
       "norm_label": ".handleauthredirect()"
     },
     {
@@ -1035,7 +1053,7 @@
       "source_file": "internal/httpserver/callback.go",
       "source_location": "L60",
       "id": "httpserver_server_handlecallback",
-      "community": 1,
+      "community": 5,
       "norm_label": ".handlecallback()"
     },
     {
@@ -1044,7 +1062,7 @@
       "source_file": "internal/httpserver/callback.go",
       "source_location": "L207",
       "id": "httpserver_server_writeauthsuccess",
-      "community": 1,
+      "community": 5,
       "norm_label": ".writeauthsuccess()"
     },
     {
@@ -1053,7 +1071,7 @@
       "source_file": "internal/httpserver/callback.go",
       "source_location": "L240",
       "id": "httpserver_server_writeauthfailure",
-      "community": 1,
+      "community": 5,
       "norm_label": ".writeauthfailure()"
     },
     {
@@ -1062,7 +1080,7 @@
       "source_file": "internal/httpserver/callback.go",
       "source_location": "L280",
       "id": "callback_safeoautherrorcode",
-      "community": 1,
+      "community": 5,
       "norm_label": "safeoautherrorcode()"
     },
     {
@@ -1071,7 +1089,7 @@
       "source_file": "internal/httpserver/callback.go",
       "source_location": "L289",
       "id": "callback_validationfailurecategory",
-      "community": 1,
+      "community": 5,
       "norm_label": "validationfailurecategory()"
     },
     {
@@ -1080,7 +1098,7 @@
       "source_file": "internal/httpserver/callback.go",
       "source_location": "L309",
       "id": "callback_authstatefrompath",
-      "community": 1,
+      "community": 5,
       "norm_label": "authstatefrompath()"
     },
     {
@@ -1089,7 +1107,7 @@
       "source_file": "internal/httpserver/health.go",
       "source_location": "L1",
       "id": "internal_httpserver_health_go",
-      "community": 12,
+      "community": 13,
       "norm_label": "health.go"
     },
     {
@@ -1098,7 +1116,7 @@
       "source_file": "internal/httpserver/health.go",
       "source_location": "L10",
       "id": "httpserver_healthresponse",
-      "community": 12,
+      "community": 13,
       "norm_label": "healthresponse"
     },
     {
@@ -1107,7 +1125,7 @@
       "source_file": "internal/httpserver/health.go",
       "source_location": "L16",
       "id": "httpserver_server_handlehealth",
-      "community": 1,
+      "community": 5,
       "norm_label": ".handlehealth()"
     },
     {
@@ -1152,7 +1170,7 @@
       "source_file": "internal/httpserver/server.go",
       "source_location": "L132",
       "id": "httpserver_server_shutdown",
-      "community": 0,
+      "community": 5,
       "norm_label": ".shutdown()"
     },
     {
@@ -1161,7 +1179,7 @@
       "source_file": "internal/httpserver/pages.go",
       "source_location": "L1",
       "id": "internal_httpserver_pages_go",
-      "community": 14,
+      "community": 15,
       "norm_label": "pages.go"
     },
     {
@@ -1170,7 +1188,7 @@
       "source_file": "internal/httpserver/pages.go",
       "source_location": "L9",
       "id": "httpserver_server_rendersuccess",
-      "community": 1,
+      "community": 5,
       "norm_label": ".rendersuccess()"
     },
     {
@@ -1179,7 +1197,7 @@
       "source_file": "internal/httpserver/pages.go",
       "source_location": "L24",
       "id": "httpserver_server_rendererror",
-      "community": 1,
+      "community": 5,
       "norm_label": ".rendererror()"
     },
     {
@@ -1215,7 +1233,7 @@
       "source_file": "internal/httpserver/httpserver_test.go",
       "source_location": "L80",
       "id": "httpserver_test_testauthredirectendpoint",
-      "community": 2,
+      "community": 3,
       "norm_label": "testauthredirectendpoint()"
     },
     {
@@ -1224,7 +1242,7 @@
       "source_file": "internal/httpserver/httpserver_test.go",
       "source_location": "L168",
       "id": "httpserver_test_testauthredirectendpointwithbasepath",
-      "community": 2,
+      "community": 3,
       "norm_label": "testauthredirectendpointwithbasepath()"
     },
     {
@@ -1251,7 +1269,7 @@
       "source_file": "internal/httpserver/httpserver_test.go",
       "source_location": "L268",
       "id": "httpserver_test_testcallbackendpointmissingcode",
-      "community": 2,
+      "community": 3,
       "norm_label": "testcallbackendpointmissingcode()"
     },
     {
@@ -1314,7 +1332,7 @@
       "source_file": "internal/httpserver/httpserver_test.go",
       "source_location": "L534",
       "id": "httpserver_test_testextractip",
-      "community": 1,
+      "community": 8,
       "norm_label": "testextractip()"
     },
     {
@@ -1323,7 +1341,7 @@
       "source_file": "internal/httpserver/httpserver_test.go",
       "source_location": "L579",
       "id": "httpserver_test_testredactrequestpath",
-      "community": 1,
+      "community": 8,
       "norm_label": "testredactrequestpath()"
     },
     {
@@ -1332,7 +1350,7 @@
       "source_file": "internal/httpserver/httpserver_test.go",
       "source_location": "L621",
       "id": "httpserver_test_testauthstatefrompath",
-      "community": 1,
+      "community": 5,
       "norm_label": "testauthstatefrompath()"
     },
     {
@@ -1341,7 +1359,7 @@
       "source_file": "internal/httpserver/sanitize.go",
       "source_location": "L1",
       "id": "internal_httpserver_sanitize_go",
-      "community": 1,
+      "community": 8,
       "norm_label": "sanitize.go"
     },
     {
@@ -1350,7 +1368,7 @@
       "source_file": "internal/httpserver/sanitize.go",
       "source_location": "L7",
       "id": "sanitize_sanitizelog",
-      "community": 1,
+      "community": 8,
       "norm_label": "sanitizelog()"
     },
     {
@@ -1359,7 +1377,7 @@
       "source_file": "internal/daemon/daemon_test.go",
       "source_location": "L1",
       "id": "internal_daemon_daemon_test_go",
-      "community": 9,
+      "community": 10,
       "norm_label": "daemon_test.go"
     },
     {
@@ -1368,7 +1386,7 @@
       "source_file": "internal/daemon/daemon_test.go",
       "source_location": "L18",
       "id": "daemon_test_newtestoidcissuer",
-      "community": 9,
+      "community": 10,
       "norm_label": "newtestoidcissuer()"
     },
     {
@@ -1377,7 +1395,7 @@
       "source_file": "internal/daemon/daemon_test.go",
       "source_location": "L44",
       "id": "daemon_test_testbuildshortauthurl",
-      "community": 9,
+      "community": 10,
       "norm_label": "testbuildshortauthurl()"
     },
     {
@@ -1386,7 +1404,7 @@
       "source_file": "internal/daemon/daemon_test.go",
       "source_location": "L146",
       "id": "daemon_test_testvalidateopenvpnresultpath",
-      "community": 9,
+      "community": 10,
       "norm_label": "testvalidateopenvpnresultpath()"
     },
     {
@@ -1395,7 +1413,7 @@
       "source_file": "internal/daemon/daemon_test.go",
       "source_location": "L173",
       "id": "daemon_test_testnewandhandleauthrequest_success",
-      "community": 9,
+      "community": 10,
       "norm_label": "testnewandhandleauthrequest_success()"
     },
     {
@@ -1404,7 +1422,7 @@
       "source_file": "internal/daemon/daemon_test.go",
       "source_location": "L272",
       "id": "daemon_test_testhandleauthrequest_pendingwritefailurewritesauthfailure",
-      "community": 9,
+      "community": 10,
       "norm_label": "testhandleauthrequest_pendingwritefailurewritesauthfailure()"
     },
     {
@@ -1413,7 +1431,7 @@
       "source_file": "internal/daemon/daemon_test.go",
       "source_location": "L337",
       "id": "daemon_test_testrun_httpserverstartfailurestopsandreturnserror",
-      "community": 9,
+      "community": 10,
       "norm_label": "testrun_httpserverstartfailurestopsandreturnserror()"
     },
     {
@@ -1422,7 +1440,7 @@
       "source_file": "internal/daemon/daemon.go",
       "source_location": "L1",
       "id": "internal_daemon_daemon_go",
-      "community": 9,
+      "community": 10,
       "norm_label": "daemon.go"
     },
     {
@@ -1431,7 +1449,7 @@
       "source_file": "internal/daemon/daemon.go",
       "source_location": "L28",
       "id": "daemon_daemon",
-      "community": 0,
+      "community": 5,
       "norm_label": "daemon"
     },
     {
@@ -1440,7 +1458,7 @@
       "source_file": "internal/daemon/daemon.go",
       "source_location": "L37",
       "id": "daemon_new",
-      "community": 9,
+      "community": 10,
       "norm_label": "new()"
     },
     {
@@ -1449,7 +1467,7 @@
       "source_file": "internal/daemon/daemon.go",
       "source_location": "L91",
       "id": "daemon_daemon_run",
-      "community": 0,
+      "community": 5,
       "norm_label": ".run()"
     },
     {
@@ -1458,7 +1476,7 @@
       "source_file": "internal/daemon/daemon.go",
       "source_location": "L151",
       "id": "daemon_handleauthrequest",
-      "community": 9,
+      "community": 10,
       "norm_label": "handleauthrequest()"
     },
     {
@@ -1467,7 +1485,7 @@
       "source_file": "internal/daemon/daemon.go",
       "source_location": "L264",
       "id": "daemon_validateopenvpnresultpath",
-      "community": 9,
+      "community": 10,
       "norm_label": "validateopenvpnresultpath()"
     },
     {
@@ -1476,7 +1494,7 @@
       "source_file": "internal/daemon/daemon.go",
       "source_location": "L299",
       "id": "daemon_buildshortauthurl",
-      "community": 9,
+      "community": 10,
       "norm_label": "buildshortauthurl()"
     },
     {
@@ -1485,7 +1503,7 @@
       "source_file": "internal/auth/handler.go",
       "source_location": "L1",
       "id": "internal_auth_handler_go",
-      "community": 3,
+      "community": 1,
       "norm_label": "handler.go"
     },
     {
@@ -1494,7 +1512,7 @@
       "source_file": "internal/auth/handler.go",
       "source_location": "L23",
       "id": "auth_handler",
-      "community": 3,
+      "community": 1,
       "norm_label": "handler"
     },
     {
@@ -1503,7 +1521,7 @@
       "source_file": "internal/auth/handler.go",
       "source_location": "L28",
       "id": "handler_newhandler",
-      "community": 3,
+      "community": 1,
       "norm_label": "newhandler()"
     },
     {
@@ -1512,7 +1530,7 @@
       "source_file": "internal/auth/handler.go",
       "source_location": "L37",
       "id": "auth_handler_run",
-      "community": 3,
+      "community": 1,
       "norm_label": ".run()"
     },
     {
@@ -1521,7 +1539,7 @@
       "source_file": "internal/auth/handler.go",
       "source_location": "L138",
       "id": "handler_sanitizevalues",
-      "community": 3,
+      "community": 1,
       "norm_label": "sanitizevalues()"
     },
     {
@@ -1530,7 +1548,7 @@
       "source_file": "internal/auth/handler.go",
       "source_location": "L151",
       "id": "handler_readcredentialsfile",
-      "community": 3,
+      "community": 1,
       "norm_label": "readcredentialsfile()"
     },
     {
@@ -1539,7 +1557,7 @@
       "source_file": "internal/auth/handler.go",
       "source_location": "L186",
       "id": "handler_selectpendingmethod",
-      "community": 3,
+      "community": 1,
       "norm_label": "selectpendingmethod()"
     },
     {
@@ -1548,7 +1566,7 @@
       "source_file": "internal/auth/auth_test.go",
       "source_location": "L1",
       "id": "internal_auth_auth_test_go",
-      "community": 3,
+      "community": 1,
       "norm_label": "auth_test.go"
     },
     {
@@ -1557,7 +1575,7 @@
       "source_file": "internal/auth/auth_test.go",
       "source_location": "L14",
       "id": "auth_test_testparseenv",
-      "community": 3,
+      "community": 1,
       "norm_label": "testparseenv()"
     },
     {
@@ -1566,7 +1584,7 @@
       "source_file": "internal/auth/auth_test.go",
       "source_location": "L111",
       "id": "auth_test_testreadcredentialsfile",
-      "community": 3,
+      "community": 1,
       "norm_label": "testreadcredentialsfile()"
     },
     {
@@ -1575,7 +1593,7 @@
       "source_file": "internal/auth/auth_test.go",
       "source_location": "L197",
       "id": "auth_test_testhandlerrun",
-      "community": 3,
+      "community": 1,
       "norm_label": "testhandlerrun()"
     },
     {
@@ -1584,7 +1602,7 @@
       "source_file": "internal/auth/auth_test.go",
       "source_location": "L256",
       "id": "auth_test_testhandlerrundaemonerror",
-      "community": 3,
+      "community": 1,
       "norm_label": "testhandlerrundaemonerror()"
     },
     {
@@ -1593,7 +1611,7 @@
       "source_file": "internal/auth/auth_test.go",
       "source_location": "L308",
       "id": "auth_test_testhandlerrunnodaemon",
-      "community": 3,
+      "community": 1,
       "norm_label": "testhandlerrunnodaemon()"
     },
     {
@@ -1602,7 +1620,7 @@
       "source_file": "internal/auth/auth_test.go",
       "source_location": "L337",
       "id": "auth_test_testselectpendingmethod",
-      "community": 3,
+      "community": 1,
       "norm_label": "testselectpendingmethod()"
     },
     {
@@ -1611,7 +1629,7 @@
       "source_file": "internal/auth/auth_test.go",
       "source_location": "L390",
       "id": "auth_test_testparseenvwithivsso",
-      "community": 3,
+      "community": 1,
       "norm_label": "testparseenvwithivsso()"
     },
     {
@@ -1620,7 +1638,7 @@
       "source_file": "internal/auth/envparser.go",
       "source_location": "L1",
       "id": "internal_auth_envparser_go",
-      "community": 3,
+      "community": 1,
       "norm_label": "envparser.go"
     },
     {
@@ -1629,7 +1647,7 @@
       "source_file": "internal/auth/envparser.go",
       "source_location": "L11",
       "id": "auth_openvpnenv",
-      "community": 3,
+      "community": 1,
       "norm_label": "openvpnenv"
     },
     {
@@ -1638,7 +1656,7 @@
       "source_file": "internal/auth/envparser.go",
       "source_location": "L44",
       "id": "envparser_parseenv",
-      "community": 3,
+      "community": 1,
       "norm_label": "parseenv()"
     },
     {
@@ -1647,7 +1665,7 @@
       "source_file": "internal/logsanitize/sanitize.go",
       "source_location": "L1",
       "id": "internal_logsanitize_sanitize_go",
-      "community": 3,
+      "community": 1,
       "norm_label": "sanitize.go"
     },
     {
@@ -1656,7 +1674,7 @@
       "source_file": "internal/logsanitize/sanitize.go",
       "source_location": "L12",
       "id": "sanitize_sanitize",
-      "community": 3,
+      "community": 1,
       "norm_label": "sanitize()"
     },
     {
@@ -1665,7 +1683,7 @@
       "source_file": "internal/config/config.go",
       "source_location": "L1",
       "id": "internal_config_config_go",
-      "community": 4,
+      "community": 6,
       "norm_label": "config.go"
     },
     {
@@ -1674,7 +1692,7 @@
       "source_file": "internal/config/config.go",
       "source_location": "L17",
       "id": "config_config",
-      "community": 4,
+      "community": 6,
       "norm_label": "config"
     },
     {
@@ -1683,7 +1701,7 @@
       "source_file": "internal/config/config.go",
       "source_location": "L26",
       "id": "config_listenconfig",
-      "community": 4,
+      "community": 6,
       "norm_label": "listenconfig"
     },
     {
@@ -1692,7 +1710,7 @@
       "source_file": "internal/config/config.go",
       "source_location": "L32",
       "id": "config_oidcconfig",
-      "community": 4,
+      "community": 6,
       "norm_label": "oidcconfig"
     },
     {
@@ -1701,7 +1719,7 @@
       "source_file": "internal/config/config.go",
       "source_location": "L43",
       "id": "config_authconfig",
-      "community": 4,
+      "community": 6,
       "norm_label": "authconfig"
     },
     {
@@ -1710,7 +1728,7 @@
       "source_file": "internal/config/config.go",
       "source_location": "L50",
       "id": "config_tlsconfig",
-      "community": 4,
+      "community": 6,
       "norm_label": "tlsconfig"
     },
     {
@@ -1719,7 +1737,7 @@
       "source_file": "internal/config/config.go",
       "source_location": "L57",
       "id": "config_logconfig",
-      "community": 4,
+      "community": 6,
       "norm_label": "logconfig"
     },
     {
@@ -1728,7 +1746,7 @@
       "source_file": "internal/config/config.go",
       "source_location": "L63",
       "id": "config_load",
-      "community": 4,
+      "community": 6,
       "norm_label": "load()"
     },
     {
@@ -1737,7 +1755,7 @@
       "source_file": "internal/config/config.go",
       "source_location": "L95",
       "id": "config_defaultconfig",
-      "community": 4,
+      "community": 6,
       "norm_label": "defaultconfig()"
     },
     {
@@ -1746,7 +1764,7 @@
       "source_file": "internal/config/config.go",
       "source_location": "L121",
       "id": "config_config_applyenvoverrides",
-      "community": 4,
+      "community": 6,
       "norm_label": ".applyenvoverrides()"
     },
     {
@@ -1755,7 +1773,7 @@
       "source_file": "internal/config/config.go",
       "source_location": "L154",
       "id": "config_config_validate",
-      "community": 4,
+      "community": 6,
       "norm_label": ".validate()"
     },
     {
@@ -1764,7 +1782,7 @@
       "source_file": "internal/config/config.go",
       "source_location": "L248",
       "id": "config_validatehttpurl",
-      "community": 4,
+      "community": 6,
       "norm_label": "validatehttpurl()"
     },
     {
@@ -1773,7 +1791,7 @@
       "source_file": "internal/config/config.go",
       "source_location": "L272",
       "id": "config_validateissuerurl",
-      "community": 4,
+      "community": 6,
       "norm_label": "validateissuerurl()"
     },
     {
@@ -1782,7 +1800,7 @@
       "source_file": "internal/config/config.go",
       "source_location": "L283",
       "id": "config_validateredirecturi",
-      "community": 4,
+      "community": 6,
       "norm_label": "validateredirecturi()"
     },
     {
@@ -1791,7 +1809,7 @@
       "source_file": "internal/config/config.go",
       "source_location": "L302",
       "id": "config_isreservedcallbackpath",
-      "community": 4,
+      "community": 6,
       "norm_label": "isreservedcallbackpath()"
     },
     {
@@ -1809,7 +1827,7 @@
       "source_file": "internal/config/config.go",
       "source_location": "L334",
       "id": "config_config_redact",
-      "community": 4,
+      "community": 6,
       "norm_label": ".redact()"
     },
     {
@@ -1818,7 +1836,7 @@
       "source_file": "internal/config/config_test.go",
       "source_location": "L1",
       "id": "internal_config_config_test_go",
-      "community": 4,
+      "community": 6,
       "norm_label": "config_test.go"
     },
     {
@@ -1827,7 +1845,7 @@
       "source_file": "internal/config/config_test.go",
       "source_location": "L11",
       "id": "config_test_testdefaultconfig",
-      "community": 4,
+      "community": 6,
       "norm_label": "testdefaultconfig()"
     },
     {
@@ -1836,7 +1854,7 @@
       "source_file": "internal/config/config_test.go",
       "source_location": "L27",
       "id": "config_test_testloadconfig",
-      "community": 4,
+      "community": 6,
       "norm_label": "testloadconfig()"
     },
     {
@@ -1845,7 +1863,7 @@
       "source_file": "internal/config/config_test.go",
       "source_location": "L316",
       "id": "config_test_testenvironmentoverrides",
-      "community": 4,
+      "community": 6,
       "norm_label": "testenvironmentoverrides()"
     },
     {
@@ -1854,7 +1872,7 @@
       "source_file": "internal/config/config_test.go",
       "source_location": "L359",
       "id": "config_test_testvalidate",
-      "community": 4,
+      "community": 6,
       "norm_label": "testvalidate()"
     },
     {
@@ -1863,7 +1881,7 @@
       "source_file": "internal/config/config_test.go",
       "source_location": "L454",
       "id": "config_test_testredact",
-      "community": 4,
+      "community": 6,
       "norm_label": "testredact()"
     },
     {
@@ -1881,7 +1899,7 @@
       "source_file": "internal/session/manager.go",
       "source_location": "L1",
       "id": "internal_session_manager_go",
-      "community": 2,
+      "community": 3,
       "norm_label": "manager.go"
     },
     {
@@ -1890,7 +1908,7 @@
       "source_file": "internal/session/cleanup.go",
       "source_location": "L13",
       "id": "session_manager",
-      "community": 2,
+      "community": 5,
       "norm_label": "manager"
     },
     {
@@ -1899,7 +1917,7 @@
       "source_file": "internal/session/manager.go",
       "source_location": "L25",
       "id": "manager_newmanager",
-      "community": 2,
+      "community": 3,
       "norm_label": "newmanager()"
     },
     {
@@ -1908,7 +1926,7 @@
       "source_file": "internal/session/manager.go",
       "source_location": "L42",
       "id": "session_manager_stop",
-      "community": 2,
+      "community": 3,
       "norm_label": ".stop()"
     },
     {
@@ -1917,7 +1935,7 @@
       "source_file": "internal/session/manager.go",
       "source_location": "L52",
       "id": "session_manager_create",
-      "community": 2,
+      "community": 3,
       "norm_label": ".create()"
     },
     {
@@ -1926,7 +1944,7 @@
       "source_file": "internal/session/manager.go",
       "source_location": "L88",
       "id": "session_manager_updateoidcflow",
-      "community": 2,
+      "community": 3,
       "norm_label": ".updateoidcflow()"
     },
     {
@@ -1935,7 +1953,7 @@
       "source_file": "internal/session/manager.go",
       "source_location": "L109",
       "id": "session_manager_get",
-      "community": 2,
+      "community": 3,
       "norm_label": ".get()"
     },
     {
@@ -1944,7 +1962,7 @@
       "source_file": "internal/session/manager.go",
       "source_location": "L129",
       "id": "session_manager_getbystate",
-      "community": 2,
+      "community": 5,
       "norm_label": ".getbystate()"
     },
     {
@@ -1953,7 +1971,7 @@
       "source_file": "internal/session/manager.go",
       "source_location": "L148",
       "id": "session_manager_resultwritten",
-      "community": 2,
+      "community": 5,
       "norm_label": ".resultwritten()"
     },
     {
@@ -1962,7 +1980,7 @@
       "source_file": "internal/session/manager.go",
       "source_location": "L162",
       "id": "session_manager_markresultwritten",
-      "community": 2,
+      "community": 5,
       "norm_label": ".markresultwritten()"
     },
     {
@@ -1971,7 +1989,7 @@
       "source_file": "internal/session/manager.go",
       "source_location": "L178",
       "id": "session_manager_claimresultwrite",
-      "community": 1,
+      "community": 5,
       "norm_label": ".claimresultwrite()"
     },
     {
@@ -1980,7 +1998,7 @@
       "source_file": "internal/session/manager.go",
       "source_location": "L193",
       "id": "session_manager_releaseresultwriteclaim",
-      "community": 1,
+      "community": 5,
       "norm_label": ".releaseresultwriteclaim()"
     },
     {
@@ -1989,7 +2007,7 @@
       "source_file": "internal/session/manager.go",
       "source_location": "L206",
       "id": "session_manager_delete",
-      "community": 1,
+      "community": 5,
       "norm_label": ".delete()"
     },
     {
@@ -1998,7 +2016,7 @@
       "source_file": "internal/session/manager.go",
       "source_location": "L224",
       "id": "session_manager_count",
-      "community": 2,
+      "community": 3,
       "norm_label": ".count()"
     },
     {
@@ -2007,7 +2025,7 @@
       "source_file": "internal/session/manager.go",
       "source_location": "L232",
       "id": "manager_generatesessionid",
-      "community": 2,
+      "community": 3,
       "norm_label": "generatesessionid()"
     },
     {
@@ -2016,7 +2034,7 @@
       "source_file": "internal/session/session.go",
       "source_location": "L1",
       "id": "internal_session_session_go",
-      "community": 13,
+      "community": 14,
       "norm_label": "session.go"
     },
     {
@@ -2025,7 +2043,7 @@
       "source_file": "internal/session/session.go",
       "source_location": "L11",
       "id": "session_session",
-      "community": 13,
+      "community": 14,
       "norm_label": "session"
     },
     {
@@ -2034,7 +2052,7 @@
       "source_file": "internal/session/cleanup.go",
       "source_location": "L1",
       "id": "internal_session_cleanup_go",
-      "community": 15,
+      "community": 16,
       "norm_label": "cleanup.go"
     },
     {
@@ -2043,7 +2061,7 @@
       "source_file": "internal/session/cleanup.go",
       "source_location": "L13",
       "id": "session_manager_cleanuploop",
-      "community": 2,
+      "community": 4,
       "norm_label": ".cleanuploop()"
     },
     {
@@ -2052,7 +2070,7 @@
       "source_file": "internal/session/cleanup.go",
       "source_location": "L28",
       "id": "session_manager_cleanup",
-      "community": 6,
+      "community": 4,
       "norm_label": ".cleanup()"
     },
     {
@@ -2061,7 +2079,7 @@
       "source_file": "internal/session/session_test.go",
       "source_location": "L1",
       "id": "internal_session_session_test_go",
-      "community": 2,
+      "community": 3,
       "norm_label": "session_test.go"
     },
     {
@@ -2070,7 +2088,7 @@
       "source_file": "internal/session/session_test.go",
       "source_location": "L8",
       "id": "session_test_testnewmanager",
-      "community": 2,
+      "community": 3,
       "norm_label": "testnewmanager()"
     },
     {
@@ -2079,7 +2097,7 @@
       "source_file": "internal/session/session_test.go",
       "source_location": "L21",
       "id": "session_test_testmanagerstopisidempotent",
-      "community": 2,
+      "community": 3,
       "norm_label": "testmanagerstopisidempotent()"
     },
     {
@@ -2088,7 +2106,7 @@
       "source_file": "internal/session/session_test.go",
       "source_location": "L27",
       "id": "session_test_testcreatesession",
-      "community": 2,
+      "community": 3,
       "norm_label": "testcreatesession()"
     },
     {
@@ -2097,7 +2115,7 @@
       "source_file": "internal/session/session_test.go",
       "source_location": "L66",
       "id": "session_test_testgetsession",
-      "community": 2,
+      "community": 3,
       "norm_label": "testgetsession()"
     },
     {
@@ -2106,7 +2124,7 @@
       "source_file": "internal/session/session_test.go",
       "source_location": "L92",
       "id": "session_test_testupdateoidcflow",
-      "community": 2,
+      "community": 3,
       "norm_label": "testupdateoidcflow()"
     },
     {
@@ -2115,7 +2133,7 @@
       "source_file": "internal/session/session_test.go",
       "source_location": "L126",
       "id": "session_test_testgetbystate",
-      "community": 2,
+      "community": 3,
       "norm_label": "testgetbystate()"
     },
     {
@@ -2124,7 +2142,7 @@
       "source_file": "internal/session/session_test.go",
       "source_location": "L157",
       "id": "session_test_testdeletesession",
-      "community": 2,
+      "community": 3,
       "norm_label": "testdeletesession()"
     },
     {
@@ -2133,7 +2151,7 @@
       "source_file": "internal/session/session_test.go",
       "source_location": "L198",
       "id": "session_test_testmarkresultwritten",
-      "community": 2,
+      "community": 3,
       "norm_label": "testmarkresultwritten()"
     },
     {
@@ -2142,7 +2160,7 @@
       "source_file": "internal/session/session_test.go",
       "source_location": "L230",
       "id": "session_test_testclaimresultwrite",
-      "community": 2,
+      "community": 3,
       "norm_label": "testclaimresultwrite()"
     },
     {
@@ -2151,7 +2169,7 @@
       "source_file": "internal/session/session_test.go",
       "source_location": "L258",
       "id": "session_test_testresultwritten",
-      "community": 2,
+      "community": 3,
       "norm_label": "testresultwritten()"
     },
     {
@@ -2160,7 +2178,7 @@
       "source_file": "internal/session/session_test.go",
       "source_location": "L285",
       "id": "session_test_testsessionexpiry",
-      "community": 2,
+      "community": 3,
       "norm_label": "testsessionexpiry()"
     },
     {
@@ -2169,7 +2187,7 @@
       "source_file": "internal/session/session_test.go",
       "source_location": "L310",
       "id": "session_test_testcleanup",
-      "community": 2,
+      "community": 3,
       "norm_label": "testcleanup()"
     },
     {
@@ -2178,7 +2196,7 @@
       "source_file": "internal/session/session_test.go",
       "source_location": "L337",
       "id": "session_test_testconcurrentaccess",
-      "community": 2,
+      "community": 3,
       "norm_label": "testconcurrentaccess()"
     },
     {
@@ -2187,7 +2205,7 @@
       "source_file": "internal/session/session_test.go",
       "source_location": "L363",
       "id": "session_test_testgeneratesessionid",
-      "community": 2,
+      "community": 3,
       "norm_label": "testgeneratesessionid()"
     },
     {
@@ -2196,7 +2214,7 @@
       "source_file": "cmd/openvpn-keycloak-auth/main.go",
       "source_location": "L1",
       "id": "cmd_openvpn_keycloak_auth_main_go",
-      "community": 6,
+      "community": 4,
       "norm_label": "main.go"
     },
     {
@@ -2205,7 +2223,7 @@
       "source_file": "cmd/openvpn-keycloak-auth/main.go",
       "source_location": "L122",
       "id": "main_init",
-      "community": 6,
+      "community": 4,
       "norm_label": "init()"
     },
     {
@@ -2214,7 +2232,7 @@
       "source_file": "cmd/openvpn-keycloak-auth/main.go",
       "source_location": "L138",
       "id": "main_main",
-      "community": 6,
+      "community": 4,
       "norm_label": "main()"
     },
     {
@@ -2232,7 +2250,7 @@
       "source_file": "cmd/openvpn-keycloak-auth/main.go",
       "source_location": "L189",
       "id": "main_runauth",
-      "community": 6,
+      "community": 1,
       "norm_label": "runauth()"
     },
     {
@@ -2241,7 +2259,7 @@
       "source_file": "cmd/openvpn-keycloak-auth/main.go",
       "source_location": "L211",
       "id": "main_runversion",
-      "community": 6,
+      "community": 4,
       "norm_label": "runversion()"
     },
     {
@@ -2250,7 +2268,7 @@
       "source_file": "cmd/openvpn-keycloak-auth/main.go",
       "source_location": "L219",
       "id": "main_runcheckconfig",
-      "community": 6,
+      "community": 4,
       "norm_label": "runcheckconfig()"
     },
     {
@@ -2259,7 +2277,7 @@
       "source_file": "cmd/openvpn-keycloak-auth/main.go",
       "source_location": "L259",
       "id": "main_getgoversion",
-      "community": 6,
+      "community": 4,
       "norm_label": "getgoversion()"
     },
     {
@@ -2268,7 +2286,7 @@
       "source_file": "cmd/openvpn-keycloak-auth/main_test.go",
       "source_location": "L1",
       "id": "cmd_openvpn_keycloak_auth_main_test_go",
-      "community": 6,
+      "community": 4,
       "norm_label": "main_test.go"
     },
     {
@@ -2277,7 +2295,7 @@
       "source_file": "cmd/openvpn-keycloak-auth/main_test.go",
       "source_location": "L14",
       "id": "main_test_writetestconfig",
-      "community": 6,
+      "community": 4,
       "norm_label": "writetestconfig()"
     },
     {
@@ -2286,7 +2304,7 @@
       "source_file": "cmd/openvpn-keycloak-auth/main_test.go",
       "source_location": "L39",
       "id": "main_test_testruncheckconfig_valid",
-      "community": 6,
+      "community": 4,
       "norm_label": "testruncheckconfig_valid()"
     },
     {
@@ -2295,7 +2313,7 @@
       "source_file": "cmd/openvpn-keycloak-auth/main_test.go",
       "source_location": "L61",
       "id": "main_test_testruncheckconfig_invalid",
-      "community": 6,
+      "community": 4,
       "norm_label": "testruncheckconfig_invalid()"
     },
     {
@@ -2304,7 +2322,7 @@
       "source_file": "cmd/openvpn-keycloak-auth/main_test.go",
       "source_location": "L102",
       "id": "main_test_testrunserve_configloadfailure",
-      "community": 6,
+      "community": 4,
       "norm_label": "testrunserve_configloadfailure()"
     },
     {
@@ -2313,7 +2331,7 @@
       "source_file": "cmd/openvpn-keycloak-auth/main_test.go",
       "source_location": "L112",
       "id": "main_test_testrunversion",
-      "community": 6,
+      "community": 4,
       "norm_label": "testrunversion()"
     },
     {
@@ -2322,7 +2340,7 @@
       "source_file": "cmd/openvpn-keycloak-auth/main_test.go",
       "source_location": "L125",
       "id": "main_test_testrunauth_deferred",
-      "community": 6,
+      "community": 4,
       "norm_label": "testrunauth_deferred()"
     }
   ],
@@ -3579,12 +3597,60 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "internal/ipc/peercred_linux.go",
-      "source_location": "L12",
+      "source_location": "L13",
       "weight": 1.0,
       "_src": "internal_ipc_peercred_linux_go",
       "_tgt": "peercred_linux_validatepeercredentials",
       "source": "internal_ipc_peercred_linux_go",
       "target": "peercred_linux_validatepeercredentials",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/ipc/peercred_linux.go",
+      "source_location": "L56",
+      "weight": 1.0,
+      "_src": "internal_ipc_peercred_linux_go",
+      "_tgt": "peercred_linux_socketfiledescriptor",
+      "source": "internal_ipc_peercred_linux_go",
+      "target": "peercred_linux_socketfiledescriptor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/ipc/peercred_linux.go",
+      "source_location": "L63",
+      "weight": 1.0,
+      "_src": "internal_ipc_peercred_linux_go",
+      "_tgt": "peercred_linux_currenteffectiveuid",
+      "source": "internal_ipc_peercred_linux_go",
+      "target": "peercred_linux_currenteffectiveuid",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/ipc/peercred_linux.go",
+      "source_location": "L27",
+      "weight": 1.0,
+      "_src": "peercred_linux_validatepeercredentials",
+      "_tgt": "peercred_linux_socketfiledescriptor",
+      "source": "peercred_linux_validatepeercredentials",
+      "target": "peercred_linux_socketfiledescriptor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/ipc/peercred_linux.go",
+      "source_location": "L45",
+      "weight": 1.0,
+      "_src": "peercred_linux_validatepeercredentials",
+      "_tgt": "peercred_linux_currenteffectiveuid",
+      "source": "peercred_linux_validatepeercredentials",
+      "target": "peercred_linux_currenteffectiveuid",
       "confidence_score": 1.0
     },
     {
