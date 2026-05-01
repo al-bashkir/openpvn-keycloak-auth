@@ -213,8 +213,18 @@ func TestGetNestedClaim(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "invalid nested path",
+			name:    "intermediate is a string, not a map",
 			path:    "simple.invalid",
+			wantErr: true,
+		},
+		{
+			name:    "missing intermediate key",
+			path:    "nested.missing.level2",
+			wantErr: true,
+		},
+		{
+			name:    "leaf missing under valid intermediates",
+			path:    "nested.level1.missing",
 			wantErr: true,
 		},
 	}

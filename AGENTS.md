@@ -203,3 +203,23 @@ Rules:
 - If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
 - For cross-module "how does X relate to Y" questions, prefer `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"` over grep — these traverse the graph's EXTRACTED + INFERRED edges instead of scanning files
 - After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
+
+## Audit Workflow
+
+When the agent is asked to audit / harden / remove dead code:
+
+- Read `graphify-out/GRAPH_REPORT.md` first; the graph misses type-only edges, so verify "isolated" symbols with grep before treating them as dead.
+- Use a working directory at `.plan/` (already in `.gitignore`). Keep one short file per phase: `01-initial-audit.md`, `02-graphify-structure-review.md`, `03-functional-scope.md`, `04-deadcode-review.md`, `05-security-review.md`, `06-refactor-plan.md`, `07-test-plan.md`, `08-docs-plan.md`, `09-final-validation.md`. Each file: purpose, findings, intended changes, risks, validation, status.
+- Dead-code policy: never delete a symbol without grepping for callers including tests, build tags, registration tables, reflection, and runtime wiring. Past audits report that several "isolated" symbols (`MessageType`, `AuthRequest`, `AuthResponse`, `AuthRequestHandler`, `AuthFlowData`) are protocol/handler types that the graph cannot see — always verify.
+- Refactor in small batches. After every batch run `go build ./...`, `go vet ./...`, `go test ./... -count=1`, and `go test -race ./...` before moving on.
+- Final validation list (run all that apply, document anything blocked):
+  - `go fmt ./...`
+  - `go vet ./...`
+  - `go test ./... -count=1`
+  - `go test -race ./...`
+  - `go build -o openvpn-keycloak-auth ./cmd/openvpn-keycloak-auth`
+  - `./openvpn-keycloak-auth check-config --config config/openvpn-keycloak-auth.yaml.example`
+  - `shellcheck scripts/*.sh deploy/*.sh` (when shell changed)
+  - `make lint` (record toolchain mismatches as blocked rather than working around them)
+  - `graphify update .`
+- Real OpenVPN + Keycloak browser SSO can only be validated against a live deployment; document it as unverified rather than claiming it.

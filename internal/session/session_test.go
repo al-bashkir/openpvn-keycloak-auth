@@ -99,7 +99,7 @@ func TestUpdateOIDCFlow(t *testing.T) {
 	}
 
 	// Update with OIDC flow data
-	err = mgr.UpdateOIDCFlow(session.ID, "state123", "verifier456", "https://example.com/auth")
+	err = mgr.UpdateOIDCFlow(session.ID, "state123", "verifier456", "nonce789", "https://example.com/auth")
 	if err != nil {
 		t.Fatalf("UpdateOIDCFlow failed: %v", err)
 	}
@@ -118,6 +118,10 @@ func TestUpdateOIDCFlow(t *testing.T) {
 		t.Errorf("CodeVerifier = %s, want verifier456", retrieved.CodeVerifier)
 	}
 
+	if retrieved.Nonce != "nonce789" {
+		t.Errorf("Nonce = %s, want nonce789", retrieved.Nonce)
+	}
+
 	if retrieved.AuthURL != "https://example.com/auth" {
 		t.Errorf("AuthURL = %s, want https://example.com/auth", retrieved.AuthURL)
 	}
@@ -132,7 +136,7 @@ func TestGetByState(t *testing.T) {
 		t.Fatalf("Create failed: %v", err)
 	}
 
-	err = mgr.UpdateOIDCFlow(session.ID, "state123", "verifier456", "https://example.com/auth")
+	err = mgr.UpdateOIDCFlow(session.ID, "state123", "verifier456", "nonce789", "https://example.com/auth")
 	if err != nil {
 		t.Fatalf("UpdateOIDCFlow failed: %v", err)
 	}
@@ -163,7 +167,7 @@ func TestDeleteSession(t *testing.T) {
 		t.Fatalf("Create failed: %v", err)
 	}
 
-	err = mgr.UpdateOIDCFlow(session.ID, "state123", "verifier456", "https://example.com/auth")
+	err = mgr.UpdateOIDCFlow(session.ID, "state123", "verifier456", "nonce789", "https://example.com/auth")
 	if err != nil {
 		t.Fatalf("UpdateOIDCFlow failed: %v", err)
 	}

@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 )
 
@@ -21,6 +22,8 @@ var (
 	errAccessTokenVerifyFailed    = errors.New("access token verification failed")
 	errAccessTokenParseFailed     = errors.New("access token claim parsing failed")
 	errAccessTokenClientMismatch  = errors.New("access token client binding failed")
+	errIDTokenMissing             = errors.New("no id_token in token response")
+	errIDTokenNonceMismatch       = errors.New("id_token nonce mismatch")
 )
 
 // AuthFlowData contains the data needed to initiate an OIDC authorization flow.
@@ -30,6 +33,9 @@ type AuthFlowData struct {
 
 	// CodeVerifier is the PKCE code verifier (must be stored for token exchange)
 	CodeVerifier string
+
+	// Nonce is the OIDC nonce; the issued ID token must echo it back.
+	Nonce string
 
 	// AuthURL is the complete authorization URL to redirect the user to
 	AuthURL string
@@ -72,23 +78,32 @@ func (p *Provider) StartAuthFlow(ctx context.Context) (*AuthFlowData, error) {
 		return nil, fmt.Errorf("failed to generate state: %w", err)
 	}
 
-	// Construct authorization URL with PKCE parameters
+	// Generate nonce; the ID token must echo it back to bind the response to this flow.
+	nonce, err := generateNonce()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate nonce: %w", err)
+	}
+
+	// Construct authorization URL with PKCE + nonce parameters
 	authURL := p.oauth2Config.AuthCodeURL(state,
 		oauth2.SetAuthURLParam("code_challenge", challenge),
 		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+		oidc.Nonce(nonce),
 	)
 
 	return &AuthFlowData{
 		State:        state,
 		CodeVerifier: verifier,
+		Nonce:        nonce,
 		AuthURL:      authURL,
 	}, nil
 }
 
 // ExchangeCode exchanges an authorization code for tokens.
 // It uses the PKCE code verifier to complete the flow.
-// The ID token is verified (signature, issuer, audience, expiry) before returning.
-func (p *Provider) ExchangeCode(ctx context.Context, code, codeVerifier string) (*TokenData, error) {
+// The ID token is verified (signature, issuer, audience, expiry) and its nonce
+// is checked against expectedNonce before returning.
+func (p *Provider) ExchangeCode(ctx context.Context, code, codeVerifier, expectedNonce string) (*TokenData, error) {
 	// Exchange authorization code for tokens
 	token, err := p.oauth2Config.Exchange(ctx, code,
 		oauth2.SetAuthURLParam("code_verifier", codeVerifier),
@@ -100,13 +115,19 @@ func (p *Provider) ExchangeCode(ctx context.Context, code, codeVerifier string) 
 	// Extract ID token
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok {
-		return nil, fmt.Errorf("no id_token in token response")
+		return nil, errIDTokenMissing
 	}
 
 	// Verify ID token (signature, issuer, audience, expiry)
 	idToken, err := p.verifier.Verify(ctx, rawIDToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify ID token: %w", err)
+	}
+
+	// Bind the response to this flow: the id_token nonce must match the value
+	// we sent on the authorization request.
+	if expectedNonce == "" || idToken.Nonce != expectedNonce {
+		return nil, errIDTokenNonceMismatch
 	}
 
 	// Parse claims from ID token
@@ -295,6 +316,16 @@ func generateCodeChallenge(verifier string) string {
 // generateState creates a random state parameter for CSRF protection.
 // The state is 16 random bytes encoded as hex (32 characters).
 func generateState() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+// generateNonce creates a random OIDC nonce. The id_token returned by the
+// provider must echo this value, binding the token to this auth request.
+func generateNonce() (string, error) {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
 		return "", err

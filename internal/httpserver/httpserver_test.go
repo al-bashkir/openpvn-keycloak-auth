@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -102,7 +103,7 @@ func TestAuthRedirectEndpoint(t *testing.T) {
 
 	testState := "abc123def456"
 	testAuthURL := "https://keycloak.example.com/realms/test/protocol/openid-connect/auth?client_id=openvpn&very_long_param=value"
-	err = sessionMgr.UpdateOIDCFlow(sess.ID, testState, "verifier", testAuthURL)
+	err = sessionMgr.UpdateOIDCFlow(sess.ID, testState, "verifier", "nonce", testAuthURL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +190,7 @@ func TestAuthRedirectEndpointWithBasePath(t *testing.T) {
 
 	testState := "prefixedstate123"
 	testAuthURL := "https://keycloak.example.com/realms/test/protocol/openid-connect/auth?client_id=openvpn"
-	if err := sessionMgr.UpdateOIDCFlow(sess.ID, testState, "verifier", testAuthURL); err != nil {
+	if err := sessionMgr.UpdateOIDCFlow(sess.ID, testState, "verifier", "nonce", testAuthURL); err != nil {
 		t.Fatal(err)
 	}
 
@@ -287,7 +288,7 @@ func TestCallbackEndpointMissingCode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := sessionMgr.UpdateOIDCFlow(sess.ID, "abc456", "verifier", "https://keycloak.example.com/auth"); err != nil {
+	if err := sessionMgr.UpdateOIDCFlow(sess.ID, "abc456", "verifier", "nonce", "https://keycloak.example.com/auth"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -321,6 +322,72 @@ func TestCallbackEndpointMissingCode(t *testing.T) {
 	}
 	if string(reason) != "Invalid callback parameters" {
 		t.Fatalf("expected failure reason, got %q", string(reason))
+	}
+}
+
+// TestCallbackConcurrentSameState fires N callbacks for the same session in
+// parallel and asserts that exactly one writes the auth_control_file and the
+// session is removed exactly once. The "Invalid callback parameters" branch
+// (state present, code missing) is used because it exercises writeAuthFailure
+// without requiring a real OIDC provider.
+func TestCallbackConcurrentSameState(t *testing.T) {
+	cfg := &config.Config{
+		Listen: config.ListenConfig{HTTP: ":9000"},
+		OIDC: config.OIDCConfig{
+			RedirectURI: "https://vpn.example.com/callback",
+		},
+	}
+	sessionMgr := session.NewManager(5 * time.Minute)
+	defer sessionMgr.Stop()
+
+	server, err := NewServer(cfg, nil, sessionMgr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tmpDir := t.TempDir()
+	authControlFile := tmpDir + "/auth_control"
+	authFailedReasonFile := tmpDir + "/auth_failed"
+
+	sess, err := sessionMgr.Create("u", "", "192.0.2.1", "1",
+		authControlFile, tmpDir+"/auth_pending", authFailedReasonFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sessionMgr.UpdateOIDCFlow(sess.ID, "racestate", "verifier", "nonce", "https://kc.example/auth"); err != nil {
+		t.Fatal(err)
+	}
+
+	const concurrency = 16
+	var wg sync.WaitGroup
+	wg.Add(concurrency)
+	start := make(chan struct{})
+
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			defer wg.Done()
+			<-start
+			req := httptest.NewRequest("GET", "/callback?state=racestate", nil)
+			w := httptest.NewRecorder()
+			server.mux.ServeHTTP(w, req)
+			_ = w.Result().Body.Close()
+		}()
+	}
+	close(start)
+	wg.Wait()
+
+	// Session must be deleted exactly once (Count == 0).
+	if got := sessionMgr.Count(); got != 0 {
+		t.Errorf("session count after race = %d, want 0", got)
+	}
+
+	// auth_control_file must exist and contain the failure marker.
+	control, err := os.ReadFile(authControlFile)
+	if err != nil {
+		t.Fatalf("read auth_control_file: %v", err)
+	}
+	if string(control) != "0" {
+		t.Errorf("auth_control_file = %q, want %q", control, "0")
 	}
 }
 

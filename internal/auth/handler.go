@@ -12,9 +12,9 @@ import (
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/logsanitize"
 )
 
-// Exit codes for the auth script
+// Exit codes returned by Handler.Run.
+// Immediate-success (exit 0) is unused because SSO is always deferred.
 const (
-	ExitSuccess  = 0 // Auth success (immediate, not used for SSO)
 	ExitFailure  = 1 // Auth failure
 	ExitDeferred = 2 // Auth deferred (SSO flow initiated)
 )

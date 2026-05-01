@@ -8,11 +8,15 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	coreosoidc "github.com/coreos/go-oidc/v3/oidc"
 	jose "github.com/go-jose/go-jose/v4"
+	"golang.org/x/oauth2"
 )
 
 func TestGenerateCodeVerifier(t *testing.T) {
@@ -221,6 +225,144 @@ func makeSignedAccessToken(t *testing.T, privateKey *rsa.PrivateKey, claims map[
 	}
 
 	return serialized
+}
+
+// exchangeCodeFixture wires a Provider against an in-memory token endpoint
+// that returns id/access tokens signed by privateKey. Tests can mutate the
+// returned `id` map between calls to control the issued id_token claims.
+type exchangeCodeFixture struct {
+	provider *Provider
+	id       map[string]interface{}
+	omitID   bool
+	close    func()
+}
+
+func newExchangeCodeFixture(t *testing.T) *exchangeCodeFixture {
+	t.Helper()
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+
+	const issuer = "https://issuer.example"
+	const audience = "openvpn"
+
+	fx := &exchangeCodeFixture{
+		id: map[string]interface{}{
+			"iss":   issuer,
+			"aud":   audience,
+			"sub":   "user-123",
+			"exp":   time.Now().Add(time.Hour).Unix(),
+			"iat":   time.Now().Add(-time.Minute).Unix(),
+			"nonce": "expected-nonce",
+		},
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/token", func(w http.ResponseWriter, _ *http.Request) {
+		access := makeSignedAccessToken(t, privateKey, map[string]interface{}{
+			"iss": issuer,
+			"aud": []string{audience},
+			"sub": "user-123",
+		})
+		body := map[string]interface{}{
+			"access_token": access,
+			"token_type":   "Bearer",
+			"expires_in":   3600,
+		}
+		if !fx.omitID {
+			body["id_token"] = makeSignedAccessToken(t, privateKey, fx.id)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(body)
+	})
+	ts := httptest.NewServer(mux)
+	fx.close = ts.Close
+
+	keySet := &coreosoidc.StaticKeySet{PublicKeys: []crypto.PublicKey{&privateKey.PublicKey}}
+	fx.provider = &Provider{
+		oauth2Config: &oauth2.Config{
+			ClientID: audience,
+			Endpoint: oauth2.Endpoint{TokenURL: ts.URL + "/token"},
+		},
+		verifier:            coreosoidc.NewVerifier(issuer, keySet, &coreosoidc.Config{ClientID: audience}),
+		accessTokenVerifier: coreosoidc.NewVerifier(issuer, keySet, &coreosoidc.Config{SkipClientIDCheck: true}),
+		clientID:            audience,
+	}
+
+	t.Cleanup(fx.close)
+	return fx
+}
+
+func TestExchangeCode_NonceMatch(t *testing.T) {
+	fx := newExchangeCodeFixture(t)
+
+	td, err := fx.provider.ExchangeCode(context.Background(), "code", "verifier", "expected-nonce")
+	if err != nil {
+		t.Fatalf("ExchangeCode failed: %v", err)
+	}
+	if td == nil || td.IDToken == "" {
+		t.Fatal("expected token data with id_token")
+	}
+	if td.Claims["sub"] != "user-123" {
+		t.Errorf("sub = %v, want user-123", td.Claims["sub"])
+	}
+}
+
+func TestExchangeCode_NonceMismatch(t *testing.T) {
+	fx := newExchangeCodeFixture(t)
+	fx.id["nonce"] = "attacker-nonce"
+
+	_, err := fx.provider.ExchangeCode(context.Background(), "code", "verifier", "expected-nonce")
+	if err == nil {
+		t.Fatal("expected nonce mismatch error")
+	}
+	if !errors.Is(err, errIDTokenNonceMismatch) {
+		t.Fatalf("err = %v, want errIDTokenNonceMismatch", err)
+	}
+}
+
+func TestExchangeCode_EmptyExpectedNonce(t *testing.T) {
+	fx := newExchangeCodeFixture(t)
+
+	_, err := fx.provider.ExchangeCode(context.Background(), "code", "verifier", "")
+	if err == nil {
+		t.Fatal("expected error for empty expected nonce")
+	}
+	if !errors.Is(err, errIDTokenNonceMismatch) {
+		t.Fatalf("err = %v, want errIDTokenNonceMismatch", err)
+	}
+}
+
+func TestExchangeCode_MissingIDToken(t *testing.T) {
+	fx := newExchangeCodeFixture(t)
+	fx.omitID = true
+
+	_, err := fx.provider.ExchangeCode(context.Background(), "code", "verifier", "expected-nonce")
+	if err == nil {
+		t.Fatal("expected error when id_token missing")
+	}
+	if !errors.Is(err, errIDTokenMissing) {
+		t.Fatalf("err = %v, want errIDTokenMissing", err)
+	}
+}
+
+func TestGenerateNonce(t *testing.T) {
+	seen := make(map[string]bool)
+	for i := 0; i < 100; i++ {
+		n, err := generateNonce()
+		if err != nil {
+			t.Fatalf("generateNonce failed: %v", err)
+		}
+		if len(n) != 32 {
+			t.Errorf("nonce length = %d, want 32", len(n))
+		}
+		if seen[n] {
+			t.Errorf("duplicate nonce: %s", n)
+		}
+		seen[n] = true
+	}
 }
 
 func TestDecodeJWTPayload(t *testing.T) {

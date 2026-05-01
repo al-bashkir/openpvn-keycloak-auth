@@ -112,6 +112,15 @@ if err != nil {
 - Tied to specific OpenVPN session
 - Prevents attacker from injecting authorization code into victim's session
 
+### OIDC Nonce Binding
+
+**Purpose:** Binds the issued ID token to the specific authorization request, preventing token replay across flows.
+
+**Implementation:**
+- 16-byte `crypto/rand` nonce generated alongside state and PKCE verifier in `StartAuthFlow`.
+- Nonce is sent on the authorization request via `oidc.Nonce(...)` and stored on the session.
+- `ExchangeCode` verifies the ID token's `nonce` claim matches the stored value after JWT signature, issuer, audience, and expiry validation. Mismatch returns `errIDTokenNonceMismatch`.
+
 ### Session IDs
 
 **Purpose:** Unique identifier for each authentication attempt

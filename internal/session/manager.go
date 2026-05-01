@@ -82,10 +82,10 @@ func (m *Manager) Create(username, commonName, untrustedIP, untrustedPort string
 	return session, nil
 }
 
-// UpdateOIDCFlow updates a session with OIDC flow data (state, code verifier, auth URL).
-// This is called after starting the OIDC authorization flow.
+// UpdateOIDCFlow updates a session with OIDC flow data (state, code verifier,
+// nonce, auth URL). This is called after starting the OIDC authorization flow.
 // The state is indexed for fast lookup during the callback.
-func (m *Manager) UpdateOIDCFlow(sessionID, state, codeVerifier, authURL string) error {
+func (m *Manager) UpdateOIDCFlow(sessionID, state, codeVerifier, nonce, authURL string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -96,6 +96,7 @@ func (m *Manager) UpdateOIDCFlow(sessionID, state, codeVerifier, authURL string)
 
 	session.State = state
 	session.CodeVerifier = codeVerifier
+	session.Nonce = nonce
 	session.AuthURL = authURL
 
 	// Add to state index for callback lookup

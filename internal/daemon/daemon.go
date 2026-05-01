@@ -198,7 +198,7 @@ func handleAuthRequest(ctx context.Context, cfg *config.Config, oidcProvider *oi
 	}
 
 	// Update session with OIDC flow data
-	err = sessionMgr.UpdateOIDCFlow(sess.ID, flowData.State, flowData.CodeVerifier, flowData.AuthURL)
+	err = sessionMgr.UpdateOIDCFlow(sess.ID, flowData.State, flowData.CodeVerifier, flowData.Nonce, flowData.AuthURL)
 	if err != nil {
 		sessionMgr.Delete(sess.ID)
 		return nil, fmt.Errorf("failed to update session: %w", err)

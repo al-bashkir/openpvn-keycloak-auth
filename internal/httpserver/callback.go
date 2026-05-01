@@ -152,8 +152,8 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 		s.sessionMgr.Delete(session.ID)
 	}()
 
-	// Exchange code for tokens
-	tokenData, err := s.oidcProvider.ExchangeCode(r.Context(), code, session.CodeVerifier)
+	// Exchange code for tokens (also verifies id_token nonce binding)
+	tokenData, err := s.oidcProvider.ExchangeCode(r.Context(), code, session.CodeVerifier, session.Nonce)
 	if err != nil {
 		slog.Error("token exchange failed", // #nosec G706 -- raw provider-controlled error details intentionally omitted
 			"session_id", session.ID,

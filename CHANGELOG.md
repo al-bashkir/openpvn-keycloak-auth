@@ -5,6 +5,32 @@ All notable changes to OpenVPN Keycloak SSO will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+
+- **OIDC nonce binding** - The authorization request now sets an `oidc.Nonce`
+  parameter and `ExchangeCode` requires the issued ID token to echo the same
+  value, binding the response to the originating flow as defense-in-depth on
+  top of state + PKCE.
+
+### Removed
+
+- Unused `ExitSuccess` constant from `internal/auth` (the auth script never
+  returns immediate success because OpenVPN SSO is always deferred).
+
+### Tests
+
+- Added `internal/logsanitize` test coverage for control-char stripping,
+  multi-byte UTF-8 preservation, and invalid-byte handling.
+- Added concurrent-callback race test in `internal/httpserver` exercising
+  `ClaimResultWrite` with the race detector.
+- Added unwritable-directory cases in `internal/openvpn` covering
+  `WriteAuthSuccess` and `WriteAuthFailure`.
+- Added `ExchangeCode` cases for nonce match, mismatch, missing id_token,
+  and missing expected nonce.
+- Extended `TestGetNestedClaim` with missing-intermediate-key cases.
+
 ## [1.0.0] - 2026-02-15
 
 ### Initial Release

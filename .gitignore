@@ -69,6 +69,7 @@ coverage.html
 /tasks/
 WORKLOG.md
 /reports/
+/.plan/
 
 # Graphify shared output
 /graphify-out/cache/

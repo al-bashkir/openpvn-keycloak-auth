@@ -18,6 +18,10 @@ type Session struct {
 	// CodeVerifier is the PKCE code verifier (stored to verify the code later)
 	CodeVerifier string
 
+	// Nonce is the OIDC nonce sent on the authorization request; the id_token
+	// returned by the provider must echo it back.
+	Nonce string
+
 	// Username is the username from the OpenVPN auth request
 	Username string
 
