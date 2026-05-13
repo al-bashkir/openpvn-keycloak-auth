@@ -2,6 +2,7 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -74,7 +75,7 @@ func Load(path string) (*Config, error) {
 
 	// Parse YAML
 	cfg := DefaultConfig()
-	dec := yaml.NewDecoder(strings.NewReader(string(data)))
+	dec := yaml.NewDecoder(bytes.NewReader(data))
 	dec.KnownFields(true)
 	if err := dec.Decode(cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
@@ -328,22 +329,4 @@ func SetupLogging(cfg *LogConfig) {
 	}
 
 	slog.SetDefault(slog.New(handler))
-}
-
-// Redact returns a deep-enough copy of the config with secrets redacted for safe logging
-func (c *Config) Redact() *Config {
-	redacted := *c
-	// Deep copy slices to avoid sharing underlying arrays with the original
-	if c.OIDC.Scopes != nil {
-		redacted.OIDC.Scopes = make([]string, len(c.OIDC.Scopes))
-		copy(redacted.OIDC.Scopes, c.OIDC.Scopes)
-	}
-	if c.OIDC.RequiredRoles != nil {
-		redacted.OIDC.RequiredRoles = make([]string, len(c.OIDC.RequiredRoles))
-		copy(redacted.OIDC.RequiredRoles, c.OIDC.RequiredRoles)
-	}
-	if redacted.OIDC.ClientSecret != "" {
-		redacted.OIDC.ClientSecret = "[REDACTED]"
-	}
-	return &redacted
 }

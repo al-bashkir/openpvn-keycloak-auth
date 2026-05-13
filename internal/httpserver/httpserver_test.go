@@ -510,7 +510,6 @@ func TestSecurityHeaders(t *testing.T) {
 	expectedHeaders := map[string]string{
 		"X-Frame-Options":        "DENY",
 		"X-Content-Type-Options": "nosniff",
-		"X-XSS-Protection":       "1; mode=block",
 		"Referrer-Policy":        "no-referrer",
 	}
 
@@ -519,6 +518,11 @@ func TestSecurityHeaders(t *testing.T) {
 		if actualValue != expectedValue {
 			t.Errorf("expected %s='%s', got '%s'", header, expectedValue, actualValue)
 		}
+	}
+
+	// X-XSS-Protection is intentionally not set (deprecated header).
+	if v := resp.Header.Get("X-XSS-Protection"); v != "" {
+		t.Errorf("expected X-XSS-Protection to be unset, got %q", v)
 	}
 }
 

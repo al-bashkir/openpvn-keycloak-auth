@@ -451,25 +451,6 @@ func TestValidate(t *testing.T) {
 	}
 }
 
-func TestRedact(t *testing.T) {
-	cfg := &Config{
-		OIDC: OIDCConfig{
-			ClientSecret: "super-secret",
-		},
-	}
-
-	redacted := cfg.Redact()
-
-	if redacted.OIDC.ClientSecret != "[REDACTED]" {
-		t.Errorf("expected [REDACTED], got %s", redacted.OIDC.ClientSecret)
-	}
-
-	// Original should be unchanged
-	if cfg.OIDC.ClientSecret != "super-secret" {
-		t.Errorf("original was modified")
-	}
-}
-
 func TestSetupLogging(t *testing.T) {
 	old := slog.Default()
 	t.Cleanup(func() {

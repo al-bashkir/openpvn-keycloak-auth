@@ -3,8 +3,11 @@ package daemon
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path"
@@ -12,8 +15,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	"net/url"
 
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/config"
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/httpserver"
@@ -100,7 +101,7 @@ func (d *Daemon) Run() error {
 	// Start HTTP server in a goroutine (it blocks on ListenAndServe)
 	httpErrCh := make(chan error, 1)
 	go func() {
-		if err := d.httpServer.Start(); err != nil && err.Error() != "http: Server closed" {
+		if err := d.httpServer.Start(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			httpErrCh <- err
 		}
 		close(httpErrCh)

@@ -14,7 +14,6 @@ import (
 // Provider wraps the OIDC provider and OAuth2 configuration.
 // It handles provider discovery, token exchange, and ID token verification.
 type Provider struct {
-	oidcProvider        *oidc.Provider
 	oauth2Config        *oauth2.Config
 	verifier            *oidc.IDTokenVerifier
 	accessTokenVerifier *oidc.IDTokenVerifier
@@ -52,7 +51,6 @@ func NewProvider(ctx context.Context, cfg *config.OIDCConfig) (*Provider, error)
 	})
 
 	return &Provider{
-		oidcProvider:        provider,
 		oauth2Config:        oauth2Config,
 		verifier:            verifier,
 		accessTokenVerifier: accessTokenVerifier,

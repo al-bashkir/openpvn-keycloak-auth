@@ -141,6 +141,7 @@ If `golangci-lint` was built with an older Go version than `go.mod` targets, rec
 - Preserve IPC hardening: peer credentials, bounded/deadline reads, and absolute canonical OpenVPN result paths are security-sensitive.
 - Preserve callback result-write claiming; do not reintroduce separate check/write/mark sequences that can race duplicate callbacks.
 - Prefer standard library functionality unless a dependency already exists for the task.
+- Do not reintroduce removed helpers: `decodeJWTPayload`, `Config.Redact`, `Client.SetTimeout`. They were dead code as of the audit-hardening pass; tests now exercise the real code paths instead.
 
 ## Shell Script Rules
 
@@ -175,6 +176,8 @@ Shell scripts in `scripts/` and `deploy/` should follow these conventions when e
 - Failure reason is written before `auth_control_file=0`.
 - Generated client profiles containing private keys should not be world-readable.
 - Update docs when behavior, paths, config keys, or security posture changes.
+- HTTP callback TLS requires TLS 1.3 minimum (`tls.VersionTLS13`); do not downgrade.
+- `X-XSS-Protection` is intentionally not set; CSP is the active mitigation. Do not re-add the header.
 
 ## Validation Expectations
 
@@ -199,6 +202,7 @@ If a validation command is not run or is blocked, state that explicitly in the f
 This project has a graphify knowledge graph at graphify-out/.
 
 Rules:
+
 - Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
 - If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
 - For cross-module "how does X relate to Y" questions, prefer `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"` over grep — these traverse the graph's EXTRACTED + INFERRED edges instead of scanning files

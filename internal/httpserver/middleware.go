@@ -182,25 +182,18 @@ func redactRequestPath(path string) string {
 	return sanitizeLog(path)
 }
 
-// securityHeadersMiddleware adds security headers to responses
+// securityHeadersMiddleware adds security headers to responses.
+//
+// X-XSS-Protection is intentionally not set: modern browsers (Chrome/Edge)
+// removed it and OWASP recommends omitting it because "1; mode=block" can
+// introduce side-channel XSS in some legacy clients. CSP is the active
+// mitigation.
 func securityHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Prevent clickjacking
 		w.Header().Set("X-Frame-Options", "DENY")
-
-		// Prevent MIME sniffing
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-
-		// XSS protection
-		w.Header().Set("X-XSS-Protection", "1; mode=block")
-
-		// Referrer policy
 		w.Header().Set("Referrer-Policy", "no-referrer")
-
-		// Content Security Policy
 		w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'")
-
-		// HTTPS strict transport security (if using TLS)
 		if r.TLS != nil {
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		}

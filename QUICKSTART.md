@@ -147,6 +147,7 @@ sudo systemctl status openvpn-server@server
 ### Connect from Client
 
 **Linux CLI:**
+
 ```bash
 openvpn --config client.ovpn
 # Username: testuser
@@ -157,6 +158,7 @@ openvpn --config client.ovpn
 ```
 
 **Windows/macOS (OpenVPN Connect):**
+
 ```
 1. Import client.ovpn
 2. Click Connect
@@ -167,6 +169,7 @@ openvpn --config client.ovpn
 ```
 
 **macOS (Tunnelblick):**
+
 ```
 1. Double-click client.ovpn
 2. Connect
@@ -183,6 +186,7 @@ You now have OpenVPN with SSO authentication!
 Automatic browser behavior depends on your exact OpenVPN client, OpenVPN server version, and Keycloak realm configuration. Validate the full flow in your target environment.
 
 **Verify connection:**
+
 ```bash
 # Check VPN interface
 ip addr show tun0

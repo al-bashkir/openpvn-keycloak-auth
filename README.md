@@ -26,7 +26,7 @@ Traditional VPN authentication requires managing passwords, LDAP integration, or
 - **No Keycloak Password Transmission** - Keycloak passwords are entered only at Keycloak
 - **Role-Based Access** - Enforce Keycloak roles/groups
 - **Rate Limiting** - Per-IP request throttling
-- **Security Headers** - CSP, X-Frame-Options, HSTS, etc.
+- **Security Headers** - CSP, X-Frame-Options, Referrer-Policy, HSTS (when TLS is enabled). `X-XSS-Protection` is intentionally omitted (deprecated).
 - **systemd Hardening** - 20+ security directives (NoNewPrivileges, ProtectSystem, etc.)
 
 ### 🚀 Simple Deployment
@@ -134,6 +134,7 @@ openvpn --config client.ovpn
 ### From Source
 
 **Requirements:**
+
 - Go 1.25+
 - OpenVPN 2.6.2+ (from EPEL on Rocky Linux 9)
 
@@ -222,13 +223,13 @@ See [`config/openvpn-keycloak-auth.yaml.example`](config/openvpn-keycloak-auth.y
 
 ## Supported Clients
 
-| Client | Platform | SSO Support | Notes |
-|--------|----------|-------------|-------|
-| **OpenVPN Connect 3.x** | Windows, macOS, iOS, Android, Linux | ✅ Excellent | Built-in webview, best experience |
-| **Tunnelblick 3.8.7+** | macOS | ✅ Excellent | Opens Safari automatically |
-| **OpenVPN CLI 2.6.2+** | Linux, Unix, macOS | ⚠️ Manual | Displays URL to copy/paste |
-| **NetworkManager** | Linux (GNOME, KDE) | ⚠️ Limited | May require manual browser opening |
-| **OpenVPN GUI 2.6.2+** | Windows | ⚠️ Manual | Displays URL to copy/paste |
+| Client                  | Platform                            | SSO Support  | Notes                              |
+| ----------------------- | ----------------------------------- | ------------ | ---------------------------------- |
+| **OpenVPN Connect 3.x** | Windows, macOS, iOS, Android, Linux | ✅ Excellent | Built-in webview, best experience  |
+| **Tunnelblick 3.8.7+**  | macOS                               | ✅ Excellent | Opens Safari automatically         |
+| **OpenVPN CLI 2.6.2+**  | Linux, Unix, macOS                  | ⚠️ Manual     | Displays URL to copy/paste         |
+| **NetworkManager**      | Linux (GNOME, KDE)                  | ⚠️ Limited    | May require manual browser opening |
+| **OpenVPN GUI 2.6.2+**  | Windows                             | ⚠️ Manual     | Displays URL to copy/paste         |
 
 **Recommendation:** Use **OpenVPN Connect 3.x** for the best experience on all platforms.
 
@@ -369,12 +370,14 @@ This project implements multiple layers of security:
 ## Performance
 
 **Local coverage includes:**
+
 - Concurrent IPC requests
 - Concurrent session operations
 - Session cleanup every 60 seconds
 - Race-detector validation with `go test -race ./...`
 
 **Scalability:**
+
 - Current: Single daemon, in-memory sessions
 - Future: Multi-instance with shared session store (Redis, etc.)
 
@@ -391,6 +394,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
 ## Roadmap
 
 **v1.0 (Current):**
+
 - ✅ OIDC Authorization Code Flow with PKCE
 - ✅ JWT validation with role enforcement
 - ✅ OpenVPN 2.6 script-based auth
@@ -399,6 +403,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
 - ✅ CI/CD pipeline
 
 **v1.1 (Planned):**
+
 - [ ] Prometheus metrics endpoint
 - [ ] Grafana dashboard
 - [ ] Shared session store (Redis)
@@ -406,6 +411,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
 - [ ] Helm chart for Kubernetes
 
 **v2.0 (Future):**
+
 - [ ] WebAuthn/FIDO2 support
 - [ ] Advanced policy engine
 - [ ] Web UI for administration
@@ -428,22 +434,22 @@ Both projects are excellent - choose based on your needs!
 
 ## FAQ
 
-**Q: Does this work with OpenVPN Access Server?**  
+**Q: Does this work with OpenVPN Access Server?**
 A: No, this is for OpenVPN Community Server 2.6.2+. Access Server has its own authentication plugins.
 
-**Q: Can I use this with Azure AD / Okta / Google?**  
+**Q: Can I use this with Azure AD / Okta / Google?**
 A: No. This project is built exclusively for Keycloak and there are no plans to support other identity providers.
 
-**Q: Does this support client certificates (mutual TLS)?**  
+**Q: Does this support client certificates (mutual TLS)?**
 A: Yes! You can use client certificates AND SSO together. Just don't set `auth-user-pass-optional` in OpenVPN config.
 
-**Q: What happens if Keycloak is down?**  
+**Q: What happens if Keycloak is down?**
 A: New authentications will fail. Existing VPN sessions continue working (they don't re-auth).
 
-**Q: Can I run multiple daemon instances?**  
+**Q: Can I run multiple daemon instances?**
 A: Not currently recommended (in-memory sessions). v1.1 will support shared session store for multi-instance deployments.
 
-**Q: Is this production-ready?**  
+**Q: Is this production-ready?**
 A: It is designed for production-style deployment with security hardening and automated tests, but you should validate the full OpenVPN + Keycloak browser flow in your own environment before relying on it.
 
 ## License

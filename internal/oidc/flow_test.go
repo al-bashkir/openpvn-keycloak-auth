@@ -365,50 +365,6 @@ func TestGenerateNonce(t *testing.T) {
 	}
 }
 
-func TestDecodeJWTPayload(t *testing.T) {
-	t.Run("valid JWT", func(t *testing.T) {
-		original := map[string]interface{}{
-			"sub":  "user123",
-			"name": "Test User",
-		}
-		token := makeTestJWT(t, original)
-
-		claims, err := decodeJWTPayload(token)
-		if err != nil {
-			t.Fatalf("decodeJWTPayload failed: %v", err)
-		}
-
-		if claims["sub"] != "user123" {
-			t.Errorf("expected sub=user123, got %v", claims["sub"])
-		}
-		if claims["name"] != "Test User" {
-			t.Errorf("expected name=Test User, got %v", claims["name"])
-		}
-	})
-
-	t.Run("not a JWT", func(t *testing.T) {
-		_, err := decodeJWTPayload("not-a-jwt")
-		if err == nil {
-			t.Error("expected error for non-JWT token")
-		}
-	})
-
-	t.Run("invalid base64 payload", func(t *testing.T) {
-		_, err := decodeJWTPayload("header.!!!invalid!!!.signature")
-		if err == nil {
-			t.Error("expected error for invalid base64 payload")
-		}
-	})
-
-	t.Run("invalid JSON payload", func(t *testing.T) {
-		badPayload := base64.RawURLEncoding.EncodeToString([]byte("not json"))
-		_, err := decodeJWTPayload("header." + badPayload + ".signature")
-		if err == nil {
-			t.Error("expected error for invalid JSON payload")
-		}
-	})
-}
-
 func TestMergeAccessTokenClaims(t *testing.T) {
 	t.Run("merges resource_access from access token", func(t *testing.T) {
 		provider, privateKey := makeTestProvider(t)

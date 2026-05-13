@@ -158,13 +158,10 @@ func readCredentialsFile(path string) (username, password string, err error) {
 		return "", "", fmt.Errorf("failed to read file: %w", err)
 	}
 
-	// Split into lines
+	// Split into lines. strings.Split always returns at least one element,
+	// so an empty file yields a single empty line that fails the username
+	// check below.
 	lines := strings.Split(string(data), "\n")
-
-	// Need at least 1 line (username); password line may be empty for SSO
-	if len(lines) < 1 {
-		return "", "", fmt.Errorf("invalid credentials file format: file is empty")
-	}
 
 	username = strings.TrimSpace(lines[0])
 	if len(lines) >= 2 {

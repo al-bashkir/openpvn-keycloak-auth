@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -269,29 +268,6 @@ func accessTokenIssuedForClient(audience []string, claims map[string]interface{}
 	}
 
 	return false
-}
-
-// decodeJWTPayload extracts and decodes the payload (second segment) of a JWT.
-// It does not verify token signatures and is used only by tests and helpers that
-// need to inspect non-authoritative JWT payloads.
-func decodeJWTPayload(token string) (map[string]interface{}, error) {
-	parts := strings.SplitN(token, ".", 3)
-	if len(parts) != 3 {
-		return nil, fmt.Errorf("not a valid JWT: expected 3 parts, got %d", len(parts))
-	}
-
-	// Decode base64url payload (second segment)
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode JWT payload: %w", err)
-	}
-
-	var claims map[string]interface{}
-	if err := json.Unmarshal(payload, &claims); err != nil {
-		return nil, fmt.Errorf("failed to parse JWT payload: %w", err)
-	}
-
-	return claims, nil
 }
 
 // generateCodeVerifier creates a cryptographically random PKCE code verifier.

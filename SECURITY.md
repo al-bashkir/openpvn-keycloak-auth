@@ -66,12 +66,12 @@ If you discover a security vulnerability, please follow responsible disclosure:
 
 We classify vulnerabilities using CVSS 3.1:
 
-| Severity | CVSS Score | Examples | Response Time |
-|----------|------------|----------|---------------|
-| **Critical** | 9.0-10.0 | Remote code execution, authentication bypass | 7 days |
-| **High** | 7.0-8.9 | Privilege escalation, token theft | 14 days |
-| **Medium** | 4.0-6.9 | Information disclosure, DoS | 30 days |
-| **Low** | 0.1-3.9 | Minor issues | 90 days |
+| Severity     | CVSS Score | Examples                                     | Response Time |
+| ------------ | ---------- | -------------------------------------------- | ------------- |
+| **Critical** | 9.0-10.0   | Remote code execution, authentication bypass | 7 days        |
+| **High**     | 7.0-8.9    | Privilege escalation, token theft            | 14 days       |
+| **Medium**   | 4.0-6.9    | Information disclosure, DoS                  | 30 days       |
+| **Low**      | 0.1-3.9    | Minor issues                                 | 90 days       |
 
 ## What Happens After You Report
 
@@ -86,6 +86,7 @@ We classify vulnerabilities using CVSS 3.1:
 ## Security Advisories
 
 Published security advisories can be found at:
+
 - [GitHub Security Advisories](../../security/advisories)
 - [CHANGELOG.md](CHANGELOG.md) - Security fixes section
 
@@ -94,6 +95,7 @@ Published security advisories can be found at:
 **Status:** We do not currently offer a bug bounty program.
 
 However, we deeply appreciate security researchers who responsibly disclose vulnerabilities. We will:
+
 - Publicly credit you in the security advisory (with your permission)
 - Thank you in our CHANGELOG
 - Provide a sincere appreciation for your efforts
@@ -168,11 +170,11 @@ See [docs/security.md](docs/security.md) for comprehensive security guidance.
 
 We thank the following security researchers for responsibly disclosing vulnerabilities:
 
-- *No reported vulnerabilities yet*
+- _No reported vulnerabilities yet_
 
 ---
 
-**Last Updated:** 2026-02-15  
+**Last Updated:** 2026-02-15\
 **Version:** 1.0
 
 Thank you for helping keep OpenVPN Keycloak SSO and our users safe!

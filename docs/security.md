@@ -329,6 +329,7 @@ OpenVPN still supplies a two-line via-file credentials file to the wrapper. The 
 - **Default:** HTTP on port 9000
 - **Recommended:** HTTPS with TLS termination at reverse proxy
 - **Production:** Always use HTTPS for callback URL
+- **When `tls.enabled: true`**: built-in listener requires TLS 1.3 minimum (no cipher pinning needed; TLS 1.3 has only AEAD suites)
 
 **Example nginx reverse proxy:**
 ```nginx
@@ -416,12 +417,18 @@ All HTTP responses include security headers:
 |--------|-------|---------|
 | `X-Frame-Options` | `DENY` | Prevent clickjacking |
 | `X-Content-Type-Options` | `nosniff` | Prevent MIME sniffing |
-| `X-XSS-Protection` | `1; mode=block` | Enable XSS filter |
 | `Referrer-Policy` | `no-referrer` | Don't leak referer |
-| `Content-Security-Policy` | `default-src 'self'` | Restrict content sources |
-| `Strict-Transport-Security` | `max-age=31536000` | Force HTTPS (if TLS enabled) |
+| `Content-Security-Policy` | `default-src 'self'; style-src 'self' 'unsafe-inline'` | Restrict content sources |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | Force HTTPS (only when TLS is enabled) |
 
-**Implementation:** See `internal/httpserver/middleware.go` - `securityHeadersMiddleware()`
+`X-XSS-Protection` is intentionally **not** set. Modern browsers (Chrome/Edge)
+removed support, and OWASP recommends omitting it because `1; mode=block` can
+introduce side-channel XSS in legacy clients. CSP is the active mitigation.
+
+When `tls.enabled: true`, the HTTP server requires **TLS 1.3** minimum. Cipher
+suites are not pinned because TLS 1.3 negotiates only AEAD-secure suites.
+
+**Implementation:** See `internal/httpserver/middleware.go` - `securityHeadersMiddleware()` and `internal/httpserver/server.go` for the TLS config.
 
 ---
 

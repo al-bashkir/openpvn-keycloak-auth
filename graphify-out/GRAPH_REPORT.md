@@ -1,181 +1,168 @@
-# Graph Report - .  (2026-05-02)
+# Graph Report - .  (2026-05-13)
 
 ## Corpus Check
-- 77 files · ~83,864 words
+- 56 files · ~60,704 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 482 nodes · 1067 edges · 21 communities detected
-- Extraction: 66% EXTRACTED · 34% INFERRED · 0% AMBIGUOUS · INFERRED: 359 edges (avg confidence: 0.8)
+- 453 nodes · 833 edges · 38 communities (17 shown, 21 thin omitted)
+- Extraction: 89% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 92 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
-- [[_COMMUNITY_IPC Protocol Examples|IPC Protocol Examples]]
-- [[_COMMUNITY_IPC Protocol Types|IPC Protocol Types]]
-- [[_COMMUNITY_IPC Server & Peer Credentials|IPC Server & Peer Credentials]]
-- [[_COMMUNITY_Non-Linux Peercred Stub|Non-Linux Peercred Stub]]
-- [[_COMMUNITY_Auth Script Handler|Auth Script Handler]]
-- [[_COMMUNITY_Auth Control File Writers|Auth Control File Writers]]
-- [[_COMMUNITY_Main Entrypoints & OIDC Provider|Main Entrypoints & OIDC Provider]]
-- [[_COMMUNITY_Token Validator|Token Validator]]
-- [[_COMMUNITY_OIDC Crypto Primitives|OIDC Crypto Primitives]]
+- [[_COMMUNITY_HTTP Server & Callback Tests|HTTP Server & Callback Tests]]
+- [[_COMMUNITY_Threat Model & Attack Surface|Threat Model & Attack Surface]]
+- [[_COMMUNITY_OIDC PKCE Flow + Provider|OIDC PKCE Flow + Provider]]
+- [[_COMMUNITY_IPC ClientServer Protocol|IPC Client/Server Protocol]]
+- [[_COMMUNITY_Config Loading & Validation|Config Loading & Validation]]
+- [[_COMMUNITY_Daemon Orchestration|Daemon Orchestration]]
+- [[_COMMUNITY_Log Sanitization & Control Files|Log Sanitization & Control Files]]
 - [[_COMMUNITY_HTTP Middleware & Rate Limiting|HTTP Middleware & Rate Limiting]]
+- [[_COMMUNITY_Architecture Decisions|Architecture Decisions]]
+- [[_COMMUNITY_Auth Script Mode Tests|Auth Script Mode Tests]]
+- [[_COMMUNITY_CLI Entrypoint & Commands|CLI Entrypoint & Commands]]
+- [[_COMMUNITY_OIDC Callback Handler|OIDC Callback Handler]]
+- [[_COMMUNITY_OIDC Token Validator|OIDC Token Validator]]
+- [[_COMMUNITY_SO_PEERCRED Peer Authentication|SO_PEERCRED Peer Authentication]]
+- [[_COMMUNITY_IPC Protocol Types|IPC Protocol Types]]
 - [[_COMMUNITY_Health Endpoint|Health Endpoint]]
-- [[_COMMUNITY_HTTP Server & Session Tests|HTTP Server & Session Tests]]
-- [[_COMMUNITY_Daemon Auth Request Handler|Daemon Auth Request Handler]]
-- [[_COMMUNITY_Configuration & Validation|Configuration & Validation]]
 - [[_COMMUNITY_Session Type|Session Type]]
-- [[_COMMUNITY_Project Worklog & Decisions|Project Worklog & Decisions]]
-- [[_COMMUNITY_OIDC Security Hardening|OIDC Security Hardening]]
-- [[_COMMUNITY_HTML Templates|HTML Templates]]
-- [[_COMMUNITY_Auth Flow & Control Files|Auth Flow & Control Files]]
-- [[_COMMUNITY_Build & Hardening Infrastructure|Build & Hardening Infrastructure]]
-- [[_COMMUNITY_Testing & CI|Testing & CI]]
+- [[_COMMUNITY_File ipc_example_test_go|File: ipc_example_test_go]]
+- [[_COMMUNITY_File ipc_ipc_test_go|File: ipc_ipc_test_go]]
+- [[_COMMUNITY_File ipc_peercred_linux_go|File: ipc_peercred_linux_go]]
+- [[_COMMUNITY_File ipc_peercred_other_go|File: ipc_peercred_other_go]]
+- [[_COMMUNITY_File ipc_sanitize_go|File: ipc_sanitize_go]]
+- [[_COMMUNITY_File logsanitize_sanitize_go|File: logsanitize_sanitize_go]]
+- [[_COMMUNITY_File logsanitize_sanitize_test_go|File: logsanitize_sanitize_test_go]]
+- [[_COMMUNITY_File oidc_flow_go|File: oidc_flow_go]]
+- [[_COMMUNITY_File oidc_flow_test_go|File: oidc_flow_test_go]]
+- [[_COMMUNITY_File oidc_provider_go|File: oidc_provider_go]]
+- [[_COMMUNITY_File oidc_provider_test_go|File: oidc_provider_test_go]]
+- [[_COMMUNITY_File oidc_validator_go|File: oidc_validator_go]]
+- [[_COMMUNITY_File oidc_validator_test_go|File: oidc_validator_test_go]]
+- [[_COMMUNITY_File openvpn_authfile_go|File: openvpn_authfile_go]]
+- [[_COMMUNITY_File openvpn_authfile_test_go|File: openvpn_authfile_test_go]]
+- [[_COMMUNITY_File session_cleanup_go|File: session_cleanup_go]]
+- [[_COMMUNITY_File session_manager_go|File: session_manager_go]]
+- [[_COMMUNITY_File session_session_go|File: session_session_go]]
+- [[_COMMUNITY_File session_session_test_go|File: session_session_test_go]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `NewServer() [httpserver]` - 28 edges
-2. `README - OpenVPN Keycloak SSO` - 23 edges
-3. `NewManager()` - 21 edges
-4. `Manager` - 15 edges
-5. `New()` - 14 edges
-6. `handleAuthRequest()` - 14 edges
-7. `Sanitize()` - 13 edges
-8. `OpenVPN Keycloak SSO Project Worklog` - 12 edges
-9. `PKCE (RFC 7636) with S256 challenge` - 12 edges
-10. `NewServer() [ipc]` - 12 edges
+1. `NewManager()` - 21 edges
+2. `Security Guide (docs/security.md)` - 21 edges
+3. `internal/httpserver/httpserver_test.go` - 16 edges
+4. `Sanitize()` - 15 edges
+5. `internal/config/config.go` - 15 edges
+6. `Server.handleCallback` - 15 edges
+7. `Architecture (docs/architecture.md)` - 15 edges
+8. `New()` - 14 edges
+9. `Manager` - 14 edges
+10. `handleAuthRequest()` - 13 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Attack surface analysis: URL interception scenarios` --semantically_similar_to--> `False positive: open-redirect via sess.AuthURL`  [INFERRED] [semantically similar]
-  docs/attack.md → reports/SECURITY_REPORT.md
-- `OIDC nonce binding ID token to flow` --semantically_similar_to--> `CSRF state parameter (16-byte crypto/rand)`  [INFERRED] [semantically similar]
-  CHANGELOG.md → README.md
-- `Log Sanitization (CWE-117)` --semantically_similar_to--> `Input Validation Regex Patterns`  [INFERRED] [semantically similar]
-  docs/authflow.md → tasks/015-security-hardening.md
-- `Decision: OIDC Authorization Code Flow with PKCE` --rationale_for--> `PKCE (RFC 7636) with S256 challenge`  [EXTRACTED]
-  WORKLOG.md → README.md
-- `Decision: OIDC Authorization Code Flow with PKCE` --rationale_for--> `Scenario: callback URL replay defeated by PKCE`  [INFERRED]
-  WORKLOG.md → docs/attack.md
+- `Decision: Remove X-XSS-Protection Header` --describes--> `securityHeadersMiddleware()`  [INFERRED]
+  CHANGELOG.md → internal/httpserver/middleware.go
+- `Log Sanitization (CWE-117 mitigation, strips control chars)` --describes--> `Sanitize()`  [EXTRACTED]
+  docs/authflow.md → internal/logsanitize/sanitize.go
+- `Auth Flow Phase 9: Safety Nets (defer/cleanup/error paths)` --describes--> `Server.handleCallback`  [EXTRACTED]
+  docs/authflow.md → internal/httpserver/callback.go
+- `Claim Merging: Access Token JWT verified before merging realm_access/resource_access/groups` --describes--> `Provider.ExchangeCode`  [EXTRACTED]
+  docs/authflow.md → internal/oidc/flow.go
+- `Auth Flow Phase 2: Auth Script Execution` --describes--> `ParseEnv()`  [EXTRACTED]
+  docs/authflow.md → internal/auth/envparser.go
 
 ## Hyperedges (group relationships)
-- **Authentication flow security stack (PKCE + state + nonce + JWKS)** — concept_pkce_s256, concept_csrf_state, concept_oidc_nonce_binding, concept_jwt_jwks_validation [EXTRACTED 0.95]
-- **OpenVPN SSO deferred auth flow components** — concept_openvpn_deferred_auth, concept_web_auth_url, worklog_task005_auth_script_mode, worklog_task004_unix_socket_ipc, worklog_task010_authfile_writing [EXTRACTED 0.90]
-- **Security audit artifacts (report + remediation + checklist)** — security_report_audit, remediation_patch_recommendations, security_checklist_doc, security_doc [INFERRED 0.85]
-- **End-to-End Deferred Authentication Flow** — mode_auth, ipc_unix_socket, session_concept, pkce_flow_concept, auth_pending_file_concept, auth_control_file_concept, exit_code_2_deferred [EXTRACTED 0.95]
-- **Fail-Secure Auth Result Guarantee** — fail_secure_principle, result_written_atomic, background_cleanup, writing_order_failure, auth_control_file_concept [EXTRACTED 0.90]
-- **Client-Side SSO Browser Flow** — web_auth_url, iv_sso_capability, auth_retry_interact, tunnelblick_client, openvpn_connect_client, openvpn_cli_client [EXTRACTED 0.90]
+- **OpenVPN auth deferred SSO request pipeline** — openvpn_keycloak_auth_main_runauth, auth_handler_run, ipc_client_sendauthrequest, ipc_server_handleconnection, daemon_daemon_handleauthrequest [INFERRED 0.90]
+- **OIDC callback completion flow (token exchange to OpenVPN result)** — httpserver_callback_handlecallback, httpserver_callback_writeauthsuccess, httpserver_callback_writeauthfailure, httpserver_callback_safeoautherrorcode, httpserver_callback_validationfailurecategory [EXTRACTED 0.95]
+- **HTTP middleware chain composing the server handler** — httpserver_server_newserver, httpserver_middleware_loggingmiddleware, httpserver_middleware_recoverymiddleware, httpserver_middleware_ratelimitmiddleware, httpserver_middleware_securityheadersmiddleware [EXTRACTED 0.95]
+- **PKCE+Nonce OIDC Authorization Flow** — oidc_flow_startauthflow, oidc_flow_exchangecode, oidc_flow_generatecodeverifier, oidc_flow_generatecodechallenge, oidc_flow_generatestate, oidc_flow_generatenonce [EXTRACTED 1.00]
+- **Session Result-Write Claim State Machine** — session_session_session, session_manager_claimresultwrite, session_manager_releaseresultwriteclaim, session_manager_markresultwritten, session_cleanup_cleanup [EXTRACTED 1.00]
+- **OpenVPN Deferred Auth Control-File Trio** — openvpn_authfile_writeauthpending, openvpn_authfile_writeauthsuccess, openvpn_authfile_writeauthfailure, session_session_session [EXTRACTED 1.00]
+- **End-to-End OIDC Authentication Flow (Phases 1-9)** — docs_authflow_phase1_connection_init, docs_authflow_phase2_auth_script_exec, docs_authflow_phase3_daemon_processes, docs_authflow_phase4_deferred_browser, docs_authflow_phase5_short_url_redirect, docs_authflow_phase6_keycloak_auth, docs_authflow_phase7_token_exchange, docs_authflow_phase8_result_written, docs_authflow_phase9_safety_nets [EXTRACTED 1.00]
+- **PKCE + State + Nonce Defense Triad** — docs_security_pkce_s256, docs_security_csrf_state_param, docs_security_oidc_nonce_binding, docs_attack_scenario_callback_capture, docs_attack_key_arch_defense [EXTRACTED 0.95]
+- **Unreleased Audit-Hardening Decisions (nonce, TLS 1.3, XSS removal, errors.Is)** — root_changelog_decision_oidc_nonce_binding, root_changelog_decision_tls13_min, root_changelog_decision_remove_xss_protection, root_changelog_decision_errors_is_serverclosed, root_changelog_removed_dead_helpers [EXTRACTED 1.00]
 
-## Communities
+## Communities (38 total, 21 thin omitted)
 
-### Community 5 - "IPC Protocol Examples"
-Cohesion: 0.18
-Nodes (18): Client, NewClient(), TestClientServerCommunication(), TestServerHandlerError(), TestClientConnectionFailure(), TestServerSocketPermissions(), TestServerGracefulShutdown(), TestServerStopIsIdempotent() (+10 more)
+### Community 0 - "HTTP Server & Callback Tests"
+Cohesion: 0.07
+Nodes (39): Session Lifecycle with Result-Write Claim, Auth Flow Phase 5: Short URL 302 Redirect, CSRF State Parameter, internal/httpserver/httpserver_test.go, TestAuthRedirectEndpoint(), TestAuthRedirectEndpointWithBasePath(), TestAuthStateFromPath(), TestCallbackConcurrentSameState() (+31 more)
 
-### Community 15 - "IPC Protocol Types"
-Cohesion: 0.6
-Nodes (3): MessageType, AuthRequest, AuthResponse
+### Community 1 - "Threat Model & Attack Surface"
+Cohesion: 0.05
+Nodes (49): Key Architectural Defense: Verifier and Code on Separate Channels, Attack Surface Analysis (docs/attack.md), Attack Scenario 5: Full Browser Compromise, Attack Scenario 3: Stolen Callback URL (PKCE-mitigated), Attack Scenario 2: Stolen Keycloak Auth URL (Low risk), Attack Scenario 4: MITM (TLS-mitigated), Attack Scenario 1: Stolen Short URL (Low risk), Auth Flow Phase 7: Token Exchange + Validation + Claim Merging (+41 more)
 
-### Community 11 - "IPC Server & Peer Credentials"
-Cohesion: 0.21
-Nodes (5): AuthRequestHandler, Server, validatePeerCredentials(), socketFileDescriptor(), currentEffectiveUID()
+### Community 2 - "OIDC PKCE Flow + Provider"
+Cohesion: 0.08
+Nodes (39): PKCE OAuth2 Flow (RFC 7636), OIDC Nonce Binding (ID token to flow), AuthFlowData, exchangeCodeFixture, accessTokenClaimsErrorCategory(), accessTokenIssuedForClient(), Provider.ExchangeCode, generateCodeChallenge() (+31 more)
 
-### Community 17 - "Non-Linux Peercred Stub"
-Cohesion: 0.67
-Nodes (1): validatePeerCredentials()
+### Community 3 - "IPC Client/Server Protocol"
+Cohesion: 0.09
+Nodes (21): IPC Protocol (JSON over AF_UNIX), AuthRequestHandler, Client, ipc.Client struct, internal/ipc/client.go, NewClient(), ExampleClient(), ExampleServer() (+13 more)
 
-### Community 4 - "Auth Script Handler"
-Cohesion: 0.11
-Nodes (21): sanitizeIPCValue(), WriteAuthPending(), WriteAuthSuccess(), WriteAuthFailure(), Handler, NewHandler(), sanitizeValues(), readCredentialsFile() (+13 more)
+### Community 4 - "Config Loading & Validation"
+Cohesion: 0.13
+Nodes (25): AuthConfig, Config, AuthConfig, Config struct, DefaultConfig(), internal/config/config.go, isReservedCallbackPath(), ListenConfig (+17 more)
 
-### Community 6 - "Auth Control File Writers"
+### Community 5 - "Daemon Orchestration"
+Cohesion: 0.13
+Nodes (23): Daemon, buildShortAuthURL(), Daemon struct, internal/daemon/daemon.go, handleAuthRequest(), New(), internal/daemon/daemon_test.go, newTestOIDCIssuer() (+15 more)
+
+### Community 6 - "Log Sanitization & Control Files"
+Cohesion: 0.12
+Nodes (19): CWE-117 Log Injection Defense, OpenVPN Deferred Auth Control File Protocol, Control File Write Order (reason before control), Auth Flow Phase 8: Result Written to OpenVPN, sanitizeIPCValue(), Sanitize(), TestSanitize(), TestSanitizeLargeInput() (+11 more)
+
+### Community 7 - "HTTP Middleware & Rate Limiting"
 Cohesion: 0.15
-Nodes (10): TestWriteAuthPending(), TestWriteAuthSuccess(), TestWriteAuthFailure(), TestWriteAuthSuccess_UnwritableDir(), TestWriteAuthFailure_UnwritableControlFile(), TestWriteOrder(), Server, safeOAuthErrorCode() (+2 more)
+Nodes (19): authRoutes, internal/httpserver/health.go, Server.handleHealth, HealthResponse, ipEntry, IPRateLimiter, extractIP(), globalLimiter (package var) (+11 more)
 
-### Community 8 - "Main Entrypoints & OIDC Provider"
-Cohesion: 0.16
-Nodes (17): newTestIssuer(), TestNewProviderAndStartAuthFlow(), TestNewProvider_DiscoveryFailure(), NewProvider(), init(), main(), runServe(), runAuth() (+9 more)
+### Community 8 - "Architecture Decisions"
+Cohesion: 0.09
+Nodes (25): Decision: In-Memory Sessions (not Redis), Decision: JSON Over Unix Socket (not Protocol Buffers), Decision: Script-Based Auth (not C plugin), Decision: Single Binary with 4 Modes, Decision: Unix Socket IPC (not HTTP), Four CLI Modes (serve/auth/version/check-config), Architecture (docs/architecture.md), Script-Based Deferred Authentication (OpenVPN 2.6 exit code 2) (+17 more)
 
-### Community 9 - "Token Validator"
-Cohesion: 0.25
-Nodes (13): Validator, NewValidator(), getClaimString(), getRolesFromClaim(), getNestedClaim(), containsRole(), TestValidateToken_UsernameOnly(), TestValidateToken_WithRoles() (+5 more)
-
-### Community 3 - "OIDC Crypto Primitives"
-Cohesion: 0.14
-Nodes (28): Provider, AuthFlowData, TokenData, mergeMissingClaim(), mergeMissingMapValues(), accessTokenClaimsErrorCategory(), accessTokenIssuedForClient(), decodeJWTPayload() (+20 more)
-
-### Community 10 - "HTTP Middleware & Rate Limiting"
-Cohesion: 0.24
-Nodes (10): loggingMiddleware(), recoveryMiddleware(), ipEntry, IPRateLimiter, newIPRateLimiter(), rateLimitMiddleware(), extractIP(), redactRequestPath() (+2 more)
-
-### Community 18 - "Health Endpoint"
-Cohesion: 0.67
-Nodes (1): HealthResponse
-
-### Community 2 - "HTTP Server & Session Tests"
-Cohesion: 0.14
-Nodes (33): TestNewServer(), TestHealthEndpoint(), TestAuthRedirectEndpoint(), TestAuthRedirectEndpointWithBasePath(), TestCallbackEndpointWithBasePath(), TestCallbackEndpointValidParams(), TestCallbackEndpointMissingCode(), TestCallbackConcurrentSameState() (+25 more)
-
-### Community 12 - "Daemon Auth Request Handler"
-Cohesion: 0.33
-Nodes (11): newTestOIDCIssuer(), TestBuildShortAuthURL(), TestValidateOpenVPNResultPath(), TestNewAndHandleAuthRequest_Success(), TestHandleAuthRequest_PendingWriteFailureWritesAuthFailure(), TestRun_HTTPServerStartFailureStopsAndReturnsError(), Daemon, New() (+3 more)
-
-### Community 7 - "Configuration & Validation"
+### Community 9 - "Auth Script Mode Tests"
 Cohesion: 0.17
-Nodes (19): Config, ListenConfig, OIDCConfig, AuthConfig, TLSConfig, LogConfig, Load(), DefaultConfig() (+11 more)
+Nodes (20): internal/auth/auth_test.go, TestHandlerRun(), TestHandlerRunDaemonError(), TestHandlerRunNoDaemon(), TestParseEnv(), TestParseEnvWithIVSSO(), TestReadCredentialsFile(), TestSelectPendingMethod() (+12 more)
 
-### Community 19 - "Session Type"
-Cohesion: 0.67
-Nodes (1): Session
+### Community 10 - "CLI Entrypoint & Commands"
+Cohesion: 0.17
+Nodes (20): SetupLogging(), authCmd, checkConfigCmd, ExitError/ExitDeferred/ExitConfig, cmd/openvpn-keycloak-auth/main.go, main(), rootCmd (cobra root command), runAuth() (+12 more)
 
-### Community 14 - "Project Worklog & Decisions"
-Cohesion: 0.19
-Nodes (13): OpenVPN Keycloak SSO Project Worklog, TASK-001 Project Setup, TASK-002 CLI Skeleton, TASK-003 Config Loading, TASK-004 Unix Socket IPC, TASK-005 Auth Script Mode, TASK-006 HTTP Server, TASK-007 OIDC Authorization Code Flow (+5 more)
+### Community 11 - "OIDC Callback Handler"
+Cohesion: 0.16
+Nodes (14): authStateFromPath(), internal/httpserver/callback.go, Server.handleAuthRedirect, Server.handleCallback, safeOAuthErrorCode(), validationFailureCategory(), Server.writeAuthFailure, Server.writeAuthSuccess (+6 more)
 
-### Community 1 - "OIDC Security Hardening"
-Cohesion: 0.06
-Nodes (51): TASK-009 Session Management, TASK-010 Auth Control File Writing, Decision: Script-based deferred auth (no C plugin), Decision: OIDC Authorization Code Flow with PKCE, README - OpenVPN Keycloak SSO, Architecture diagram (User -> OpenVPN -> Daemon -> Keycloak), Alternative: openvpn-auth-oauth2, Supported VPN Clients matrix (+43 more)
-
-### Community 20 - "HTML Templates"
-Cohesion: 1.0
-Nodes (2): Authentication success HTML template, Authentication error HTML template
-
-### Community 0 - "Auth Flow & Control Files"
-Cohesion: 0.03
-Nodes (84): OpenVPN Client Setup Guide, Client Compatibility Matrix, .ovpn Client Profile, Tunnelblick (macOS), OpenVPN Connect Client, Linux NetworkManager, OpenVPN CLI, WEB_AUTH:: URL Mechanism (+76 more)
-
-### Community 13 - "Build & Hardening Infrastructure"
+### Community 12 - "OIDC Token Validator"
 Cohesion: 0.15
-Nodes (15): Phase 5: Short URL Redirect, Log Sanitization (CWE-117), Per-IP Rate Limit (10/s, burst 50), Security Headers (CSP, HSTS, X-Frame-Options), Task 014: systemd Packaging, Task 015: Security Hardening, openvpn-keycloak-sso.service, systemd Sandboxing Directives (+7 more)
+Nodes (18): OIDC Nonce Binding (id_token to flow), JWT Claim Validation (iss/aud/exp/iat/nbf), JWT Signature Verification via JWKS, Validator, containsRole(), getClaimString(), getNestedClaim(), getRolesFromClaim() (+10 more)
 
-### Community 16 - "Testing & CI"
+### Community 13 - "SO_PEERCRED Peer Authentication"
+Cohesion: 0.38
+Nodes (5): SO_PEERCRED Peer UID Authentication, currentEffectiveUID(), socketFileDescriptor(), validatePeerCredentials(), validatePeerCredentials()
+
+### Community 14 - "IPC Protocol Types"
 Cohesion: 0.5
-Nodes (4): Task 016: Testing, GitHub Actions CI Pipeline, Table-driven Tests, go test -race Concurrent Access Tests
+Nodes (3): AuthRequest, AuthResponse, MessageType
 
 ## Knowledge Gaps
-- **66 isolated node(s):** `TASK-001 Project Setup`, `TASK-003 Config Loading`, `TASK-014 systemd Packaging`, `TASK-015 Security Hardening`, `Decision: Script-based deferred auth (no C plugin)` (+61 more)
+- **95 isolated node(s):** `OpenVPNEnv`, `ListenConfig`, `OIDCConfig`, `AuthConfig`, `TLSConfig` (+90 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `Non-Linux Peercred Stub`** (3 nodes): `peercred_other.go`, `validatePeerCredentials()`, `peercred_other.go`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Health Endpoint`** (3 nodes): `health.go`, `HealthResponse`, `health.go`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Session Type`** (3 nodes): `session.go`, `Session`, `session.go`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `HTML Templates`** (2 nodes): `Authentication success HTML template`, `Authentication error HTML template`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **21 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `New()` connect `Daemon Auth Request Handler` to `HTTP Server & Session Tests`, `OIDC Crypto Primitives`, `IPC Protocol Examples`, `Configuration & Validation`, `Main Entrypoints & OIDC Provider`?**
-  _High betweenness centrality (0.043) - this node is a cross-community bridge._
-- **Why does `NewServer() [httpserver]` connect `IPC Protocol Examples` to `HTTP Server & Session Tests`, `OIDC Crypto Primitives`, `Auth Script Handler`, `Main Entrypoints & OIDC Provider`, `HTTP Middleware & Rate Limiting`, `Daemon Auth Request Handler`?**
-  _High betweenness centrality (0.041) - this node is a cross-community bridge._
-- **Why does `Sanitize()` connect `Auth Script Handler` to `Main Entrypoints & OIDC Provider`, `HTTP Middleware & Rate Limiting`, `Daemon Auth Request Handler`?**
-  _High betweenness centrality (0.033) - this node is a cross-community bridge._
-- **Are the 25 inferred relationships involving `NewServer() [httpserver]` (e.g. with `newTestIssuer()` and `TestNewProvider_DiscoveryFailure()`) actually correct?**
-  _`NewServer() [httpserver]` has 25 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 19 inferred relationships involving `NewManager()` (e.g. with `TestAuthRedirectEndpoint()` and `TestAuthRedirectEndpointWithBasePath()`) actually correct?**
-  _`NewManager()` has 19 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 11 inferred relationships involving `New()` (e.g. with `NewServer() [httpserver]` and `NewProvider()`) actually correct?**
-  _`New()` has 11 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `TASK-001 Project Setup`, `TASK-003 Config Loading`, `TASK-014 systemd Packaging` to the rest of the system?**
-  _66 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Why does `New()` connect `Daemon Orchestration` to `HTTP Server & Callback Tests`, `OIDC PKCE Flow + Provider`, `IPC Client/Server Protocol`, `HTTP Middleware & Rate Limiting`, `CLI Entrypoint & Commands`?**
+  _High betweenness centrality (0.215) - this node is a cross-community bridge._
+- **Why does `Security Guide (docs/security.md)` connect `Threat Model & Attack Surface` to `HTTP Server & Callback Tests`, `OIDC PKCE Flow + Provider`, `Daemon Orchestration`, `Architecture Decisions`, `OIDC Token Validator`?**
+  _High betweenness centrality (0.110) - this node is a cross-community bridge._
+- **Why does `NewServer()` connect `HTTP Middleware & Rate Limiting` to `HTTP Server & Callback Tests`, `OIDC Callback Handler`, `Daemon Orchestration`?**
+  _High betweenness centrality (0.100) - this node is a cross-community bridge._
+- **Are the 17 inferred relationships involving `NewManager()` (e.g. with `New()` and `TestAuthRedirectEndpoint()`) actually correct?**
+  _`NewManager()` has 17 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 6 inferred relationships involving `Sanitize()` (e.g. with `.Run()` and `sanitizeValues()`) actually correct?**
+  _`Sanitize()` has 6 INFERRED edges - model-reasoned connections that need verification._
+- **What connects `OpenVPNEnv`, `ListenConfig`, `OIDCConfig` to the rest of the system?**
+  _95 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `HTTP Server & Callback Tests` be split into smaller, more focused modules?**
+  _Cohesion score 0.07 - nodes in this community are weakly interconnected._

@@ -352,7 +352,7 @@ func TestMultipleConcurrentRequests(t *testing.T) {
 	}
 }
 
-func TestClientTimeout(t *testing.T) {
+func TestClientTimeoutViaContext(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "ipc-test-*")
 	if err != nil {
 		t.Fatal(err)
@@ -361,7 +361,7 @@ func TestClientTimeout(t *testing.T) {
 
 	socketPath := filepath.Join(tmpDir, "test.sock")
 
-	// Handler that sleeps longer than client timeout
+	// Handler sleeps longer than the caller's context deadline.
 	handler := func(ctx context.Context, req *AuthRequest) (*AuthResponse, error) {
 		time.Sleep(2 * time.Second)
 		return &AuthResponse{Status: StatusDeferred}, nil
@@ -381,12 +381,11 @@ func TestClientTimeout(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	client := NewClient(socketPath)
-	client.SetTimeout(500 * time.Millisecond)
 
-	req := &AuthRequest{Username: "testuser"}
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
 
-	_, err = client.SendAuthRequest(context.Background(), req)
-	if err == nil {
+	if _, err := client.SendAuthRequest(ctx, &AuthRequest{Username: "testuser"}); err == nil {
 		t.Error("expected timeout error")
 	}
 }
