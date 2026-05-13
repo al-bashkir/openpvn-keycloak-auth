@@ -15,10 +15,6 @@ func TestDefaultConfig(t *testing.T) {
 		t.Errorf("expected HTTP listen :9000, got %s", cfg.Listen.HTTP)
 	}
 
-	if cfg.OIDC.JWKSCacheDuration != 3600 {
-		t.Errorf("expected JWKS cache 3600, got %d", cfg.OIDC.JWKSCacheDuration)
-	}
-
 	if cfg.Auth.SessionTimeout != 300 {
 		t.Errorf("expected session timeout 300, got %d", cfg.Auth.SessionTimeout)
 	}
@@ -110,6 +106,136 @@ oidc:
 			errContains: "must include 'openid'",
 		},
 		{
+			name: "invalid issuer URL",
+			configYAML: `
+oidc:
+  issuer: "https://"
+  client_id: "openvpn"
+  redirect_uri: "http://localhost:9000/callback"
+  scopes:
+    - openid
+`,
+			wantErr:     true,
+			errContains: "oidc.issuer must be a valid HTTP(S) URL",
+		},
+		{
+			name: "issuer URL with query string",
+			configYAML: `
+oidc:
+  issuer: "https://keycloak.example.com/realms/test?foo=bar"
+  client_id: "openvpn"
+  redirect_uri: "http://localhost:9000/callback"
+  scopes:
+    - openid
+`,
+			wantErr:     true,
+			errContains: "oidc.issuer must not contain a query string",
+		},
+		{
+			name: "issuer URL with userinfo",
+			configYAML: `
+oidc:
+  issuer: "https://user:pass@keycloak.example.com/realms/test"
+  client_id: "openvpn"
+  redirect_uri: "http://localhost:9000/callback"
+  scopes:
+    - openid
+`,
+			wantErr:     true,
+			errContains: "oidc.issuer must not contain URL userinfo",
+		},
+		{
+			name: "invalid redirect URL",
+			configYAML: `
+oidc:
+  issuer: "https://keycloak.example.com/realms/test"
+  client_id: "openvpn"
+  redirect_uri: "javascript:alert(1)"
+  scopes:
+    - openid
+`,
+			wantErr:     true,
+			errContains: "oidc.redirect_uri must be a valid HTTP(S) URL",
+		},
+		{
+			name: "redirect URL without path",
+			configYAML: `
+oidc:
+  issuer: "https://keycloak.example.com/realms/test"
+  client_id: "openvpn"
+  redirect_uri: "http://localhost:9000"
+  scopes:
+    - openid
+`,
+			wantErr:     true,
+			errContains: "oidc.redirect_uri must include a non-root callback path",
+		},
+		{
+			name: "redirect URL with root path",
+			configYAML: `
+oidc:
+  issuer: "https://keycloak.example.com/realms/test"
+  client_id: "openvpn"
+  redirect_uri: "http://localhost:9000/"
+  scopes:
+    - openid
+`,
+			wantErr:     true,
+			errContains: "oidc.redirect_uri must include a non-root callback path",
+		},
+		{
+			name: "redirect URL with trailing slash path",
+			configYAML: `
+oidc:
+  issuer: "https://keycloak.example.com/realms/test"
+  client_id: "openvpn"
+  redirect_uri: "http://localhost:9000/vpn/callback/"
+  scopes:
+    - openid
+`,
+			wantErr:     true,
+			errContains: "oidc.redirect_uri path must be canonical",
+		},
+		{
+			name: "redirect URL with duplicate slash path",
+			configYAML: `
+oidc:
+  issuer: "https://keycloak.example.com/realms/test"
+  client_id: "openvpn"
+  redirect_uri: "http://localhost:9000/vpn//callback"
+  scopes:
+    - openid
+`,
+			wantErr:     true,
+			errContains: "oidc.redirect_uri path must be canonical",
+		},
+		{
+			name: "redirect URL with userinfo",
+			configYAML: `
+oidc:
+  issuer: "https://keycloak.example.com/realms/test"
+  client_id: "openvpn"
+  redirect_uri: "http://user:pass@localhost:9000/callback"
+  scopes:
+    - openid
+`,
+			wantErr:     true,
+			errContains: "oidc.redirect_uri must not contain URL userinfo",
+		},
+		{
+			name: "redirect URL with reserved path",
+			configYAML: `
+oidc:
+  issuer: "https://keycloak.example.com/realms/test"
+  client_id: "openvpn"
+  redirect_uri: "http://localhost:9000/health"
+  scopes:
+    - openid
+`,
+			wantErr:     true,
+			errContains: "oidc.redirect_uri path is reserved",
+		},
+		{
 			name: "invalid log level",
 			configYAML: `
 oidc:
@@ -132,6 +258,21 @@ this is not: valid: yaml:
 `,
 			wantErr:     true,
 			errContains: "failed to parse",
+		},
+		{
+			name: "unknown yaml key",
+			configYAML: `
+oidc:
+  issuer: "https://keycloak.example.com/realms/test"
+  client_id: "openvpn"
+  redirect_uri: "http://localhost:9000/callback"
+  scopes:
+    - openid
+  required_role:
+    - vpn-users
+`,
+			wantErr:     true,
+			errContains: "field required_role not found",
 		},
 	}
 
@@ -252,6 +393,21 @@ func TestValidate(t *testing.T) {
 			wantErr: true,
 			errMsg:  "are required when TLS is enabled",
 		},
+		{
+			name: "relative socket path",
+			modify: func(c *Config) {
+				c.Listen.Socket = "auth.sock"
+			},
+			wantErr: true,
+			errMsg:  "listen.socket must be an absolute path",
+		},
+		{
+			name: "redirect query string allowed",
+			modify: func(c *Config) {
+				c.OIDC.RedirectURI = "http://localhost:9000/callback?tenant=vpn"
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -292,25 +448,6 @@ func TestValidate(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestRedact(t *testing.T) {
-	cfg := &Config{
-		OIDC: OIDCConfig{
-			ClientSecret: "super-secret",
-		},
-	}
-
-	redacted := cfg.Redact()
-
-	if redacted.OIDC.ClientSecret != "[REDACTED]" {
-		t.Errorf("expected [REDACTED], got %s", redacted.OIDC.ClientSecret)
-	}
-
-	// Original should be unchanged
-	if cfg.OIDC.ClientSecret != "super-secret" {
-		t.Errorf("original was modified")
 	}
 }
 

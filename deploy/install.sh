@@ -1,9 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
+
 # Installation script for OpenVPN Keycloak SSO on Rocky Linux 9
 #
 # This script installs the OpenVPN Keycloak SSO daemon on Rocky Linux 9.
 # It performs the following tasks:
-#   1. Checks prerequisites (OpenVPN 2.6+, root permissions)
+#   1. Checks prerequisites (OpenVPN 2.6.2+, root permissions)
 #   2. Creates openvpn user and group
 #   3. Installs the binary to /usr/local/bin
 #   4. Creates directories (config, data, tmp, runtime, scripts)
@@ -19,11 +21,9 @@
 #
 # Requirements:
 #   - Rocky Linux 9 (or compatible RHEL 9 derivative)
-#   - OpenVPN 2.6+ (will be installed from EPEL if missing)
+#   - OpenVPN 2.6.2+ (will be installed from EPEL if missing)
 #   - Built binary: openvpn-keycloak-auth
 #   - Root privileges
-
-set -e
 
 ##############################################
 # Configuration
@@ -38,6 +38,8 @@ RUN_DIR="/run/openvpn-keycloak-auth"
 BINARY_NAME="openvpn-keycloak-auth"
 SERVICE_FILE="openvpn-keycloak-auth.service"
 HTTP_PORT="9000"  # Default HTTP callback port
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd -P)"
 
 ##############################################
 # Colors for Output
@@ -93,7 +95,7 @@ check_os() {
         log_warning "It may work on other RHEL 9 derivatives, but is not tested"
     else
         local os_version
-        os_version=$(cat /etc/redhat-release)
+        os_version="$(< /etc/redhat-release)"
         log_info "Detected OS: $os_version"
     fi
 }
@@ -176,12 +178,12 @@ check_prerequisites() {
     local all_ok=true
 
     # Check for binary
-    if [ ! -f "$BINARY_NAME" ]; then
-        log_error "Binary not found: $BINARY_NAME"
+    if [ ! -f "$REPO_ROOT/$BINARY_NAME" ]; then
+        log_error "Binary not found: $REPO_ROOT/$BINARY_NAME"
         log_info "Build the binary first: make build"
         all_ok=false
     else
-        log_success "Binary found: $BINARY_NAME"
+        log_success "Binary found: $REPO_ROOT/$BINARY_NAME"
     fi
 
     # Check OpenVPN
@@ -208,23 +210,32 @@ install_openvpn() {
 }
 
 check_openvpn_version() {
-    local version
-    version=$(openvpn --version 2>/dev/null | head -n1 | grep -oP '\d+\.\d+\.\d+' || echo "0.0.0")
+    local first_line
+    local version="0.0.0"
+    local version_output
+
+    version_output=$(openvpn --version 2>/dev/null || true)
+    IFS=$'\n' read -r first_line <<< "$version_output"
+
+    if [[ "$first_line" =~ ([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+        version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+    fi
 
     log_info "OpenVPN version: $version"
 
-    # Check for 2.6+
-    local major minor
-    major=$(echo "$version" | cut -d. -f1)
-    minor=$(echo "$version" | cut -d. -f2)
+    local major="${BASH_REMATCH[1]:-0}"
+    local minor="${BASH_REMATCH[2]:-0}"
+    local patch="${BASH_REMATCH[3]:-0}"
 
-    if [ "$major" -lt 2 ] || { [ "$major" -eq 2 ] && [ "$minor" -lt 6 ]; }; then
-        log_error "OpenVPN 2.6+ required, found $version"
+    if [ "$major" -lt 2 ] || \
+       { [ "$major" -eq 2 ] && [ "$minor" -lt 6 ]; } || \
+       { [ "$major" -eq 2 ] && [ "$minor" -eq 6 ] && [ "$patch" -lt 2 ]; }; then
+        log_error "OpenVPN 2.6.2+ required, found $version"
         log_error "SSO authentication requires OpenVPN 2.6.2 or later"
         exit 1
     fi
 
-    log_success "OpenVPN version OK ($version >= 2.6.0)"
+    log_success "OpenVPN version OK ($version >= 2.6.2)"
 }
 
 ##############################################
@@ -255,13 +266,17 @@ create_user() {
 
 install_binary() {
     log_info "Copying binary to $INSTALL_DIR/$BINARY_NAME..."
-    install -m 755 "$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
+    install -m 755 "$REPO_ROOT/$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
     log_success "Binary installed"
 
     # Verify installation
     if "$INSTALL_DIR/$BINARY_NAME" version &> /dev/null; then
         local version
-        version=$("$INSTALL_DIR/$BINARY_NAME" version 2>/dev/null | head -1 || echo "unknown")
+        local version_output
+
+        version_output=$("$INSTALL_DIR/$BINARY_NAME" version 2>/dev/null || true)
+        IFS=$'\n' read -r version <<< "$version_output"
+        version="${version:-unknown}"
         log_success "Binary verified: $version"
     else
         log_error "Binary verification failed"
@@ -322,22 +337,22 @@ install_config() {
         log_warning "Configuration already exists: $config_file"
         log_info "Skipping configuration installation (existing file preserved)"
     else
-        if [ ! -f "config/openvpn-keycloak-auth.yaml.example" ]; then
-            log_error "Example configuration not found: config/openvpn-keycloak-auth.yaml.example"
+        if [ ! -f "$REPO_ROOT/config/openvpn-keycloak-auth.yaml.example" ]; then
+            log_error "Example configuration not found: $REPO_ROOT/config/openvpn-keycloak-auth.yaml.example"
             exit 1
         fi
 
         log_info "Installing example configuration..."
-        install -m 640 config/openvpn-keycloak-auth.yaml.example "$config_file"
+        install -m 640 "$REPO_ROOT/config/openvpn-keycloak-auth.yaml.example" "$config_file"
         chown root:openvpn "$config_file"
         log_success "Configuration installed: $config_file"
         echo ""
         log_warning "${BOLD}IMPORTANT: You MUST edit the configuration file!${NC}"
         log_warning "Edit: $config_file"
         log_warning "Update the following settings:"
-        log_warning "  - keycloak.issuer_url (your Keycloak server URL)"
-        log_warning "  - keycloak.client_id (your OpenVPN client ID)"
-        log_warning "  - http.callback_url (your VPN server's public URL)"
+        log_warning "  - oidc.issuer (your Keycloak realm issuer URL)"
+        log_warning "  - oidc.client_id (your OpenVPN client ID)"
+        log_warning "  - oidc.redirect_uri (your VPN server callback URL)"
         echo ""
     fi
 }
@@ -349,13 +364,13 @@ install_config() {
 install_auth_script() {
     local script_file="$SCRIPTS_DIR/auth-keycloak.sh"
 
-    if [ ! -f "scripts/auth-keycloak.sh" ]; then
-        log_error "Auth script not found: scripts/auth-keycloak.sh"
+    if [ ! -f "$REPO_ROOT/scripts/auth-keycloak.sh" ]; then
+        log_error "Auth script not found: $REPO_ROOT/scripts/auth-keycloak.sh"
         exit 1
     fi
 
     log_info "Installing auth script..."
-    install -m 755 scripts/auth-keycloak.sh "$script_file"
+    install -m 755 "$REPO_ROOT/scripts/auth-keycloak.sh" "$script_file"
     log_success "Auth script installed: $script_file"
 }
 
@@ -366,13 +381,13 @@ install_auth_script() {
 install_service() {
     local service_path="/etc/systemd/system/$SERVICE_FILE"
 
-    if [ ! -f "deploy/$SERVICE_FILE" ]; then
-        log_error "Service file not found: deploy/$SERVICE_FILE"
+    if [ ! -f "$REPO_ROOT/deploy/$SERVICE_FILE" ]; then
+        log_error "Service file not found: $REPO_ROOT/deploy/$SERVICE_FILE"
         exit 1
     fi
 
     log_info "Installing SSO daemon systemd service..."
-    install -m 644 "deploy/$SERVICE_FILE" "$service_path"
+    install -m 644 "$REPO_ROOT/deploy/$SERVICE_FILE" "$service_path"
 
     log_success "Service installed: $SERVICE_FILE"
     log_info "Service is NOT enabled or started yet"
@@ -394,19 +409,19 @@ install_openvpn_service() {
 
     local ovpn_override_dir="/etc/systemd/system/openvpn-server@.service.d"
 
-    if [ -f "deploy/openvpn-sso-override.conf" ]; then
+    if [ -f "$REPO_ROOT/deploy/openvpn-sso-override.conf" ]; then
         log_info "Installing OpenVPN server systemd override (LimitNPROC=512)..."
         mkdir -p "$ovpn_override_dir"
-        install -m 644 "deploy/openvpn-sso-override.conf" \
+        install -m 644 "$REPO_ROOT/deploy/openvpn-sso-override.conf" \
             "$ovpn_override_dir/sso-override.conf"
         log_success "Override installed: $ovpn_override_dir/sso-override.conf"
     fi
 
-    if [ -f "deploy/openvpn-server@.service.example" ]; then
-        log_info "Example OpenVPN service unit available: deploy/openvpn-server@.service.example"
+    if [ -f "$REPO_ROOT/deploy/openvpn-server@.service.example" ]; then
+        log_info "Example OpenVPN service unit available: $REPO_ROOT/deploy/openvpn-server@.service.example"
         log_info "To use the full replacement unit instead of the drop-in:"
-        log_info "  sudo cp deploy/openvpn-server@.service.example \\"
-        log_info "       /etc/systemd/system/openvpn_<instance>.service"
+        log_info "  sudo cp $REPO_ROOT/deploy/openvpn-server@.service.example \\"
+        log_info "       /etc/systemd/system/openvpn-server@.service"
     fi
 
     log_info "Reloading systemd..."
@@ -431,7 +446,7 @@ configure_firewall() {
 
     log_info "Opening port $HTTP_PORT/tcp for HTTP callback..."
     
-    if firewall-cmd --permanent --add-port=${HTTP_PORT}/tcp &> /dev/null; then
+    if firewall-cmd --permanent --add-port="${HTTP_PORT}/tcp" &> /dev/null; then
         firewall-cmd --reload &> /dev/null
         log_success "Firewall configured (port $HTTP_PORT/tcp opened)"
     else
@@ -470,7 +485,7 @@ configure_selinux() {
 
         # Runtime / socket directory: openvpn_var_run_t so the OpenVPN
         # auth helper (openvpn_t) can connect to the daemon's Unix socket.
-        if semanage fcontext -a -t openvpn_var_run_t '/var/run/openvpn-keycloak-auth(/.*)?' &> /dev/null; then
+        if semanage fcontext -a -t openvpn_var_run_t '/run/openvpn-keycloak-auth(/.*)?' &> /dev/null; then
             log_success "SELinux file context added for socket directory (openvpn_var_run_t)"
         else
             log_warning "SELinux socket directory context may already exist"

@@ -49,14 +49,12 @@ oidc:
     - vpn-user
     # - vpn-admin
 
-  # JSON path to roles in ID token
+  # JSON path to roles in verified token claims
+  # ID-token claims take precedence; selected access-token role claims are merged
+  # only after JWT signature, issuer, expiry, and client binding validation.
   # For Keycloak realm roles: "realm_access.roles"
   # For client roles: "resource_access.<client-id>.roles"
   role_claim: "realm_access.roles"
-
-  # JWKS cache duration in seconds (default: 3600 = 1 hour)
-  # How long to cache Keycloak's public keys
-  jwks_cache_duration: 3600
 
 # ==========================================
 # Authentication Configuration
@@ -122,9 +120,10 @@ log:
 #   OVPN_SSO_LISTEN_SOCKET        - Override listen.socket
 #
 # File Permissions:
-#   This file should be owned by root with 0600 permissions:
+#   This file contains the client secret when confidential clients are used.
+#   It should be readable only by root and the daemon group:
 #     sudo chown root:openvpn /etc/openvpn/keycloak-sso.yaml
-#     sudo chmod 0600 /etc/openvpn/keycloak-sso.yaml
+#     sudo chmod 0640 /etc/openvpn/keycloak-sso.yaml
 #
 # Configuration Validation:
 #   Test your configuration:
@@ -132,4 +131,4 @@ log:
 #
 # Documentation:
 #   See docs/keycloak-setup.md for Keycloak configuration instructions
-#   See docs/troubleshooting.md for common issues
+#   See docs/keycloak-troubleshooting.md for common issues

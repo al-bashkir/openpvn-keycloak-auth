@@ -8,6 +8,8 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"path"
 	"time"
 
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/config"
@@ -45,8 +47,10 @@ func NewServer(cfg *config.Config, oidcProvider *oidc.Provider, sessionMgr *sess
 	}
 
 	// Register routes
-	s.mux.HandleFunc("/callback", s.handleCallback)
-	s.mux.HandleFunc("/auth/", s.handleAuthRedirect)
+	for _, route := range callbackAndAuthRoutes(cfg.OIDC.RedirectURI) {
+		s.mux.HandleFunc(route.callback, s.handleCallback)
+		s.mux.HandleFunc(route.auth, s.handleAuthRedirect)
+	}
 	s.mux.HandleFunc("/health", s.handleHealth)
 
 	// Wrap with middleware
@@ -64,23 +68,41 @@ func NewServer(cfg *config.Config, oidcProvider *oidc.Provider, sessionMgr *sess
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Configure TLS if enabled
+	// Configure TLS if enabled. TLS 1.3 only — every browser and OpenVPN
+	// client used to render the callback page supports it, and TLS 1.3 has
+	// no negotiable cipher suites that could be downgraded.
 	if cfg.TLS.Enabled {
-		tlsConfig := &tls.Config{
-			MinVersion: tls.VersionTLS12,
-			CipherSuites: []uint16{
-				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-			},
-			// Note: PreferServerCipherSuites is deprecated since Go 1.21.
-			// The Go TLS stack handles cipher suite ordering automatically.
-		}
-		s.httpServer.TLSConfig = tlsConfig
+		s.httpServer.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
 	}
 
 	return s, nil
+}
+
+type authRoutes struct {
+	callback string
+	auth     string
+}
+
+func callbackAndAuthRoutes(redirectURI string) []authRoutes {
+	u, err := url.Parse(redirectURI)
+	if err != nil {
+		return nil
+	}
+
+	callbackPath := u.Path
+	if callbackPath == "" || callbackPath == "/" || path.Clean(callbackPath) != callbackPath || callbackPath == "/health" {
+		return nil
+	}
+
+	basePath := path.Dir(callbackPath)
+	if basePath == "." {
+		basePath = "/"
+	}
+
+	return []authRoutes{{
+		callback: callbackPath,
+		auth:     path.Join(basePath, "auth") + "/",
+	}}
 }
 
 // Start starts the HTTP server

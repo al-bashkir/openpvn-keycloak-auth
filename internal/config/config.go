@@ -2,9 +2,12 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -28,14 +31,13 @@ type ListenConfig struct {
 
 // OIDCConfig defines OIDC/OAuth2 settings for Keycloak
 type OIDCConfig struct {
-	Issuer            string   `yaml:"issuer"`                 // Keycloak issuer URL
-	ClientID          string   `yaml:"client_id"`              // OIDC client ID
-	ClientSecret      string   `yaml:"client_secret" json:"-"` // OIDC client secret (empty for public clients)
-	RedirectURI       string   `yaml:"redirect_uri"`           // Callback URL
-	Scopes            []string `yaml:"scopes"`                 // OIDC scopes
-	RequiredRoles     []string `yaml:"required_roles"`         // Required roles for VPN access
-	RoleClaim         string   `yaml:"role_claim"`             // JSON path to roles in token
-	JWKSCacheDuration int      `yaml:"jwks_cache_duration"`    // JWKS cache duration in seconds
+	Issuer        string   `yaml:"issuer"`                 // Keycloak issuer URL
+	ClientID      string   `yaml:"client_id"`              // OIDC client ID
+	ClientSecret  string   `yaml:"client_secret" json:"-"` // OIDC client secret (empty for public clients)
+	RedirectURI   string   `yaml:"redirect_uri"`           // Callback URL
+	Scopes        []string `yaml:"scopes"`                 // OIDC scopes
+	RequiredRoles []string `yaml:"required_roles"`         // Required roles for VPN access
+	RoleClaim     string   `yaml:"role_claim"`             // JSON path to roles in token
 }
 
 // AuthConfig defines authentication behavior
@@ -73,7 +75,9 @@ func Load(path string) (*Config, error) {
 
 	// Parse YAML
 	cfg := DefaultConfig()
-	if err := yaml.Unmarshal(data, cfg); err != nil {
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true)
+	if err := dec.Decode(cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
@@ -96,9 +100,8 @@ func DefaultConfig() *Config {
 			Socket: "/run/openvpn-keycloak-auth/auth.sock",
 		},
 		OIDC: OIDCConfig{
-			Scopes:            []string{"openid", "profile", "email"},
-			RoleClaim:         "realm_access.roles",
-			JWKSCacheDuration: 3600, // 1 hour
+			Scopes:    []string{"openid", "profile", "email"},
+			RoleClaim: "realm_access.roles",
 		},
 		Auth: AuthConfig{
 			SessionTimeout:        300, // 5 minutes
@@ -154,8 +157,8 @@ func (c *Config) Validate() error {
 	if c.OIDC.Issuer == "" {
 		return fmt.Errorf("oidc.issuer is required")
 	}
-	if !strings.HasPrefix(c.OIDC.Issuer, "http://") && !strings.HasPrefix(c.OIDC.Issuer, "https://") {
-		return fmt.Errorf("oidc.issuer must be a valid HTTP(S) URL")
+	if err := validateIssuerURL(c.OIDC.Issuer); err != nil {
+		return err
 	}
 
 	if c.OIDC.ClientID == "" {
@@ -165,8 +168,8 @@ func (c *Config) Validate() error {
 	if c.OIDC.RedirectURI == "" {
 		return fmt.Errorf("oidc.redirect_uri is required")
 	}
-	if !strings.HasPrefix(c.OIDC.RedirectURI, "http://") && !strings.HasPrefix(c.OIDC.RedirectURI, "https://") {
-		return fmt.Errorf("oidc.redirect_uri must be a valid HTTP(S) URL")
+	if err := validateRedirectURI(c.OIDC.RedirectURI); err != nil {
+		return err
 	}
 
 	if len(c.OIDC.Scopes) == 0 {
@@ -236,8 +239,69 @@ func (c *Config) Validate() error {
 	if c.Listen.Socket == "" {
 		return fmt.Errorf("listen.socket is required")
 	}
+	if !filepath.IsAbs(c.Listen.Socket) {
+		return fmt.Errorf("listen.socket must be an absolute path")
+	}
 
 	return nil
+}
+
+func validateHTTPURL(name, rawURL string) (*url.URL, error) {
+	if strings.TrimSpace(rawURL) != rawURL {
+		return nil, fmt.Errorf("%s must not contain leading or trailing whitespace", name)
+	}
+
+	parsed, err := url.Parse(rawURL)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return nil, fmt.Errorf("%s must be a valid HTTP(S) URL", name)
+	}
+
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return nil, fmt.Errorf("%s must be a valid HTTP(S) URL", name)
+	}
+
+	if parsed.Fragment != "" {
+		return nil, fmt.Errorf("%s must not contain a URL fragment", name)
+	}
+	if parsed.User != nil {
+		return nil, fmt.Errorf("%s must not contain URL userinfo", name)
+	}
+
+	return parsed, nil
+}
+
+func validateIssuerURL(rawURL string) error {
+	parsed, err := validateHTTPURL("oidc.issuer", rawURL)
+	if err != nil {
+		return err
+	}
+	if parsed.RawQuery != "" {
+		return fmt.Errorf("oidc.issuer must not contain a query string")
+	}
+	return nil
+}
+
+func validateRedirectURI(rawURL string) error {
+	parsed, err := validateHTTPURL("oidc.redirect_uri", rawURL)
+	if err != nil {
+		return err
+	}
+
+	if parsed.Path == "" || parsed.Path == "/" {
+		return fmt.Errorf("oidc.redirect_uri must include a non-root callback path")
+	}
+	if path.Clean(parsed.Path) != parsed.Path {
+		return fmt.Errorf("oidc.redirect_uri path must be canonical")
+	}
+	if isReservedCallbackPath(parsed.Path) {
+		return fmt.Errorf("oidc.redirect_uri path is reserved")
+	}
+
+	return nil
+}
+
+func isReservedCallbackPath(callbackPath string) bool {
+	return callbackPath == "/health"
 }
 
 // SetupLogging configures the global slog logger based on the LogConfig.
@@ -265,22 +329,4 @@ func SetupLogging(cfg *LogConfig) {
 	}
 
 	slog.SetDefault(slog.New(handler))
-}
-
-// Redact returns a deep-enough copy of the config with secrets redacted for safe logging
-func (c *Config) Redact() *Config {
-	redacted := *c
-	// Deep copy slices to avoid sharing underlying arrays with the original
-	if c.OIDC.Scopes != nil {
-		redacted.OIDC.Scopes = make([]string, len(c.OIDC.Scopes))
-		copy(redacted.OIDC.Scopes, c.OIDC.Scopes)
-	}
-	if c.OIDC.RequiredRoles != nil {
-		redacted.OIDC.RequiredRoles = make([]string, len(c.OIDC.RequiredRoles))
-		copy(redacted.OIDC.RequiredRoles, c.OIDC.RequiredRoles)
-	}
-	if redacted.OIDC.ClientSecret != "" {
-		redacted.OIDC.ClientSecret = "[REDACTED]"
-	}
-	return &redacted
 }

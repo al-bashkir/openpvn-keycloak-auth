@@ -95,6 +95,12 @@ func TestNewProviderAndStartAuthFlow(t *testing.T) {
 	if q.Get("code_challenge_method") != "S256" {
 		t.Fatalf("code_challenge_method = %q, want %q", q.Get("code_challenge_method"), "S256")
 	}
+	if flow.Nonce == "" {
+		t.Fatal("expected nonce to be set")
+	}
+	if q.Get("nonce") != flow.Nonce {
+		t.Fatalf("nonce param = %q, want %q", q.Get("nonce"), flow.Nonce)
+	}
 }
 
 func TestNewProvider_DiscoveryFailure(t *testing.T) {

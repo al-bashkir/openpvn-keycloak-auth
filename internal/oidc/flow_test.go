@@ -1,10 +1,22 @@
 package oidc
 
 import (
+	"context"
+	"crypto"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
+
+	coreosoidc "github.com/coreos/go-oidc/v3/oidc"
+	jose "github.com/go-jose/go-jose/v4"
+	"golang.org/x/oauth2"
 )
 
 func TestGenerateCodeVerifier(t *testing.T) {
@@ -157,54 +169,207 @@ func makeTestJWT(t *testing.T, claims map[string]interface{}) string {
 	return header + "." + encodedPayload + ".fakesignature"
 }
 
-func TestDecodeJWTPayload(t *testing.T) {
-	t.Run("valid JWT", func(t *testing.T) {
-		original := map[string]interface{}{
-			"sub":  "user123",
-			"name": "Test User",
-		}
-		token := makeTestJWT(t, original)
+func makeTestProvider(t *testing.T) (*Provider, *rsa.PrivateKey) {
+	t.Helper()
 
-		claims, err := decodeJWTPayload(token)
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("failed to generate test key: %v", err)
+	}
+
+	keySet := &coreosoidc.StaticKeySet{PublicKeys: []crypto.PublicKey{&privateKey.PublicKey}}
+	verifier := coreosoidc.NewVerifier("https://issuer.example", keySet, &coreosoidc.Config{
+		SkipClientIDCheck: true,
+	})
+
+	return &Provider{
+		accessTokenVerifier: verifier,
+		clientID:            "openvpn",
+	}, privateKey
+}
+
+func makeSignedAccessToken(t *testing.T, privateKey *rsa.PrivateKey, claims map[string]interface{}) string {
+	t.Helper()
+
+	if _, ok := claims["iss"]; !ok {
+		claims["iss"] = "https://issuer.example"
+	}
+	if _, ok := claims["sub"]; !ok {
+		claims["sub"] = "user123"
+	}
+	if _, ok := claims["exp"]; !ok {
+		claims["exp"] = time.Now().Add(time.Hour).Unix()
+	}
+	if _, ok := claims["iat"]; !ok {
+		claims["iat"] = time.Now().Add(-time.Minute).Unix()
+	}
+
+	payload, err := json.Marshal(claims)
+	if err != nil {
+		t.Fatalf("failed to marshal claims: %v", err)
+	}
+
+	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.RS256, Key: privateKey}, (&jose.SignerOptions{}).WithType("JWT"))
+	if err != nil {
+		t.Fatalf("failed to create signer: %v", err)
+	}
+
+	signed, err := signer.Sign(payload)
+	if err != nil {
+		t.Fatalf("failed to sign token: %v", err)
+	}
+
+	serialized, err := signed.CompactSerialize()
+	if err != nil {
+		t.Fatalf("failed to serialize token: %v", err)
+	}
+
+	return serialized
+}
+
+// exchangeCodeFixture wires a Provider against an in-memory token endpoint
+// that returns id/access tokens signed by privateKey. Tests can mutate the
+// returned `id` map between calls to control the issued id_token claims.
+type exchangeCodeFixture struct {
+	provider *Provider
+	id       map[string]interface{}
+	omitID   bool
+	close    func()
+}
+
+func newExchangeCodeFixture(t *testing.T) *exchangeCodeFixture {
+	t.Helper()
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+
+	const issuer = "https://issuer.example"
+	const audience = "openvpn"
+
+	fx := &exchangeCodeFixture{
+		id: map[string]interface{}{
+			"iss":   issuer,
+			"aud":   audience,
+			"sub":   "user-123",
+			"exp":   time.Now().Add(time.Hour).Unix(),
+			"iat":   time.Now().Add(-time.Minute).Unix(),
+			"nonce": "expected-nonce",
+		},
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/token", func(w http.ResponseWriter, _ *http.Request) {
+		access := makeSignedAccessToken(t, privateKey, map[string]interface{}{
+			"iss": issuer,
+			"aud": []string{audience},
+			"sub": "user-123",
+		})
+		body := map[string]interface{}{
+			"access_token": access,
+			"token_type":   "Bearer",
+			"expires_in":   3600,
+		}
+		if !fx.omitID {
+			body["id_token"] = makeSignedAccessToken(t, privateKey, fx.id)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(body)
+	})
+	ts := httptest.NewServer(mux)
+	fx.close = ts.Close
+
+	keySet := &coreosoidc.StaticKeySet{PublicKeys: []crypto.PublicKey{&privateKey.PublicKey}}
+	fx.provider = &Provider{
+		oauth2Config: &oauth2.Config{
+			ClientID: audience,
+			Endpoint: oauth2.Endpoint{TokenURL: ts.URL + "/token"},
+		},
+		verifier:            coreosoidc.NewVerifier(issuer, keySet, &coreosoidc.Config{ClientID: audience}),
+		accessTokenVerifier: coreosoidc.NewVerifier(issuer, keySet, &coreosoidc.Config{SkipClientIDCheck: true}),
+		clientID:            audience,
+	}
+
+	t.Cleanup(fx.close)
+	return fx
+}
+
+func TestExchangeCode_NonceMatch(t *testing.T) {
+	fx := newExchangeCodeFixture(t)
+
+	td, err := fx.provider.ExchangeCode(context.Background(), "code", "verifier", "expected-nonce")
+	if err != nil {
+		t.Fatalf("ExchangeCode failed: %v", err)
+	}
+	if td == nil || td.IDToken == "" {
+		t.Fatal("expected token data with id_token")
+	}
+	if td.Claims["sub"] != "user-123" {
+		t.Errorf("sub = %v, want user-123", td.Claims["sub"])
+	}
+}
+
+func TestExchangeCode_NonceMismatch(t *testing.T) {
+	fx := newExchangeCodeFixture(t)
+	fx.id["nonce"] = "attacker-nonce"
+
+	_, err := fx.provider.ExchangeCode(context.Background(), "code", "verifier", "expected-nonce")
+	if err == nil {
+		t.Fatal("expected nonce mismatch error")
+	}
+	if !errors.Is(err, errIDTokenNonceMismatch) {
+		t.Fatalf("err = %v, want errIDTokenNonceMismatch", err)
+	}
+}
+
+func TestExchangeCode_EmptyExpectedNonce(t *testing.T) {
+	fx := newExchangeCodeFixture(t)
+
+	_, err := fx.provider.ExchangeCode(context.Background(), "code", "verifier", "")
+	if err == nil {
+		t.Fatal("expected error for empty expected nonce")
+	}
+	if !errors.Is(err, errIDTokenNonceMismatch) {
+		t.Fatalf("err = %v, want errIDTokenNonceMismatch", err)
+	}
+}
+
+func TestExchangeCode_MissingIDToken(t *testing.T) {
+	fx := newExchangeCodeFixture(t)
+	fx.omitID = true
+
+	_, err := fx.provider.ExchangeCode(context.Background(), "code", "verifier", "expected-nonce")
+	if err == nil {
+		t.Fatal("expected error when id_token missing")
+	}
+	if !errors.Is(err, errIDTokenMissing) {
+		t.Fatalf("err = %v, want errIDTokenMissing", err)
+	}
+}
+
+func TestGenerateNonce(t *testing.T) {
+	seen := make(map[string]bool)
+	for i := 0; i < 100; i++ {
+		n, err := generateNonce()
 		if err != nil {
-			t.Fatalf("decodeJWTPayload failed: %v", err)
+			t.Fatalf("generateNonce failed: %v", err)
 		}
-
-		if claims["sub"] != "user123" {
-			t.Errorf("expected sub=user123, got %v", claims["sub"])
+		if len(n) != 32 {
+			t.Errorf("nonce length = %d, want 32", len(n))
 		}
-		if claims["name"] != "Test User" {
-			t.Errorf("expected name=Test User, got %v", claims["name"])
+		if seen[n] {
+			t.Errorf("duplicate nonce: %s", n)
 		}
-	})
-
-	t.Run("not a JWT", func(t *testing.T) {
-		_, err := decodeJWTPayload("not-a-jwt")
-		if err == nil {
-			t.Error("expected error for non-JWT token")
-		}
-	})
-
-	t.Run("invalid base64 payload", func(t *testing.T) {
-		_, err := decodeJWTPayload("header.!!!invalid!!!.signature")
-		if err == nil {
-			t.Error("expected error for invalid base64 payload")
-		}
-	})
-
-	t.Run("invalid JSON payload", func(t *testing.T) {
-		badPayload := base64.RawURLEncoding.EncodeToString([]byte("not json"))
-		_, err := decodeJWTPayload("header." + badPayload + ".signature")
-		if err == nil {
-			t.Error("expected error for invalid JSON payload")
-		}
-	})
+		seen[n] = true
+	}
 }
 
 func TestMergeAccessTokenClaims(t *testing.T) {
 	t.Run("merges resource_access from access token", func(t *testing.T) {
+		provider, privateKey := makeTestProvider(t)
 		accessTokenClaims := map[string]interface{}{
-			"sub": "user123",
+			"aud": []string{"openvpn"},
 			"resource_access": map[string]interface{}{
 				"openvpn": map[string]interface{}{
 					"roles": []interface{}{"vpn-user", "vpn-admin"},
@@ -214,7 +379,7 @@ func TestMergeAccessTokenClaims(t *testing.T) {
 				"roles": []interface{}{"default-roles"},
 			},
 		}
-		accessToken := makeTestJWT(t, accessTokenClaims)
+		accessToken := makeSignedAccessToken(t, privateKey, accessTokenClaims)
 
 		// ID token claims without resource_access
 		dst := map[string]interface{}{
@@ -222,7 +387,9 @@ func TestMergeAccessTokenClaims(t *testing.T) {
 			"preferred_username": "testuser",
 		}
 
-		mergeAccessTokenClaims(accessToken, dst)
+		if err := provider.mergeAccessTokenClaims(context.Background(), accessToken, "Bearer", dst); err != nil {
+			t.Fatalf("mergeAccessTokenClaims failed: %v", err)
+		}
 
 		// resource_access should be merged
 		ra, ok := dst["resource_access"]
@@ -256,13 +423,50 @@ func TestMergeAccessTokenClaims(t *testing.T) {
 		}
 	})
 
-	t.Run("does not overwrite existing ID token claims", func(t *testing.T) {
+	t.Run("merges missing nested client role claims", func(t *testing.T) {
+		provider, privateKey := makeTestProvider(t)
 		accessTokenClaims := map[string]interface{}{
+			"aud": []string{"openvpn"},
+			"resource_access": map[string]interface{}{
+				"openvpn": map[string]interface{}{
+					"roles": []interface{}{"vpn-user"},
+				},
+			},
+		}
+		accessToken := makeSignedAccessToken(t, privateKey, accessTokenClaims)
+
+		dst := map[string]interface{}{
+			"resource_access": map[string]interface{}{
+				"account": map[string]interface{}{
+					"roles": []interface{}{"manage-account"},
+				},
+			},
+		}
+
+		if err := provider.mergeAccessTokenClaims(context.Background(), accessToken, "Bearer", dst); err != nil {
+			t.Fatalf("mergeAccessTokenClaims failed: %v", err)
+		}
+
+		resourceAccess := dst["resource_access"].(map[string]interface{})
+		if _, ok := resourceAccess["account"]; !ok {
+			t.Fatal("existing ID token client roles should be preserved")
+		}
+		openvpn := resourceAccess["openvpn"].(map[string]interface{})
+		roles := openvpn["roles"].([]interface{})
+		if len(roles) != 1 || roles[0] != "vpn-user" {
+			t.Fatalf("expected openvpn role to be merged, got %v", roles)
+		}
+	})
+
+	t.Run("does not overwrite existing ID token claims", func(t *testing.T) {
+		provider, privateKey := makeTestProvider(t)
+		accessTokenClaims := map[string]interface{}{
+			"azp": "openvpn",
 			"realm_access": map[string]interface{}{
 				"roles": []interface{}{"from-access-token"},
 			},
 		}
-		accessToken := makeTestJWT(t, accessTokenClaims)
+		accessToken := makeSignedAccessToken(t, privateKey, accessTokenClaims)
 
 		dst := map[string]interface{}{
 			"realm_access": map[string]interface{}{
@@ -270,7 +474,9 @@ func TestMergeAccessTokenClaims(t *testing.T) {
 			},
 		}
 
-		mergeAccessTokenClaims(accessToken, dst)
+		if err := provider.mergeAccessTokenClaims(context.Background(), accessToken, "Bearer", dst); err != nil {
+			t.Fatalf("mergeAccessTokenClaims failed: %v", err)
+		}
 
 		// Should keep ID token's realm_access, not overwrite
 		ra := dst["realm_access"].(map[string]interface{})
@@ -281,20 +487,88 @@ func TestMergeAccessTokenClaims(t *testing.T) {
 	})
 
 	t.Run("handles empty access token", func(t *testing.T) {
+		provider, _ := makeTestProvider(t)
 		dst := map[string]interface{}{"sub": "user"}
-		mergeAccessTokenClaims("", dst)
+		if err := provider.mergeAccessTokenClaims(context.Background(), "", "", dst); err != nil {
+			t.Fatalf("mergeAccessTokenClaims failed: %v", err)
+		}
 		// Should not panic or modify dst
 		if len(dst) != 1 {
 			t.Error("dst should not be modified for empty token")
 		}
 	})
 
-	t.Run("handles opaque access token gracefully", func(t *testing.T) {
+	t.Run("rejects opaque access token", func(t *testing.T) {
+		provider, _ := makeTestProvider(t)
 		dst := map[string]interface{}{"sub": "user"}
-		mergeAccessTokenClaims("opaque-token-no-dots", dst)
+		if err := provider.mergeAccessTokenClaims(context.Background(), "opaque-token-no-dots", "Bearer", dst); err == nil {
+			t.Fatal("expected error for opaque token")
+		}
 		// Should not panic or modify dst
 		if len(dst) != 1 {
 			t.Error("dst should not be modified for opaque token")
+		}
+	})
+
+	t.Run("rejects token with invalid signature", func(t *testing.T) {
+		provider, _ := makeTestProvider(t)
+		dst := map[string]interface{}{"sub": "user"}
+		accessToken := makeTestJWT(t, map[string]interface{}{
+			"iss":          "https://issuer.example",
+			"aud":          []string{"openvpn"},
+			"exp":          time.Now().Add(time.Hour).Unix(),
+			"realm_access": map[string]interface{}{"roles": []interface{}{"vpn-user"}},
+		})
+
+		err := provider.mergeAccessTokenClaims(context.Background(), accessToken, "Bearer", dst)
+		if err == nil {
+			t.Fatal("expected error for invalid signature")
+		}
+		if got := accessTokenClaimsErrorCategory(err); got != "access_token_verify_failed" {
+			t.Fatalf("error category = %q, want access_token_verify_failed", got)
+		}
+		if _, ok := dst["realm_access"]; ok {
+			t.Fatal("unverified access token claims must not be merged")
+		}
+	})
+
+	t.Run("rejects token not issued for client", func(t *testing.T) {
+		provider, privateKey := makeTestProvider(t)
+		dst := map[string]interface{}{"sub": "user"}
+		accessToken := makeSignedAccessToken(t, privateKey, map[string]interface{}{
+			"aud":          []string{"other-client"},
+			"realm_access": map[string]interface{}{"roles": []interface{}{"vpn-user"}},
+		})
+
+		err := provider.mergeAccessTokenClaims(context.Background(), accessToken, "Bearer", dst)
+		if err == nil {
+			t.Fatal("expected error for token audience mismatch")
+		}
+		if got := accessTokenClaimsErrorCategory(err); got != "client_binding_failed" {
+			t.Fatalf("error category = %q, want client_binding_failed", got)
+		}
+		if _, ok := dst["realm_access"]; ok {
+			t.Fatal("wrong-client access token claims must not be merged")
+		}
+	})
+
+	t.Run("rejects unsupported token type", func(t *testing.T) {
+		provider, privateKey := makeTestProvider(t)
+		dst := map[string]interface{}{"sub": "user"}
+		accessToken := makeSignedAccessToken(t, privateKey, map[string]interface{}{
+			"aud":          []string{"openvpn"},
+			"realm_access": map[string]interface{}{"roles": []interface{}{"vpn-user"}},
+		})
+
+		err := provider.mergeAccessTokenClaims(context.Background(), accessToken, "DPoP", dst)
+		if err == nil {
+			t.Fatal("expected error for unsupported token type")
+		}
+		if got := accessTokenClaimsErrorCategory(err); got != "unsupported_token_type" {
+			t.Fatalf("error category = %q, want unsupported_token_type", got)
+		}
+		if _, ok := dst["realm_access"]; ok {
+			t.Fatal("unsupported-token-type access token claims must not be merged")
 		}
 	})
 }

@@ -18,6 +18,12 @@ func TestNewManager(t *testing.T) {
 	}
 }
 
+func TestManagerStopIsIdempotent(t *testing.T) {
+	mgr := NewManager(5 * time.Minute)
+	mgr.Stop()
+	mgr.Stop()
+}
+
 func TestCreateSession(t *testing.T) {
 	mgr := NewManager(5 * time.Minute)
 	defer mgr.Stop()
@@ -93,7 +99,7 @@ func TestUpdateOIDCFlow(t *testing.T) {
 	}
 
 	// Update with OIDC flow data
-	err = mgr.UpdateOIDCFlow(session.ID, "state123", "verifier456", "https://example.com/auth")
+	err = mgr.UpdateOIDCFlow(session.ID, "state123", "verifier456", "nonce789", "https://example.com/auth")
 	if err != nil {
 		t.Fatalf("UpdateOIDCFlow failed: %v", err)
 	}
@@ -112,6 +118,10 @@ func TestUpdateOIDCFlow(t *testing.T) {
 		t.Errorf("CodeVerifier = %s, want verifier456", retrieved.CodeVerifier)
 	}
 
+	if retrieved.Nonce != "nonce789" {
+		t.Errorf("Nonce = %s, want nonce789", retrieved.Nonce)
+	}
+
 	if retrieved.AuthURL != "https://example.com/auth" {
 		t.Errorf("AuthURL = %s, want https://example.com/auth", retrieved.AuthURL)
 	}
@@ -126,7 +136,7 @@ func TestGetByState(t *testing.T) {
 		t.Fatalf("Create failed: %v", err)
 	}
 
-	err = mgr.UpdateOIDCFlow(session.ID, "state123", "verifier456", "https://example.com/auth")
+	err = mgr.UpdateOIDCFlow(session.ID, "state123", "verifier456", "nonce789", "https://example.com/auth")
 	if err != nil {
 		t.Fatalf("UpdateOIDCFlow failed: %v", err)
 	}
@@ -157,7 +167,7 @@ func TestDeleteSession(t *testing.T) {
 		t.Fatalf("Create failed: %v", err)
 	}
 
-	err = mgr.UpdateOIDCFlow(session.ID, "state123", "verifier456", "https://example.com/auth")
+	err = mgr.UpdateOIDCFlow(session.ID, "state123", "verifier456", "nonce789", "https://example.com/auth")
 	if err != nil {
 		t.Fatalf("UpdateOIDCFlow failed: %v", err)
 	}
@@ -218,6 +228,34 @@ func TestMarkResultWritten(t *testing.T) {
 	}
 	if !retrieved.ResultWritten {
 		t.Fatal("expected session to be marked ResultWritten")
+	}
+}
+
+func TestClaimResultWrite(t *testing.T) {
+	mgr := NewManager(5 * time.Minute)
+	defer mgr.Stop()
+
+	sess, err := mgr.Create("testuser", "cn", "192.0.2.1", "12345", "/tmp/acf", "/tmp/apf", "/tmp/arf")
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	if ok := mgr.ClaimResultWrite(sess.ID); !ok {
+		t.Fatal("expected first claim to succeed")
+	}
+	if ok := mgr.ClaimResultWrite(sess.ID); ok {
+		t.Fatal("expected second claim to fail")
+	}
+
+	mgr.ReleaseResultWriteClaim(sess.ID)
+	if ok := mgr.ClaimResultWrite(sess.ID); !ok {
+		t.Fatal("expected claim after release to succeed")
+	}
+	if ok := mgr.MarkResultWritten(sess.ID); !ok {
+		t.Fatal("expected mark after claim to succeed")
+	}
+	if ok := mgr.ClaimResultWrite(sess.ID); ok {
+		t.Fatal("expected claim after mark to fail")
 	}
 }
 

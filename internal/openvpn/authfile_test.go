@@ -314,6 +314,45 @@ func TestWriteAuthFailure(t *testing.T) {
 	}
 }
 
+func TestWriteAuthSuccess_UnwritableDir(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses write permissions; skip")
+	}
+
+	tmpDir := t.TempDir()
+	roDir := filepath.Join(tmpDir, "ro")
+	if err := os.Mkdir(roDir, 0500); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(roDir, 0700) })
+
+	if err := WriteAuthSuccess(filepath.Join(roDir, "auth_control")); err == nil {
+		t.Fatal("expected error writing into read-only dir")
+	}
+}
+
+func TestWriteAuthFailure_UnwritableControlFile(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses write permissions; skip")
+	}
+
+	tmpDir := t.TempDir()
+	roDir := filepath.Join(tmpDir, "ro")
+	if err := os.Mkdir(roDir, 0500); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(roDir, 0700) })
+
+	err := WriteAuthFailure(
+		filepath.Join(roDir, "auth_control"),
+		filepath.Join(roDir, "auth_failed_reason"),
+		"some reason",
+	)
+	if err == nil {
+		t.Fatal("expected error writing control file into read-only dir")
+	}
+}
+
 func TestWriteOrder(t *testing.T) {
 	// This test verifies that auth_failed_reason_file is written BEFORE auth_control_file
 	// We can't easily test timing, but we can verify both files exist after WriteAuthFailure

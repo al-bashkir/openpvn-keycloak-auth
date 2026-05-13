@@ -30,7 +30,6 @@ var (
 
 // Exit codes
 const (
-	ExitSuccess  = 0
 	ExitError    = 1
 	ExitDeferred = 2 // Special: auth deferred (only for auth command)
 	ExitConfig   = 3
@@ -212,7 +211,7 @@ func runVersion(cmd *cobra.Command, args []string) {
 	fmt.Printf("openvpn-keycloak-auth version %s\n", version)
 	fmt.Printf("  Commit:     %s\n", commit)
 	fmt.Printf("  Build date: %s\n", buildDate)
-	fmt.Printf("  Go version: %s\n", getGoVersion())
+	fmt.Printf("  Go version: %s\n", runtime.Version())
 }
 
 // runCheckConfig validates the configuration
@@ -253,9 +252,4 @@ func runCheckConfig(cmd *cobra.Command, args []string) error {
 	fmt.Println("\n✅ Ready to start daemon")
 
 	return nil
-}
-
-// getGoVersion returns the Go version used to build the binary
-func getGoVersion() string {
-	return runtime.Version()
 }

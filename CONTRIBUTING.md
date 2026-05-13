@@ -24,6 +24,7 @@ We are committed to providing a welcoming and inclusive environment for all cont
 ### Our Standards
 
 **Positive behavior includes:**
+
 - Using welcoming and inclusive language
 - Being respectful of differing viewpoints and experiences
 - Gracefully accepting constructive criticism
@@ -31,6 +32,7 @@ We are committed to providing a welcoming and inclusive environment for all cont
 - Showing empathy towards other community members
 
 **Unacceptable behavior includes:**
+
 - Harassment, trolling, or derogatory comments
 - Publishing others' private information without permission
 - Other conduct which could reasonably be considered inappropriate
@@ -44,6 +46,7 @@ Instances of abusive, harassing, or otherwise unacceptable behavior may be repor
 ### Reporting Bugs
 
 **Before Submitting a Bug Report:**
+
 1. Check the [documentation](docs/) for common issues
 2. Search [existing issues](../../issues) to avoid duplicates
 3. Verify the bug exists in the latest version
@@ -51,6 +54,7 @@ Instances of abusive, harassing, or otherwise unacceptable behavior may be repor
 **How to Submit a Bug Report:**
 
 Open an issue with:
+
 - **Clear title** - Descriptive summary of the issue
 - **Environment** - OS, OpenVPN version, Keycloak version, Go version
 - **Steps to reproduce** - Exact steps that trigger the bug
@@ -63,12 +67,14 @@ Open an issue with:
 
 ```markdown
 **Environment:**
+
 - OS: Rocky Linux 9.3
 - OpenVPN: 2.6.19
 - Keycloak: 25.0.6
 - openvpn-keycloak-auth: v1.0.0
 
 **Steps to Reproduce:**
+
 1. Start daemon with config X
 2. Connect client with profile Y
 3. Observe error Z
@@ -78,15 +84,16 @@ Open an issue with:
 
 **Logs:**
 ```
-[error logs here]
-```
 
+[error logs here]
+
+````
 **Config:**
 ```yaml
 [sanitized config]
-```
-```
+````
 
+````
 ### Suggesting Enhancements
 
 **Before Submitting an Enhancement:**
@@ -117,7 +124,7 @@ We welcome pull requests for:
 ### Prerequisites
 
 ```bash
-# Go 1.22 or later
+# Go 1.25 or later
 go version
 
 # OpenVPN 2.6.19 (for testing)
@@ -125,7 +132,7 @@ openvpn --version
 
 # Git
 git --version
-```
+````
 
 ### Clone and Build
 
@@ -187,6 +194,7 @@ make lint
 Follow the official [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments) and [Effective Go](https://golang.org/doc/effective_go).
 
 **Key principles:**
+
 - **gofmt** - All code must be formatted with `gofmt` (run via `make fmt`)
 - **golangci-lint** - Must pass all linter checks (run via `make lint`)
 - **Simplicity** - Prefer simple, readable code over clever solutions
@@ -290,6 +298,7 @@ slog.Debug("token", "value", token) // ✗ NEVER DO THIS
 ```
 
 **Log levels:**
+
 - **Debug** - Detailed information for debugging (disabled in production)
 - **Info** - General informational messages
 - **Warn** - Warning messages for recoverable issues
@@ -437,12 +446,14 @@ For changes affecting the full authentication flow:
 ### What to Document
 
 **Code documentation:**
+
 - Public functions, types, constants
 - Complex algorithms or logic
 - Security-sensitive code
 - Non-obvious behavior
 
 **User documentation:**
+
 - New features or options
 - Configuration changes
 - Breaking changes
@@ -451,6 +462,7 @@ For changes affecting the full authentication flow:
 ### Documentation Structure
 
 **For new features, update:**
+
 1. Code comments (inline documentation)
 2. `README.md` (if it's a major feature)
 3. Relevant guide in `docs/` directory
@@ -486,30 +498,38 @@ When opening a PR, include:
 
 ```markdown
 ## Description
+
 Brief description of what this PR does.
 
 ## Motivation
+
 Why is this change needed? What problem does it solve?
 
 ## Changes
+
 - List of specific changes made
 - Another change
 - Yet another change
 
 ## Testing
+
 How was this tested?
+
 - [ ] Unit tests added/updated
 - [ ] Integration tests run
 - [ ] Manual testing performed
 
 ## Related Issues
+
 Fixes #123
 Relates to #456
 
 ## Screenshots (if applicable)
+
 [Add screenshots for UI changes]
 
 ## Checklist
+
 - [ ] Code follows style guide
 - [ ] Tests pass
 - [ ] Linter passes
@@ -603,6 +623,7 @@ Added common systemd issues and solutions to the deployment guide.
 ## Recognition
 
 All contributors will be recognized:
+
 - Added to `README.md` contributors section
 - Mentioned in release notes
 - Listed in GitHub contributors

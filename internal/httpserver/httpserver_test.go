@@ -7,7 +7,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -32,6 +34,7 @@ func TestNewServer(t *testing.T) {
 
 	if server == nil {
 		t.Fatal("expected server, got nil")
+		return
 	}
 
 	if server.templates == nil {
@@ -78,6 +81,9 @@ func TestHealthEndpoint(t *testing.T) {
 func TestAuthRedirectEndpoint(t *testing.T) {
 	cfg := &config.Config{
 		Listen: config.ListenConfig{HTTP: ":9000"},
+		OIDC: config.OIDCConfig{
+			RedirectURI: "https://vpn.example.com/callback",
+		},
 	}
 
 	sessionMgr := session.NewManager(5 * time.Minute)
@@ -97,7 +103,7 @@ func TestAuthRedirectEndpoint(t *testing.T) {
 
 	testState := "abc123def456"
 	testAuthURL := "https://keycloak.example.com/realms/test/protocol/openid-connect/auth?client_id=openvpn&very_long_param=value"
-	err = sessionMgr.UpdateOIDCFlow(sess.ID, testState, "verifier", testAuthURL)
+	err = sessionMgr.UpdateOIDCFlow(sess.ID, testState, "verifier", "nonce", testAuthURL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,6 +166,100 @@ func TestAuthRedirectEndpoint(t *testing.T) {
 	})
 }
 
+func TestAuthRedirectEndpointWithBasePath(t *testing.T) {
+	cfg := &config.Config{
+		Listen: config.ListenConfig{HTTP: ":9000"},
+		OIDC: config.OIDCConfig{
+			RedirectURI: "https://vpn.example.com/vpn/callback",
+		},
+	}
+
+	sessionMgr := session.NewManager(5 * time.Minute)
+	defer sessionMgr.Stop()
+
+	server, err := NewServer(cfg, nil, sessionMgr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sess, err := sessionMgr.Create("testuser", "", "192.0.2.1", "12345",
+		"/tmp/acf", "/tmp/apf", "/tmp/arf")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testState := "prefixedstate123"
+	testAuthURL := "https://keycloak.example.com/realms/test/protocol/openid-connect/auth?client_id=openvpn"
+	if err := sessionMgr.UpdateOIDCFlow(sess.ID, testState, "verifier", "nonce", testAuthURL); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest("GET", "/vpn/auth/"+testState, nil)
+	w := httptest.NewRecorder()
+
+	server.mux.ServeHTTP(w, req)
+
+	resp := w.Result()
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("expected status 302, got %d", resp.StatusCode)
+	}
+	if location := resp.Header.Get("Location"); location != testAuthURL {
+		t.Fatalf("expected Location=%s, got %s", testAuthURL, location)
+	}
+
+	rootReq := httptest.NewRequest("GET", "/auth/"+testState, nil)
+	rootW := httptest.NewRecorder()
+
+	server.mux.ServeHTTP(rootW, rootReq)
+
+	rootResp := rootW.Result()
+	defer func() { _ = rootResp.Body.Close() }()
+
+	if rootResp.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected root auth route status 404, got %d", rootResp.StatusCode)
+	}
+}
+
+func TestCallbackEndpointWithBasePath(t *testing.T) {
+	cfg := &config.Config{
+		Listen: config.ListenConfig{HTTP: ":9000"},
+		OIDC: config.OIDCConfig{
+			RedirectURI: "https://vpn.example.com/vpn/callback",
+		},
+	}
+
+	server, err := NewServer(cfg, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest("GET", "/vpn/callback?error=access_denied", nil)
+	w := httptest.NewRecorder()
+
+	server.mux.ServeHTTP(w, req)
+
+	resp := w.Result()
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", resp.StatusCode)
+	}
+
+	rootReq := httptest.NewRequest("GET", "/callback?error=access_denied", nil)
+	rootW := httptest.NewRecorder()
+
+	server.mux.ServeHTTP(rootW, rootReq)
+
+	rootResp := rootW.Result()
+	defer func() { _ = rootResp.Body.Close() }()
+
+	if rootResp.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected root callback route status 404, got %d", rootResp.StatusCode)
+	}
+}
+
 // TestCallbackEndpointValidParams is skipped because it requires a full OIDC setup.
 // TODO: Create integration tests with mock OIDC provider and session manager.
 func TestCallbackEndpointValidParams(t *testing.T) {
@@ -169,10 +269,26 @@ func TestCallbackEndpointValidParams(t *testing.T) {
 func TestCallbackEndpointMissingCode(t *testing.T) {
 	cfg := &config.Config{
 		Listen: config.ListenConfig{HTTP: ":9000"},
+		OIDC: config.OIDCConfig{
+			RedirectURI: "https://vpn.example.com/callback",
+		},
 	}
+	sessionMgr := session.NewManager(5 * time.Minute)
+	defer sessionMgr.Stop()
 
-	server, err := NewServer(cfg, nil, nil)
+	server, err := NewServer(cfg, nil, sessionMgr)
 	if err != nil {
+		t.Fatal(err)
+	}
+	tmpDir := t.TempDir()
+	authControlFile := tmpDir + "/auth_control"
+	authFailedReasonFile := tmpDir + "/auth_failed"
+	sess, err := sessionMgr.Create("testuser", "", "192.0.2.1", "12345",
+		authControlFile, tmpDir+"/auth_pending", authFailedReasonFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sessionMgr.UpdateOIDCFlow(sess.ID, "abc456", "verifier", "nonce", "https://keycloak.example.com/auth"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -192,11 +308,95 @@ func TestCallbackEndpointMissingCode(t *testing.T) {
 	if !strings.Contains(string(body), "Invalid callback parameters") {
 		t.Error("expected error message in response")
 	}
+
+	control, err := os.ReadFile(authControlFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(control) != "0" {
+		t.Fatalf("expected auth control failure, got %q", string(control))
+	}
+	reason, err := os.ReadFile(authFailedReasonFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(reason) != "Invalid callback parameters" {
+		t.Fatalf("expected failure reason, got %q", string(reason))
+	}
+}
+
+// TestCallbackConcurrentSameState fires N callbacks for the same session in
+// parallel and asserts that exactly one writes the auth_control_file and the
+// session is removed exactly once. The "Invalid callback parameters" branch
+// (state present, code missing) is used because it exercises writeAuthFailure
+// without requiring a real OIDC provider.
+func TestCallbackConcurrentSameState(t *testing.T) {
+	cfg := &config.Config{
+		Listen: config.ListenConfig{HTTP: ":9000"},
+		OIDC: config.OIDCConfig{
+			RedirectURI: "https://vpn.example.com/callback",
+		},
+	}
+	sessionMgr := session.NewManager(5 * time.Minute)
+	defer sessionMgr.Stop()
+
+	server, err := NewServer(cfg, nil, sessionMgr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tmpDir := t.TempDir()
+	authControlFile := tmpDir + "/auth_control"
+	authFailedReasonFile := tmpDir + "/auth_failed"
+
+	sess, err := sessionMgr.Create("u", "", "192.0.2.1", "1",
+		authControlFile, tmpDir+"/auth_pending", authFailedReasonFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sessionMgr.UpdateOIDCFlow(sess.ID, "racestate", "verifier", "nonce", "https://kc.example/auth"); err != nil {
+		t.Fatal(err)
+	}
+
+	const concurrency = 16
+	var wg sync.WaitGroup
+	wg.Add(concurrency)
+	start := make(chan struct{})
+
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			defer wg.Done()
+			<-start
+			req := httptest.NewRequest("GET", "/callback?state=racestate", nil)
+			w := httptest.NewRecorder()
+			server.mux.ServeHTTP(w, req)
+			_ = w.Result().Body.Close()
+		}()
+	}
+	close(start)
+	wg.Wait()
+
+	// Session must be deleted exactly once (Count == 0).
+	if got := sessionMgr.Count(); got != 0 {
+		t.Errorf("session count after race = %d, want 0", got)
+	}
+
+	// auth_control_file must exist and contain the failure marker.
+	control, err := os.ReadFile(authControlFile)
+	if err != nil {
+		t.Fatalf("read auth_control_file: %v", err)
+	}
+	if string(control) != "0" {
+		t.Errorf("auth_control_file = %q, want %q", control, "0")
+	}
 }
 
 func TestCallbackEndpointOIDCError(t *testing.T) {
 	cfg := &config.Config{
 		Listen: config.ListenConfig{HTTP: ":9000"},
+		OIDC: config.OIDCConfig{
+			RedirectURI: "https://vpn.example.com/callback",
+		},
 	}
 
 	server, err := NewServer(cfg, nil, nil)
@@ -217,8 +417,12 @@ func TestCallbackEndpointOIDCError(t *testing.T) {
 	}
 
 	body, _ := io.ReadAll(resp.Body)
-	if !strings.Contains(string(body), "User denied access") {
-		t.Error("expected OIDC error description in response")
+	bodyText := string(body)
+	if !strings.Contains(bodyText, "Authentication failed. Please try again.") {
+		t.Error("expected generic OIDC error message in response")
+	}
+	if strings.Contains(bodyText, "User denied access") {
+		t.Error("raw OIDC error description must not be rendered")
 	}
 }
 
@@ -306,7 +510,6 @@ func TestSecurityHeaders(t *testing.T) {
 	expectedHeaders := map[string]string{
 		"X-Frame-Options":        "DENY",
 		"X-Content-Type-Options": "nosniff",
-		"X-XSS-Protection":       "1; mode=block",
 		"Referrer-Policy":        "no-referrer",
 	}
 
@@ -315,6 +518,11 @@ func TestSecurityHeaders(t *testing.T) {
 		if actualValue != expectedValue {
 			t.Errorf("expected %s='%s', got '%s'", header, expectedValue, actualValue)
 		}
+	}
+
+	// X-XSS-Protection is intentionally not set (deprecated header).
+	if v := resp.Header.Get("X-XSS-Protection"); v != "" {
+		t.Errorf("expected X-XSS-Protection to be unset, got %q", v)
 	}
 }
 
@@ -415,6 +623,11 @@ func TestExtractIP(t *testing.T) {
 			remoteAddr: "[::1]:12345",
 			expectedIP: "::1",
 		},
+		{
+			name:       "address without port",
+			remoteAddr: "192.0.2.1",
+			expectedIP: "192.0.2.1",
+		},
 	}
 
 	for _, tt := range tests {
@@ -429,6 +642,85 @@ func TestExtractIP(t *testing.T) {
 			ip := extractIP(req)
 			if ip != tt.expectedIP {
 				t.Errorf("expected IP '%s', got '%s'", tt.expectedIP, ip)
+			}
+		})
+	}
+}
+
+func TestRedactRequestPath(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+		want string
+	}{
+		{
+			name: "auth state path",
+			path: "/auth/abc123state",
+			want: "/auth/{state}",
+		},
+		{
+			name: "auth empty state path",
+			path: "/auth/",
+			want: "/auth/{state}",
+		},
+		{
+			name: "prefixed auth state path",
+			path: "/vpn/auth/abc123state",
+			want: "/vpn/auth/{state}",
+		},
+		{
+			name: "sanitizes auth path prefix",
+			path: "/\n/auth/abc123state",
+			want: "/_/auth/{state}",
+		},
+		{
+			name: "callback path",
+			path: "/callback",
+			want: "/callback",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := redactRequestPath(tt.path); got != tt.want {
+				t.Fatalf("redactRequestPath(%q) = %q, want %q", tt.path, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAuthStateFromPath(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+		want string
+	}{
+		{
+			name: "root auth path",
+			path: "/auth/abc123",
+			want: "abc123",
+		},
+		{
+			name: "prefixed auth path",
+			path: "/vpn/auth/abc123",
+			want: "abc123",
+		},
+		{
+			name: "empty state",
+			path: "/vpn/auth/",
+			want: "",
+		},
+		{
+			name: "non auth path",
+			path: "/vpn/callback",
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := authStateFromPath(tt.path); got != tt.want {
+				t.Fatalf("authStateFromPath(%q) = %q, want %q", tt.path, got, tt.want)
 			}
 		})
 	}

@@ -217,7 +217,7 @@ Location: https://vpn.example.com:9000/callback?code=AUTHORIZATION_CODE&state=a1
    - Validates JWT signature (RS256)
    - Validates claims: `iss`, `aud`, `exp`, `iat`, `nbf`
 
-5. **Claim merging** (`internal/oidc/flow.go`): Decodes Keycloak access token JWT (without signature check -- already trusted from token endpoint), merges `resource_access`, `realm_access`, and `groups` claims into ID token claims (ID token claims take precedence).
+5. **Claim merging** (`internal/oidc/flow.go`): Verifies the Keycloak access token JWT signature, issuer, expiry, and client binding before merging `resource_access`, `realm_access`, and `groups` claims into ID token claims. ID token claims take precedence. A non-empty access token that cannot be verified is rejected.
 
 6. **Validation** (`internal/oidc/validator.go`):
    - Extracts username from `preferred_username` claim (configurable via `username_claim`)
@@ -229,8 +229,9 @@ Location: https://vpn.example.com:9000/callback?code=AUTHORIZATION_CODE&state=a1
 ## Phase 8: Result Written to OpenVPN
 
 **On success** (`internal/httpserver/callback.go`):
+- Claims the final result write for this session so duplicate callbacks cannot race to write twice
 - Writes `"1"` to `auth_control_file` (file I/O, mode 0600)
-- Marks session `ResultWritten = true` (atomic, prevents double-write)
+- Marks session `ResultWritten = true` after the write succeeds
 - Deletes session from memory
 - Renders `success.html` in user's browser (embedded template)
 
@@ -248,11 +249,13 @@ Location: https://vpn.example.com:9000/callback?code=AUTHORIZATION_CODE&state=a1
 
 ## Phase 9: Safety Nets
 
-Three mechanisms guarantee `auth_control_file` is **always** written:
+The daemon attempts to write a final result for every known session that has an OpenVPN `auth_control_file`:
 
-1. **Defer in `handleCallback`** (`internal/httpserver/callback.go`): If callback finishes without writing a result, writes `"0"` automatically
-2. **Background cleanup** (`internal/session/cleanup.go`): Every 60 seconds, expired sessions get `"0"` written + "Authentication timeout" reason
-3. **Error paths in daemon** (`internal/daemon/daemon.go`): If OIDC flow or pending file write fails, writes `"0"` immediately
+1. **Defer in `handleCallback`** (`internal/httpserver/callback.go`): If callback finishes without writing a result, it claims the result write and writes `"0"`
+2. **Background cleanup** (`internal/session/cleanup.go`): Every 60 seconds, expired unclaimed sessions get `"0"` written + "Authentication timeout" reason
+3. **Error paths in daemon** (`internal/daemon/daemon.go`): If OIDC flow or pending file write fails after result paths are known, writes `"0"` immediately
+
+Missing or unknown callback states have no associated OpenVPN result path, and filesystem write failures may leave OpenVPN to timeout or retry. Those failures are logged.
 
 ---
 

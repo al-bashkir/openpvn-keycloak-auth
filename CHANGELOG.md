@@ -5,6 +5,60 @@ All notable changes to OpenVPN Keycloak SSO will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+
+- **OIDC nonce binding** - The authorization request now sets an `oidc.Nonce`
+  parameter and `ExchangeCode` requires the issued ID token to echo the same
+  value, binding the response to the originating flow as defense-in-depth on
+  top of state + PKCE.
+- **HTTP callback TLS** raised to TLS 1.3 minimum and the explicit TLS 1.2
+  cipher suite override was removed. TLS 1.3 negotiates only AEAD-secure
+  suites and cannot be downgraded to a weak suite. Browsers and OpenVPN
+  clients used to render the callback page have supported TLS 1.3 since 2018.
+- **`X-XSS-Protection` removed.** Modern browsers dropped support; OWASP
+  recommends omitting it because `1; mode=block` can introduce side-channel
+  XSS in legacy clients. CSP remains the active mitigation.
+- **Daemon shutdown** now uses `errors.Is(err, http.ErrServerClosed)` instead
+  of comparing the error text, eliminating a brittle string match.
+
+### Removed
+
+- Unused `ExitSuccess` constant from `cmd/openvpn-keycloak-auth` (the binary
+  never returns code 0 by intent: success is always deferred via OpenVPN).
+- Dead helper `decodeJWTPayload` in `internal/oidc` (only referenced by tests).
+- Dead helper `Config.Redact` in `internal/config` (only referenced by a test;
+  `check-config` builds its own redacted summary).
+- Dead helper `Client.SetTimeout` in `internal/ipc` (no production caller;
+  the context deadline path already covers timeouts).
+- Stale `oidcProvider` field in `oidc.Provider` (assigned but never read).
+- Unreachable `len(lines) < 1` branch in `readCredentialsFile`.
+
+### Build
+
+- **Containerfile**: bumped base image from `golang:1.24.13-alpine3.21` to
+  `golang:1.25-alpine3.21`. The previous image predated `go.mod`'s `go 1.25`
+  directive, so the container build failed before this change.
+
+### Tests
+
+- Refactored `internal/ipc` timeout test to exercise the context deadline path
+  directly (after `Client.SetTimeout` was removed).
+- Updated `internal/httpserver` `TestSecurityHeaders` to assert that
+  `X-XSS-Protection` is **not** set.
+- Removed `TestRedact` (`Config.Redact` no longer exists) and
+  `TestDecodeJWTPayload` (helper removed).
+- Added `internal/logsanitize` test coverage for control-char stripping,
+  multi-byte UTF-8 preservation, and invalid-byte handling.
+- Added concurrent-callback race test in `internal/httpserver` exercising
+  `ClaimResultWrite` with the race detector.
+- Added unwritable-directory cases in `internal/openvpn` covering
+  `WriteAuthSuccess` and `WriteAuthFailure`.
+- Added `ExchangeCode` cases for nonce match, mismatch, missing id_token,
+  and missing expected nonce.
+- Extended `TestGetNestedClaim` with missing-intermediate-key cases.
+
 ## [1.0.0] - 2026-02-15
 
 ### Initial Release
@@ -14,6 +68,7 @@ The first production-ready release of OpenVPN Keycloak SSO - a complete Single S
 ### Features
 
 #### Core Authentication
+
 - **Script-Based Deferred Authentication** - Leverages OpenVPN 2.6's native deferred auth capabilities (exit code 2)
 - **Authorization Code Flow with PKCE** - Implements OAuth 2.0 / OIDC Authorization Code Flow with SHA-256 PKCE for maximum security
 - **Browser-Based Login** - Automatic browser opening via `WEB_AUTH::` URLs for seamless user experience
@@ -22,6 +77,7 @@ The first production-ready release of OpenVPN Keycloak SSO - a complete Single S
 - **Session Management** - In-memory session storage with automatic cleanup and configurable TTLs
 
 #### Architecture
+
 - **Single Go Binary** - No C code, no CGO, no shared libraries - pure Go implementation
 - **Dual Operating Modes**:
   - `auth` mode: Called by OpenVPN as auth script, communicates with daemon
@@ -31,6 +87,7 @@ The first production-ready release of OpenVPN Keycloak SSO - a complete Single S
 - **Atomic File Operations** - Reliable OpenVPN control file writes with proper error handling
 
 #### Security
+
 - **PKCE Implementation** - 32-byte crypto/rand verifier with S256 challenge method
 - **CSRF Protection** - 16-byte state parameter validation
 - **Cryptographically Secure Random** - All session IDs and security parameters use crypto/rand
@@ -41,6 +98,7 @@ The first production-ready release of OpenVPN Keycloak SSO - a complete Single S
 - **Input Validation** - Comprehensive validation of all user inputs and configuration values
 
 #### Client Support
+
 - **OpenVPN Community** - Full support for official OpenVPN clients
 - **OpenVPN Connect** - Optimized profiles for mobile and desktop Connect clients
 - **Tunnelblick** - macOS-specific configuration and compatibility
@@ -49,12 +107,14 @@ The first production-ready release of OpenVPN Keycloak SSO - a complete Single S
 - **Windows, macOS, Linux, iOS, Android** - Cross-platform client support
 
 #### Configuration
+
 - **YAML Configuration** - Human-readable, well-documented configuration format
 - **Validation** - Built-in config validation with `check-config` command
 - **Examples** - Production-ready configuration templates for all components
 - **Client Profiles** - 5 pre-configured client profiles for different platforms and use cases
 
 #### Deployment
+
 - **Automated Installation** - Interactive install script with comprehensive validation
 - **Systemd Integration** - Production-ready systemd service unit with security hardening
 - **Clean Uninstallation** - Interactive uninstall script with backup and rollback capabilities
@@ -62,6 +122,7 @@ The first production-ready release of OpenVPN Keycloak SSO - a complete Single S
 - **No RPM Required** - Manual installation via Makefile for maximum flexibility
 
 #### Documentation
+
 - **200+ Pages** - Comprehensive documentation across 15+ files
 - **Quick Start Guide** - 5-minute deployment guide (QUICKSTART.md)
 - **Architecture Documentation** - 35KB technical deep dive (docs/architecture.md)
@@ -76,6 +137,7 @@ The first production-ready release of OpenVPN Keycloak SSO - a complete Single S
 - **Contributing Guide** - Developer contribution guidelines (10KB+)
 
 #### Testing
+
 - **56 Unit Tests** - Comprehensive test coverage across all packages
 - **76% Code Coverage** - Average coverage across the codebase
 - **Race Detector Clean** - All tests pass with `-race` flag
@@ -84,6 +146,7 @@ The first production-ready release of OpenVPN Keycloak SSO - a complete Single S
 - **Integration Test Support** - Docker Compose setup for end-to-end testing
 
 #### CI/CD
+
 - **GitHub Actions Pipeline** - 5 automated jobs:
   - Unit tests on Go 1.22 and 1.23
   - golangci-lint static analysis
@@ -94,6 +157,7 @@ The first production-ready release of OpenVPN Keycloak SSO - a complete Single S
 - **Multi-Go Version Testing** - Ensures compatibility across Go versions
 
 #### Developer Experience
+
 - **CLI Commands**:
   - `serve` - Run daemon server
   - `auth` - Auth script mode (called by OpenVPN)
@@ -119,6 +183,7 @@ The first production-ready release of OpenVPN Keycloak SSO - a complete Single S
 ### Dependencies
 
 **Direct Dependencies:**
+
 - `github.com/coreos/go-oidc/v3` v3.11.0 - OIDC client library
 - `github.com/spf13/cobra` v1.8.1 - CLI framework
 - `golang.org/x/oauth2` v0.23.0 - OAuth 2.0 client
@@ -126,6 +191,7 @@ The first production-ready release of OpenVPN Keycloak SSO - a complete Single S
 - `gopkg.in/yaml.v3` v3.0.1 - YAML parsing
 
 **Standard Library:**
+
 - `crypto/rand`, `crypto/sha256` - Cryptographic operations
 - `encoding/json`, `encoding/hex` - Data encoding
 - `log/slog` - Structured logging
@@ -136,12 +202,14 @@ The first production-ready release of OpenVPN Keycloak SSO - a complete Single S
 ### Platform Support
 
 **Server:**
+
 - Rocky Linux 9 (primary target)
 - CentOS Stream 9
 - RHEL 9
 - Any Linux distribution with OpenVPN 2.6.19+ and systemd
 
 **Clients:**
+
 - Windows 10/11 (OpenVPN Community, OpenVPN Connect)
 - macOS 12+ (Tunnelblick, OpenVPN Connect)
 - Linux (NetworkManager, openvpn CLI)
@@ -184,12 +252,14 @@ See [README.md](README.md#roadmap) for planned features in versions 1.1 and 2.0.
 ### Contributors
 
 **Project Author:**
+
 - Initial implementation and documentation
 - All 17 tasks completed
 - 200+ pages of documentation
 - 56 unit tests with 76% coverage
 
 **Special Thanks:**
+
 - OpenVPN Community for the amazing 2.6 script auth features
 - go-oidc maintainers for the excellent OIDC library
 - Keycloak team for the powerful IdP platform

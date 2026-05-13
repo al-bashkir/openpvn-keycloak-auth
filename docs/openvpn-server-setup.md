@@ -1,6 +1,6 @@
 # OpenVPN Server Setup for SSO Authentication
 
-This guide explains how to configure OpenVPN Community Server 2.6.19+ with Keycloak SSO authentication on Rocky Linux 9.
+This guide explains how to configure OpenVPN Community Server 2.6.2+ with Keycloak SSO authentication on Rocky Linux 9. The deployment examples target OpenVPN 2.6.19 on Rocky Linux 9.
 
 ## Table of Contents
 
@@ -21,7 +21,7 @@ This guide explains how to configure OpenVPN Community Server 2.6.19+ with Keycl
 ### System Requirements
 
 - **Rocky Linux 9** (or RHEL 9 / AlmaLinux 9)
-- **OpenVPN 2.6.19 or later** (from EPEL)
+- **OpenVPN 2.6.2 or later** (from EPEL)
 - **Root access** or sudo privileges
 - **Keycloak** instance configured (see [Keycloak Setup](keycloak-setup.md))
 - **SSO daemon** installed and running (see installation guide)
@@ -35,12 +35,12 @@ sudo dnf install -y epel-release
 # Install OpenVPN
 sudo dnf install -y openvpn
 
-# Verify version (must be 2.6.19+)
-openvpn --version | head -1
-# Expected: OpenVPN 2.6.19 x86_64-redhat-linux-gnu
+# Verify version; the first line should show OpenVPN 2.6.2+
+openvpn --version
+# Example: OpenVPN 2.6.19 x86_64-redhat-linux-gnu
 ```
 
-### Why OpenVPN 2.6+?
+### Why OpenVPN 2.6.2+?
 
 OpenVPN 2.6 introduced critical features for SSO:
 - **Script-based deferred authentication** (exit code 2)
@@ -222,7 +222,7 @@ Ensure these lines are present and uncommented:
 script-security 3
 
 # Auth script with via-file mode
-auth-user-pass-verify /etc/openvpn/auth-keycloak.sh via-file
+auth-user-pass-verify /etc/openvpn/scripts/auth-keycloak.sh via-file
 
 # Allow SSO without password in client config
 auth-user-pass-optional
@@ -232,6 +232,9 @@ auth-gen-token 0 external-auth
 
 # Extended handshake for SSO
 hand-window 120
+
+# Shared temp directory visible to both OpenVPN and the auth daemon
+tmp-dir /var/lib/openvpn-keycloak-auth/tmp
 ```
 
 **Critical**: These directives are **required** for SSO to work!
@@ -244,11 +247,12 @@ hand-window 120
 
 ```bash
 # Copy the shell wrapper
+sudo mkdir -p /etc/openvpn/scripts
 sudo cp /path/to/openvpn-keycloak-auth/scripts/auth-keycloak.sh \
-        /etc/openvpn/auth-keycloak.sh
+        /etc/openvpn/scripts/auth-keycloak.sh
 
 # Make it executable
-sudo chmod +x /etc/openvpn/auth-keycloak.sh
+sudo chmod +x /etc/openvpn/scripts/auth-keycloak.sh
 ```
 
 ### Step 2: Verify Binary Location
@@ -258,23 +262,23 @@ The script expects the binary at `/usr/local/bin/openvpn-keycloak-auth`.
 Edit if your binary is elsewhere:
 
 ```bash
-sudo vi /etc/openvpn/auth-keycloak.sh
+sudo vi /etc/openvpn/scripts/auth-keycloak.sh
 ```
 
 Change this line if needed:
 ```bash
-BINARY="/usr/local/bin/openvpn-keycloak-auth"
+local -r binary="/usr/local/bin/openvpn-keycloak-auth"
 ```
 
 ### Step 3: Test Auth Script
 
 ```bash
 # Verify script is executable
-ls -l /etc/openvpn/auth-keycloak.sh
+ls -l /etc/openvpn/scripts/auth-keycloak.sh
 # Should show: -rwxr-xr-x
 
 # Test script execution
-/etc/openvpn/auth-keycloak.sh --help 2>&1 || echo "Script can execute"
+/etc/openvpn/scripts/auth-keycloak.sh --help 2>&1 || printf 'Script can execute\n'
 ```
 
 ---
@@ -437,12 +441,13 @@ export auth_pending_file="/tmp/test_apf"
 export auth_failed_reason_file="/tmp/test_arf"
 export untrusted_ip="192.0.2.1"
 export untrusted_port="12345"
+export IV_SSO="webauth,openurl"
 
 # Create test credentials file
 echo -e "testuser\nsso" > /tmp/test_creds
 
 # Run auth script
-sudo -E /etc/openvpn/auth-keycloak.sh /tmp/test_creds
+sudo -E /etc/openvpn/scripts/auth-keycloak.sh /tmp/test_creds
 
 # Check exit code (should be 2 for deferred)
 echo "Exit code: $?"
@@ -451,7 +456,7 @@ echo "Exit code: $?"
 cat /tmp/test_apf
 # Expected:
 # 300
-# openurl
+# webauth
 # WEB_AUTH::https://keycloak.example.com/...
 ```
 
@@ -494,7 +499,7 @@ sudo journalctl -u openvpn-server@server -xe
 
 1. **Script is executable:**
    ```bash
-   ls -l /etc/openvpn/auth-keycloak.sh
+   ls -l /etc/openvpn/scripts/auth-keycloak.sh
    # Should be: -rwxr-xr-x
    ```
 
@@ -634,9 +639,8 @@ rcvbuf 393216
 push "sndbuf 393216"
 push "rcvbuf 393216"
 
-# Disable compression (faster, more secure)
-compress lz4-v2
-push "compress lz4-v2"
+# Leave compression disabled unless you fully understand the security tradeoffs.
+# Do not add compress/push "compress" directives for most deployments.
 ```
 
 ### IPv6 Support
@@ -711,7 +715,7 @@ After OpenVPN server is configured:
 |----------------|---------|
 | `/etc/openvpn/server/server.conf` | Server configuration |
 | `/etc/openvpn/server/*.crt, *.key` | Certificates and keys |
-| `/etc/openvpn/auth-keycloak.sh` | Auth script wrapper |
+| `/etc/openvpn/scripts/auth-keycloak.sh` | Auth script wrapper |
 | `/var/log/openvpn/` | Log files |
 | `/run/openvpn-keycloak-auth/` | Daemon socket |
 | `/etc/openvpn/ccd/` | Per-client configs |
@@ -741,4 +745,4 @@ sudo openvpn --config /etc/openvpn/server/server.conf --test-crypto
 
 ---
 
-*Last updated: 2026-02-15 for OpenVPN 2.6.19 on Rocky Linux 9*
+*Last updated: 2026-02-15 for OpenVPN 2.6.2+; examples target OpenVPN 2.6.19 on Rocky Linux 9*

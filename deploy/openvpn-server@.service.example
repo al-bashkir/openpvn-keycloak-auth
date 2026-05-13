@@ -8,7 +8,7 @@
 #
 # Install:
 #   sudo cp deploy/openvpn-server@.service.example \
-#        /etc/systemd/system/openvpn_<instance>.service
+#        /etc/systemd/system/openvpn-server@.service
 #   sudo systemctl daemon-reload
 #
 # Alternatively, use the drop-in override for the stock unit:

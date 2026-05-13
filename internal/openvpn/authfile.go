@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/logsanitize"
 )
 
 const (
@@ -46,12 +48,12 @@ func WriteAuthPending(filePath string, timeoutSeconds int, method string, authUR
 
 	content := fmt.Sprintf(authPendingFormat, timeoutSeconds, method, authURL)
 
-	// Write atomically with 0600 permissions
+	// OpenVPN expects this exact file path; write directly with restrictive permissions.
 	if err := os.WriteFile(filePath, []byte(content), 0600); err != nil {
 		return fmt.Errorf("failed to write auth_pending_file: %w", err)
 	}
 
-	slog.Debug("wrote auth_pending_file", "path", filePath, "timeout", timeoutSeconds)
+	slog.Debug("wrote auth_pending_file", "path", logsanitize.Sanitize(filePath), "timeout", timeoutSeconds)
 	return nil
 }
 
@@ -66,7 +68,7 @@ func WriteAuthSuccess(filePath string) error {
 		return fmt.Errorf("failed to write auth_control_file (success): %w", err)
 	}
 
-	slog.Debug("wrote auth_control_file (success)", "path", filePath)
+	slog.Debug("wrote auth_control_file (success)", "path", logsanitize.Sanitize(filePath))
 	return nil
 }
 
@@ -87,13 +89,13 @@ func WriteAuthFailure(authControlFile, authFailedReasonFile, reason string) erro
 		if err := os.WriteFile(authFailedReasonFile, []byte(reason), 0600); err != nil {
 			// Log but don't fail - auth_control_file is more critical
 			slog.Warn("failed to write auth_failed_reason_file",
-				"path", authFailedReasonFile,
+				"path", logsanitize.Sanitize(authFailedReasonFile),
 				"error", err,
 			)
 		} else {
 			slog.Debug("wrote auth_failed_reason_file",
-				"path", authFailedReasonFile,
-				"reason", reason,
+				"path", logsanitize.Sanitize(authFailedReasonFile),
+				"reason", logsanitize.Sanitize(reason),
 			)
 		}
 	}
@@ -103,6 +105,6 @@ func WriteAuthFailure(authControlFile, authFailedReasonFile, reason string) erro
 		return fmt.Errorf("failed to write auth_control_file (failure): %w", err)
 	}
 
-	slog.Debug("wrote auth_control_file (failure)", "path", authControlFile)
+	slog.Debug("wrote auth_control_file (failure)", "path", logsanitize.Sanitize(authControlFile))
 	return nil
 }

@@ -23,7 +23,7 @@ This project implements several security measures:
 - **CSRF Protection** - State parameter validation prevents cross-site request forgery
 - **JWT Validation** - Full signature and claims validation
 - **Rate Limiting** - Per-IP rate limiting prevents brute force and DoS
-- **No Password Transmission** - User passwords never sent to VPN server
+- **No Keycloak Password Transmission** - Keycloak passwords are entered only at Keycloak
 - **Secure Defaults** - All security features enabled by default
 - **systemd Hardening** - Extensive sandboxing and privilege restrictions
 
@@ -43,17 +43,11 @@ If you discover a security vulnerability, please follow responsible disclosure:
 
 ### DO:
 
-1. **Report privately** via one of these methods:
+1. **Report privately** via GitHub Security Advisories:
 
-   **Preferred: GitHub Security Advisory**
    - Go to the [Security tab](../../security/advisories)
    - Click "Report a vulnerability"
    - Fill out the form with details
-
-   **Alternative: Email**
-   - Send to: [your-security-email@example.com]
-   - Subject: "OpenVPN Keycloak SSO Security Vulnerability"
-   - Use PGP encryption if possible (key below)
 
 2. **Include these details:**
    - Description of the vulnerability
@@ -72,12 +66,12 @@ If you discover a security vulnerability, please follow responsible disclosure:
 
 We classify vulnerabilities using CVSS 3.1:
 
-| Severity | CVSS Score | Examples | Response Time |
-|----------|------------|----------|---------------|
-| **Critical** | 9.0-10.0 | Remote code execution, authentication bypass | 7 days |
-| **High** | 7.0-8.9 | Privilege escalation, token theft | 14 days |
-| **Medium** | 4.0-6.9 | Information disclosure, DoS | 30 days |
-| **Low** | 0.1-3.9 | Minor issues | 90 days |
+| Severity     | CVSS Score | Examples                                     | Response Time |
+| ------------ | ---------- | -------------------------------------------- | ------------- |
+| **Critical** | 9.0-10.0   | Remote code execution, authentication bypass | 7 days        |
+| **High**     | 7.0-8.9    | Privilege escalation, token theft            | 14 days       |
+| **Medium**   | 4.0-6.9    | Information disclosure, DoS                  | 30 days       |
+| **Low**      | 0.1-3.9    | Minor issues                                 | 90 days       |
 
 ## What Happens After You Report
 
@@ -92,6 +86,7 @@ We classify vulnerabilities using CVSS 3.1:
 ## Security Advisories
 
 Published security advisories can be found at:
+
 - [GitHub Security Advisories](../../security/advisories)
 - [CHANGELOG.md](CHANGELOG.md) - Security fixes section
 
@@ -100,6 +95,7 @@ Published security advisories can be found at:
 **Status:** We do not currently offer a bug bounty program.
 
 However, we deeply appreciate security researchers who responsibly disclose vulnerabilities. We will:
+
 - Publicly credit you in the security advisory (with your permission)
 - Thank you in our CHANGELOG
 - Provide a sincere appreciation for your efforts
@@ -170,27 +166,15 @@ See [docs/security.md](docs/security.md) for comprehensive security guidance.
 - **General Questions:** [GitHub Issues](../../issues)
 - **Project Maintainer:** [@al-bashkir](https://github.com/al-bashkir)
 
-## PGP Key
-
-For encrypted communications:
-
-```
------BEGIN PGP PUBLIC KEY BLOCK-----
-[Your PGP public key here]
------END PGP PUBLIC KEY BLOCK-----
-```
-
-**Fingerprint:** `XXXX XXXX XXXX XXXX XXXX  XXXX XXXX XXXX XXXX XXXX`
-
 ## Acknowledgments
 
 We thank the following security researchers for responsibly disclosing vulnerabilities:
 
-- *No reported vulnerabilities yet*
+- _No reported vulnerabilities yet_
 
 ---
 
-**Last Updated:** 2026-02-15  
+**Last Updated:** 2026-02-15\
 **Version:** 1.0
 
 Thank you for helping keep OpenVPN Keycloak SSO and our users safe!

@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,7 +19,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 		slog.Info("http request", // #nosec G706 -- values sanitized via sanitizeLog
 			"method", sanitizeLog(r.Method),
-			"path", sanitizeLog(r.URL.Path),
+			"path", redactRequestPath(r.URL.Path),
 			"remote_addr", sanitizeLog(r.RemoteAddr),
 			"user_agent", sanitizeLog(r.Header.Get("User-Agent")),
 		)
@@ -27,7 +28,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 		slog.Debug("http request completed", // #nosec G706 -- values sanitized via sanitizeLog
 			"method", sanitizeLog(r.Method),
-			"path", sanitizeLog(r.URL.Path),
+			"path", redactRequestPath(r.URL.Path),
 			"duration_ms", time.Since(start).Milliseconds(),
 		)
 	})
@@ -151,7 +152,7 @@ func rateLimitMiddleware(next http.Handler) http.Handler {
 		if !limiter.Allow() {
 			slog.Warn("rate limit exceeded", // #nosec G706 -- values sanitized via sanitizeLog
 				"ip", sanitizeLog(ip),
-				"path", sanitizeLog(r.URL.Path),
+				"path", redactRequestPath(r.URL.Path),
 			)
 			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
 			return
@@ -166,29 +167,33 @@ func rateLimitMiddleware(next http.Handler) http.Handler {
 // If this service is behind a trusted reverse proxy, configure the proxy
 // to set X-Real-IP and update this function accordingly.
 func extractIP(r *http.Request) string {
-	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
 	return ip
 }
 
-// securityHeadersMiddleware adds security headers to responses
+func redactRequestPath(path string) string {
+	idx := strings.LastIndex(path, "/auth/")
+	if idx != -1 {
+		return sanitizeLog(path[:idx] + "/auth/{state}")
+	}
+	return sanitizeLog(path)
+}
+
+// securityHeadersMiddleware adds security headers to responses.
+//
+// X-XSS-Protection is intentionally not set: modern browsers (Chrome/Edge)
+// removed it and OWASP recommends omitting it because "1; mode=block" can
+// introduce side-channel XSS in some legacy clients. CSP is the active
+// mitigation.
 func securityHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Prevent clickjacking
 		w.Header().Set("X-Frame-Options", "DENY")
-
-		// Prevent MIME sniffing
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-
-		// XSS protection
-		w.Header().Set("X-XSS-Protection", "1; mode=block")
-
-		// Referrer policy
 		w.Header().Set("Referrer-Policy", "no-referrer")
-
-		// Content Security Policy
 		w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'")
-
-		// HTTPS strict transport security (if using TLS)
 		if r.TLS != nil {
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		}

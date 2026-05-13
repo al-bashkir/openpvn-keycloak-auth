@@ -2,413 +2,228 @@
 
 ## Project Overview
 
-This project implements SSO authentication for OpenVPN Community Server 2.6.19 using Keycloak as the Identity Provider. The solution is written in Go and leverages OpenVPN 2.6's script-based deferred authentication capabilities to eliminate the need for C plugins entirely.
+This repository implements SSO authentication for OpenVPN Community Server using Keycloak as the OpenID Connect provider. It uses OpenVPN 2.6 script-based deferred authentication, so deployment is a Go binary plus shell wrapper rather than a C plugin or management-interface integration.
 
-**Target Platform:** Rocky Linux 9
-**OpenVPN Version:** Community Server 2.6.19
-**IdP:** Keycloak (OpenID Connect / OAuth 2.0)
-**Language:** Go 1.22+
-**Architecture:** Single Go binary with dual modes (auth script + daemon)
+Key facts:
 
-## Why This Approach?
+- Target platform: Rocky Linux 9 or compatible Linux
+- OpenVPN target: Community Server 2.6.2+; deployment examples target 2.6.19
+- Language/toolchain: Go 1.25+
+- IdP: Keycloak via OIDC authorization code flow with PKCE
+- Binary: `openvpn-keycloak-auth`
+- License: MPL-2.0
 
-OpenVPN 2.6 introduced critical features that make pure script-based SSO possible:
+## Architecture
 
-1. **Deferred auth from scripts** - Scripts can return exit code `2` to defer authentication
-2. **`auth_pending_file` support** - Scripts can trigger browser opening via `WEB_AUTH::` URLs
-3. **`auth_failed_reason_file`** - Custom error messages for users
-4. **Bug fixes** - AUTH_PENDING/INFO_PRE messages work reliably from 2.6.2+
+The binary has four subcommands:
 
-**Result:** No C code, no C compiler, no CGO, no shared libraries. Just Go.
+- `serve`: long-running daemon; owns OIDC flow, HTTP callback handling, session tracking, and OpenVPN result-file writes.
+- `auth <credentials-file>`: OpenVPN auth-script mode; reads the OpenVPN via-file credentials, sends an IPC request to the daemon, writes an auth-pending response, and returns OpenVPN exit code `2` for deferred auth.
+- `check-config`: validates configuration and prints a redacted summary.
+- `version`: prints build and Go runtime version information.
 
-## Architecture Summary
+Primary components:
 
-### Components
+- `/etc/openvpn/scripts/auth-keycloak.sh`: installed shell wrapper called by OpenVPN.
+- `/usr/local/bin/openvpn-keycloak-auth`: installed Go binary.
+- `/etc/openvpn/keycloak-sso.yaml`: daemon configuration.
+- `/run/openvpn-keycloak-auth/auth.sock`: Unix socket IPC endpoint.
+- `internal/httpserver/templates/*.html`: embedded success/error pages.
 
-1. **Go Binary: `openvpn-keycloak-auth`**
-   - **Mode 1 (`auth`)**: Called by OpenVPN via `--auth-user-pass-verify`, sends auth request to daemon via Unix socket, returns exit code 2 (deferred)
-   - **Mode 2 (`serve`)**: Runs as systemd service, handles OIDC flow, writes auth results to OpenVPN control files
-   - **Mode 3 (`version`)**: Version information
-   - **Mode 4 (`check-config`)**: Configuration validation
+Authentication flow:
 
-2. **Shell Wrapper: `/etc/openvpn/auth-keycloak.sh`**
-   - Thin wrapper that OpenVPN calls directly
-   - Simply execs the Go binary in `auth` mode
-
-### Authentication Flow
-
-```
-User → Client → OpenVPN Server → Auth Script → Daemon → Keycloak
-                                      ↓            ↓
-                                 Exit code 2   OIDC Flow
-                                      ↓            ↓
-                                 auth_pending  Callback
-                                      ↓            ↓
-Client opens browser ←────────────────┘            ↓
-      ↓                                            ↓
-User authenticates in Keycloak ───────────────────→┘
-      ↓
-Daemon validates token, writes auth_control_file=1
-      ↓
-VPN connected
+```text
+OpenVPN client -> OpenVPN server -> auth wrapper -> binary auth mode
+                                -> Unix socket IPC -> daemon
+                                -> Keycloak OIDC browser flow
+                                -> callback validates token and roles
+                                -> daemon writes OpenVPN auth_control_file
 ```
 
-### Key Technical Decisions
+## Repository Layout
 
-1. **Script-based auth (NOT C plugin, NOT management interface)**
-   - Simpler deployment: one binary, one config, one systemd unit
-   - No CGO, easier cross-compilation
-   - Better testability and debugging
-
-2. **Single Go binary with subcommands**
-   - `openvpn-keycloak-auth serve` - daemon
-   - `openvpn-keycloak-auth auth` - auth script
-   - Shared code between modes
-
-3. **Authorization Code Flow with PKCE**
-   - Standard browser redirect flow
-   - Best security and UX
-   - Compatible with all modern OpenVPN clients
-
-4. **Unix socket IPC**
-   - Fast, secure communication between script and daemon
-   - No network exposure for internal communication
-   - JSON protocol for simplicity
-
-5. **Token validation on server**
-   - Verify JWT signature via JWKS
-   - Validate claims: iss, aud, exp, iat, nbf
-   - Optional group/role enforcement
-
-## Project Structure
-
-```
-openvpn-keycloak-auth/
-├── AGENTS.md                    # This file
-├── WORKLOG.md                   # Work log
-├── README.md                    # User-facing documentation
-├── LICENSE                      # Mozilla Public License 2.0 (MPL-2.0)
-├── go.mod, go.sum               # Go dependencies
-│
-├── cmd/openvpn-keycloak-auth/
-│   └── main.go                  # Entry point
-│
-├── internal/
-│   ├── auth/                    # Auth script logic
-│   ├── daemon/                  # Daemon server
-│   ├── config/                  # Configuration
-│   ├── httpserver/              # HTTP server (OIDC callback)
-│   ├── ipc/                     # Unix socket IPC
-│   ├── oidc/                    # OIDC flow implementation
-│   ├── session/                 # Session management
-│   └── openvpn/                 # OpenVPN file writing
-│
-├── config/                      # Configuration templates
-├── scripts/                     # Shell wrapper
-├── deploy/                      # systemd, install scripts
-├── docs/                        # Documentation
-├── web/templates/               # HTML pages
-└── tasks/                       # Task breakdown
+```text
+cmd/openvpn-keycloak-auth/     CLI entry point
+internal/auth/                 OpenVPN auth-script mode
+internal/config/               YAML/env configuration loading and validation
+internal/daemon/               daemon orchestration
+internal/httpserver/           callback, redirect, health endpoints, templates
+internal/ipc/                  Unix socket protocol
+internal/logsanitize/          log-safe string cleanup
+internal/oidc/                 OIDC flow, token exchange, claim validation
+internal/openvpn/              auth_pending/auth_control/failure file writes
+internal/session/              in-memory session tracking and expiry cleanup
+config/                        sample daemon and OpenVPN configs
+deploy/                        install/uninstall/systemd assets
+docs/                          user-facing documentation
+scripts/                       OpenVPN wrapper and client profile generator
+tasks/                         historical task breakdown
+reports/                       historical reports
 ```
 
-## Build and Run
+## Configuration Model
 
-### Development Build
+The live daemon configuration uses these top-level sections:
 
-```bash
-go build -o openvpn-keycloak-auth ./cmd/openvpn-keycloak-auth
-```
+- `listen.http`: HTTP callback listen address, for example `:9000`.
+- `listen.socket`: absolute Unix socket path.
+- `oidc.issuer`: Keycloak realm issuer URL.
+- `oidc.client_id`: OIDC client ID.
+- `oidc.client_secret`: optional, for confidential clients.
+- `oidc.redirect_uri`: callback URI registered in Keycloak.
+- `oidc.scopes`, `oidc.required_roles`, `oidc.role_claim`: OIDC claim and authorization settings.
+- `auth.session_timeout`, `auth.username_claim`, `auth.allow_username_mismatch`: OpenVPN auth behavior.
+- `tls.*`: optional direct TLS listener settings.
+- `log.*`: slog level and format.
 
-### Production Build
+Do not document or add config options unless they are actually wired in code and tests.
 
-```bash
-CGO_ENABLED=0 go build -ldflags="-s -w" -o openvpn-keycloak-auth ./cmd/openvpn-keycloak-auth
-```
+## OpenVPN 2.6 Script Auth Details
 
-### Run Daemon
+OpenVPN calls the wrapper using `auth-user-pass-verify <script> via-file`. In via-file mode OpenVPN provides:
 
-```bash
-./openvpn-keycloak-auth serve --config /etc/openvpn/keycloak-sso.yaml
-```
+- Argument 1: temporary credentials file with username on line 1 and password on line 2.
+- Environment: `auth_control_file`, `auth_pending_file`, `auth_failed_reason_file`, `untrusted_ip`, `untrusted_port`, `common_name`, `IV_SSO`, and related OpenVPN values.
 
-### Test Auth Script Mode
+Exit codes:
 
-```bash
-# Simulate OpenVPN environment
-export username="testuser"
-export auth_control_file="/tmp/test_acf"
-export auth_pending_file="/tmp/test_apf"
-export auth_failed_reason_file="/tmp/test_arf"
-export untrusted_ip="192.0.2.1"
-export untrusted_port="12345"
+- `0`: immediate success.
+- `1`: immediate failure.
+- `2`: deferred authentication pending.
 
-echo -e "testuser\nsso" > /tmp/test_creds
+`auth_pending_file` must contain exactly:
 
-./openvpn-keycloak-auth auth /tmp/test_creds
-echo "Exit code: $?"
-cat /tmp/test_apf
-```
-
-## Environment Setup
-
-### Prerequisites
-
-- Go 1.22 or later
-- OpenVPN 2.6.19 (from EPEL 9 on Rocky Linux)
-- Keycloak instance (any recent version supporting OIDC)
-- Rocky Linux 9 or compatible
-
-### Development Dependencies
-
-```bash
-# Install Go (if not already installed)
-wget https://go.dev/dl/go1.22.0.linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf go1.22.0.linux-amd64.tar.gz
-export PATH=$PATH:/usr/local/go/bin
-
-# Install OpenVPN (for testing)
-sudo dnf install epel-release
-sudo dnf install openvpn
-
-# Install development tools
-go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-```
-
-### Go Dependencies
-
-```bash
-go get github.com/coreos/go-oidc/v3/oidc
-go get golang.org/x/oauth2
-go get gopkg.in/yaml.v3
-go get github.com/spf13/cobra  # or use stdlib flags
-```
-
-## Important Conventions and Patterns
-
-### File Writing (Critical!)
-
-All writes to OpenVPN control files MUST be atomic and reliable:
-
-```go
-// Use os.WriteFile with explicit permissions
-err := os.WriteFile(path, data, 0600)
-if err != nil {
-    // Handle error - this is critical path
-}
-```
-
-### Error Handling Pattern
-
-Always write to `auth_control_file` in ALL code paths, including errors:
-
-```go
-func handleAuth(session *Session) {
-    defer func() {
-        // Ensure we ALWAYS write a result
-        if session.Result == "" {
-            writeAuthResult(session.AuthControlFile, false, "Internal error")
-        }
-    }()
-    
-    // ... auth logic
-}
-```
-
-### Session ID Generation
-
-Always use `crypto/rand`, never `math/rand`:
-
-```go
-import "crypto/rand"
-
-func generateSessionID() (string, error) {
-    b := make([]byte, 32)
-    if _, err := rand.Read(b); err != nil {
-        return "", err
-    }
-    return hex.EncodeToString(b), nil
-}
-```
-
-### Logging
-
-Use structured logging with `log/slog`:
-
-```go
-import "log/slog"
-
-slog.Info("auth request received",
-    "username", username,
-    "ip", untrustedIP,
-    "session_id", sessionID,
-)
-
-// NEVER log tokens or passwords
-slog.Debug("token received") // ← Good
-slog.Debug("token", "token", tokenString) // ← NEVER DO THIS
-```
-
-### Context Usage
-
-Use context.Context throughout for cancellation and timeouts:
-
-```go
-ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-defer cancel()
-
-token, err := oauth2Config.Exchange(ctx, code, oauth2.VerifyCodeVerifier(verifier))
-```
-
-## OpenVPN 2.6 Script Auth Specifics
-
-### Environment Variables (via-file mode)
-
-When OpenVPN calls the auth script with `via-file`, it:
-1. Creates a temporary file with username (line 1) and password (line 2)
-2. Passes the file path as `$1` argument
-3. Sets environment variables: `auth_control_file`, `auth_pending_file`, `auth_failed_reason_file`, `untrusted_ip`, etc.
-4. Deletes the temp file after script exits
-
-### Exit Codes
-
-- `0` - Auth success (immediate)
-- `1` - Auth failure (immediate)
-- `2` - Auth deferred (pending)
-
-### auth_pending_file Format
-
-MUST be exactly 3 lines:
-
-```
-<timeout_in_seconds>
-openurl
+```text
+<timeout_seconds>
+<method>
 WEB_AUTH::<url>
 ```
 
-Example:
+The pending method is selected from OpenVPN's `IV_SSO`; current code prefers `webauth` and falls back to `openurl`.
+
+`auth_control_file` must contain `1` for success or `0` for failure. Write failure reasons before writing `0` to `auth_control_file`.
+
+## Development Commands
+
+Use the Makefile when possible:
+
+```bash
+make build
+make test
+make lint
+make check
 ```
-300
-openurl
-WEB_AUTH::https://keycloak.example.com/realms/myrealm/protocol/openid-connect/auth?client_id=openvpn&...
+
+Equivalent direct commands:
+
+```bash
+go build -o openvpn-keycloak-auth ./cmd/openvpn-keycloak-auth
+go test ./...
+go test -race ./...
+go vet ./...
+golangci-lint run
+shellcheck scripts/*.sh deploy/*.sh
 ```
 
-Note: Use `WEB_AUTH::` (with underscore), not `WEBAUTH::`
+If `golangci-lint` was built with an older Go version than `go.mod` targets, record that as a blocked validation instead of changing global tooling without user approval.
 
-### auth_control_file Format
+## Coding Rules
 
-Single character: `1` (success) or `0` (failure)
+- Preserve intended OpenVPN behavior; do not change exit codes, file formats, or callback flow casually.
+- Keep changes small and reviewable.
+- Do not remove code or assets until you verify they are not referenced by embeds, tests, scripts, docs, build tags, registration, reflection, or runtime paths.
+- Use `context.Context` for network and shutdown paths.
+- Use `crypto/rand` for session IDs, states, and PKCE values; never use `math/rand` for security values.
+- Use `log/slog` for structured logs.
+- Never log passwords, tokens, authorization codes, PKCE verifiers, full auth URLs, or client secrets.
+- Sanitize externally controlled values with `internal/logsanitize` before logging.
+- Keep OpenVPN control-file writes simple and reliable with restrictive permissions; OpenVPN provides the target paths.
+- Preserve IPC hardening: peer credentials, bounded/deadline reads, and absolute canonical OpenVPN result paths are security-sensitive.
+- Preserve callback result-write claiming; do not reintroduce separate check/write/mark sequences that can race duplicate callbacks.
+- Prefer standard library functionality unless a dependency already exists for the task.
+- Do not reintroduce removed helpers: `decodeJWTPayload`, `Config.Redact`, `Client.SetTimeout`. They were dead code as of the audit-hardening pass; tests now exercise the real code paths instead.
 
-### auth_failed_reason_file Format
+## Shell Script Rules
 
-Plain text error message. Write this BEFORE writing `0` to auth_control_file.
+Shell scripts in `scripts/` and `deploy/` should follow these conventions when edited:
 
-## Current Project State
+- Start with `#!/usr/bin/env bash` and `set -euo pipefail`.
+- Put executable logic in `main()` and call `main "$@"` at the end.
+- Use `local` or `local -r` for function variables.
+- Send diagnostics to stderr with `printf`, not `echo`.
+- Validate external commands before use when practical.
+- Avoid pipelines through `head`, `tail`, `less`, or `more`; use command-specific flags or Bash parsing.
+- Run `shellcheck scripts/*.sh deploy/*.sh` after edits.
 
-**Status:** Initial setup in progress
+## Documentation Rules
 
-**Completed:**
-- Go module initialized
-- Directory structure created
-- AGENTS.md created
+- Keep README, QUICKSTART, `config/*.example`, and `docs/` aligned with live code and installer behavior.
+- Current installed wrapper path is `/etc/openvpn/scripts/auth-keycloak.sh`.
+- Current config path is `/etc/openvpn/keycloak-sso.yaml`.
+- Current config permissions are `0640 root:openvpn` so the daemon user can read the file.
+- `check-config` validates local configuration only; it does not perform Keycloak connectivity or OIDC discovery.
+- Do not claim exact coverage, audit, performance, or end-to-end validation results unless the corresponding command or environment was actually run in the current work.
+- Full browser SSO must be validated with a real OpenVPN server and Keycloak realm; local unit tests cannot prove that deployment end-to-end.
 
-**In Progress:**
-- Task 001: Project setup
+## Security Checklist For Changes
 
-**Next Steps:**
-- Complete task file creation
-- Create WORKLOG.md
-- Create LICENSE
-- Create .gitignore
+- No tokens, passwords, codes, PKCE verifiers, or client secrets in logs.
+- Unknown YAML keys should remain rejected so config typos do not silently disable security controls.
+- OIDC issuer and redirect URLs are parsed and validated, not only prefix-checked.
+- Unix socket paths are absolute and protected by directory/socket permissions.
+- Session IDs and OIDC state values are cryptographically random.
+- `auth_control_file` gets a final result on all callback success/failure paths where OpenVPN provided a session.
+- Failure reason is written before `auth_control_file=0`.
+- Generated client profiles containing private keys should not be world-readable.
+- Update docs when behavior, paths, config keys, or security posture changes.
+- HTTP callback TLS requires TLS 1.3 minimum (`tls.VersionTLS13`); do not downgrade.
+- `X-XSS-Protection` is intentionally not set; CSP is the active mitigation. Do not re-add the header.
 
-## Important Links
+## Validation Expectations
 
-- **OpenVPN 2.6 script options:** https://github.com/OpenVPN/openvpn/blob/release/2.6/doc/man-sections/script-options.rst
-- **OpenVPN 2.6 Changes:** https://github.com/OpenVPN/openvpn/blob/release/2.6/Changes.rst
-- **OIDC spec:** https://openid.net/specs/openid-connect-core-1_0.html
-- **PKCE RFC:** https://datatracker.ietf.org/doc/html/rfc7636
-- **go-oidc library:** https://github.com/coreos/go-oidc
-- **Reference project (architecture only):** https://github.com/jkroepke/openvpn-auth-oauth2
+Before reporting completion after code changes, run and report:
 
-## Testing Strategy
+- `go fmt ./...`
+- `go test ./...`
+- `go test -race ./...`
+- `go vet ./...`
+- `shellcheck scripts/*.sh deploy/*.sh` when shell files changed
+- `golangci-lint run`, unless blocked by local toolchain mismatch
 
-### Unit Tests
+For build/config changes, also run:
 
-- All packages in `internal/` should have `_test.go` files
-- Table-driven tests for token validation logic
-- Mock Unix socket for IPC tests
-- Mock HTTP server for OIDC flow tests
+- `go build -o openvpn-keycloak-auth ./cmd/openvpn-keycloak-auth`
+- `./openvpn-keycloak-auth check-config --config config/openvpn-keycloak-auth.yaml.example`
 
-### Integration Tests
+If a validation command is not run or is blocked, state that explicitly in the final report.
 
-- End-to-end flow with test Keycloak instance
-- Docker Compose setup for local testing
-- Simulated OpenVPN environment
+## graphify
 
-### Manual Testing
+This project has a graphify knowledge graph at graphify-out/.
 
-- Test with actual OpenVPN server
-- Test with multiple client types (CLI, Tunnelblick, NetworkManager)
-- Test error paths (timeout, invalid token, network failures)
+Rules:
 
-## Security Checklist
+- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
+- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
+- For cross-module "how does X relate to Y" questions, prefer `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"` over grep — these traverse the graph's EXTRACTED + INFERRED edges instead of scanning files
+- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
 
-- [ ] All secrets in config file with 0600 permissions
-- [ ] No tokens or passwords in logs
-- [ ] PKCE implemented correctly
-- [ ] JWT signature validation via JWKS
-- [ ] All claims validated (iss, aud, exp, iat, nbf)
-- [ ] CSRF protection via state parameter
-- [ ] Rate limiting on auth endpoints
-- [ ] Session IDs from crypto/rand
-- [ ] Unix socket with 0660 permissions, group openvpn
-- [ ] auth_control_file written in all code paths
-- [ ] Graceful shutdown on SIGTERM/SIGINT
-- [ ] No race conditions (verified with -race flag)
+## Audit Workflow
 
-## Troubleshooting
+When the agent is asked to audit / harden / remove dead code:
 
-### Common Issues
-
-1. **Client hangs during auth**
-   - Check that daemon is running
-   - Verify Unix socket exists and is accessible
-   - Ensure auth_control_file is written in all code paths
-
-2. **Browser doesn't open**
-   - Check client supports WEB_AUTH:: (IV_SSO capability)
-   - Verify auth_pending_file format (must be exactly 3 lines)
-   - Use `WEB_AUTH::` not `WEBAUTH::`
-
-3. **Token validation fails**
-   - Check Keycloak issuer URL matches exactly
-   - Verify client_id matches
-   - Check system time (JWT exp validation requires accurate time)
-
-4. **Permission denied on Unix socket**
-   - Socket should be 0660, group openvpn
-   - OpenVPN runs as user openvpn (typically)
-   - Daemon should create socket with correct permissions
-
-## Development Workflow
-
-1. Pick next task from tasks/ directory
-2. Update task status to IN_PROGRESS
-3. Implement the task
-4. Write tests
-5. Run linter: `golangci-lint run`
-6. Run tests: `go test -race ./...`
-7. Update task status to DONE
-8. Update WORKLOG.md
-9. Commit changes
-10. Move to next task
-
-## Contact and Support
-
-For questions or issues during development, refer to:
-- OpenVPN mailing list
-- Keycloak documentation
-- go-oidc GitHub issues
-
-## License
-
-Mozilla Public License 2.0 (MPL-2.0) - see LICENSE file.
+- Read `graphify-out/GRAPH_REPORT.md` first; the graph misses type-only edges, so verify "isolated" symbols with grep before treating them as dead.
+- Use a working directory at `.plan/` (already in `.gitignore`). Keep one short file per phase: `01-initial-audit.md`, `02-graphify-structure-review.md`, `03-functional-scope.md`, `04-deadcode-review.md`, `05-security-review.md`, `06-refactor-plan.md`, `07-test-plan.md`, `08-docs-plan.md`, `09-final-validation.md`. Each file: purpose, findings, intended changes, risks, validation, status.
+- Dead-code policy: never delete a symbol without grepping for callers including tests, build tags, registration tables, reflection, and runtime wiring. Past audits report that several "isolated" symbols (`MessageType`, `AuthRequest`, `AuthResponse`, `AuthRequestHandler`, `AuthFlowData`) are protocol/handler types that the graph cannot see — always verify.
+- Refactor in small batches. After every batch run `go build ./...`, `go vet ./...`, `go test ./... -count=1`, and `go test -race ./...` before moving on.
+- Final validation list (run all that apply, document anything blocked):
+  - `go fmt ./...`
+  - `go vet ./...`
+  - `go test ./... -count=1`
+  - `go test -race ./...`
+  - `go build -o openvpn-keycloak-auth ./cmd/openvpn-keycloak-auth`
+  - `./openvpn-keycloak-auth check-config --config config/openvpn-keycloak-auth.yaml.example`
+  - `shellcheck scripts/*.sh deploy/*.sh` (when shell changed)
+  - `make lint` (record toolchain mismatches as blocked rather than working around them)
+  - `graphify update .`
+- Real OpenVPN + Keycloak browser SSO can only be validated against a live deployment; document it as unverified rather than claiming it.

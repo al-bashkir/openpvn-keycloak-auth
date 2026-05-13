@@ -63,8 +63,3 @@ func (c *Client) SendAuthRequest(ctx context.Context, req *AuthRequest) (*AuthRe
 
 	return &resp, nil
 }
-
-// SetTimeout sets the connection timeout
-func (c *Client) SetTimeout(timeout time.Duration) {
-	c.timeout = timeout
-}

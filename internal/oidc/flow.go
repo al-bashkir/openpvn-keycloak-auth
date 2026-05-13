@@ -6,13 +6,23 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
+	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
+)
+
+var (
+	errUnsupportedAccessTokenType = errors.New("unsupported access token type")
+	errAccessTokenVerifyFailed    = errors.New("access token verification failed")
+	errAccessTokenParseFailed     = errors.New("access token claim parsing failed")
+	errAccessTokenClientMismatch  = errors.New("access token client binding failed")
+	errIDTokenMissing             = errors.New("no id_token in token response")
+	errIDTokenNonceMismatch       = errors.New("id_token nonce mismatch")
 )
 
 // AuthFlowData contains the data needed to initiate an OIDC authorization flow.
@@ -22,6 +32,9 @@ type AuthFlowData struct {
 
 	// CodeVerifier is the PKCE code verifier (must be stored for token exchange)
 	CodeVerifier string
+
+	// Nonce is the OIDC nonce; the issued ID token must echo it back.
+	Nonce string
 
 	// AuthURL is the complete authorization URL to redirect the user to
 	AuthURL string
@@ -64,23 +77,32 @@ func (p *Provider) StartAuthFlow(ctx context.Context) (*AuthFlowData, error) {
 		return nil, fmt.Errorf("failed to generate state: %w", err)
 	}
 
-	// Construct authorization URL with PKCE parameters
+	// Generate nonce; the ID token must echo it back to bind the response to this flow.
+	nonce, err := generateNonce()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate nonce: %w", err)
+	}
+
+	// Construct authorization URL with PKCE + nonce parameters
 	authURL := p.oauth2Config.AuthCodeURL(state,
 		oauth2.SetAuthURLParam("code_challenge", challenge),
 		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+		oidc.Nonce(nonce),
 	)
 
 	return &AuthFlowData{
 		State:        state,
 		CodeVerifier: verifier,
+		Nonce:        nonce,
 		AuthURL:      authURL,
 	}, nil
 }
 
 // ExchangeCode exchanges an authorization code for tokens.
 // It uses the PKCE code verifier to complete the flow.
-// The ID token is verified (signature, issuer, audience, expiry) before returning.
-func (p *Provider) ExchangeCode(ctx context.Context, code, codeVerifier string) (*TokenData, error) {
+// The ID token is verified (signature, issuer, audience, expiry) and its nonce
+// is checked against expectedNonce before returning.
+func (p *Provider) ExchangeCode(ctx context.Context, code, codeVerifier, expectedNonce string) (*TokenData, error) {
 	// Exchange authorization code for tokens
 	token, err := p.oauth2Config.Exchange(ctx, code,
 		oauth2.SetAuthURLParam("code_verifier", codeVerifier),
@@ -92,7 +114,7 @@ func (p *Provider) ExchangeCode(ctx context.Context, code, codeVerifier string) 
 	// Extract ID token
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok {
-		return nil, fmt.Errorf("no id_token in token response")
+		return nil, errIDTokenMissing
 	}
 
 	// Verify ID token (signature, issuer, audience, expiry)
@@ -101,17 +123,24 @@ func (p *Provider) ExchangeCode(ctx context.Context, code, codeVerifier string) 
 		return nil, fmt.Errorf("failed to verify ID token: %w", err)
 	}
 
+	// Bind the response to this flow: the id_token nonce must match the value
+	// we sent on the authorization request.
+	if expectedNonce == "" || idToken.Nonce != expectedNonce {
+		return nil, errIDTokenNonceMismatch
+	}
+
 	// Parse claims from ID token
 	var claims map[string]interface{}
 	if err := idToken.Claims(&claims); err != nil {
 		return nil, fmt.Errorf("failed to parse claims: %w", err)
 	}
 
-	// Merge access token claims into the claims map.
-	// Keycloak puts resource_access (client-specific roles) and realm_access
-	// in the access token, not the ID token. We decode the access token JWT
-	// payload and merge selected claims so the validator can find them.
-	mergeAccessTokenClaims(token.AccessToken, claims)
+	// Merge verified access-token role claims into the claims map. Keycloak often
+	// puts resource_access and realm_access in the access token, not the ID token.
+	if err := p.mergeAccessTokenClaims(ctx, token.AccessToken, token.TokenType, claims); err != nil {
+		slog.Debug("could not merge access token claims", "error_category", accessTokenClaimsErrorCategory(err))
+		return nil, fmt.Errorf("failed to verify access token claims: %w", err)
+	}
 
 	return &TokenData{
 		AccessToken:  token.AccessToken,
@@ -122,57 +151,123 @@ func (p *Provider) ExchangeCode(ctx context.Context, code, codeVerifier string) 
 	}, nil
 }
 
-// mergeAccessTokenClaims decodes a JWT access token's payload and merges
-// role-related claims into the destination claims map.
-// Only claims not already present in dst are merged (ID token takes precedence).
-// This is best-effort: errors are logged but do not fail the auth flow,
-// since not all access tokens are JWTs (e.g., opaque tokens).
-func mergeAccessTokenClaims(accessToken string, dst map[string]interface{}) {
+// mergeAccessTokenClaims verifies a JWT access token and merges role-related
+// claims into the destination claims map.
+// Only missing claims are merged (ID token takes precedence).
+// A non-empty access token must be a verified JWT issued for this client.
+func (p *Provider) mergeAccessTokenClaims(ctx context.Context, accessToken, tokenType string, dst map[string]interface{}) error {
 	if accessToken == "" {
-		return
+		return nil
 	}
 
-	atClaims, err := decodeJWTPayload(accessToken)
+	atClaims, err := p.verifyAccessTokenClaims(ctx, accessToken, tokenType)
 	if err != nil {
-		slog.Debug("could not decode access token as JWT (may be opaque)", "error", err)
-		return
+		return err
 	}
 
 	// Claims to merge from access token if not present in ID token
 	mergeKeys := []string{"resource_access", "realm_access", "groups"}
 
 	for _, key := range mergeKeys {
-		if _, exists := dst[key]; !exists {
-			if val, ok := atClaims[key]; ok {
-				dst[key] = val
-				slog.Debug("merged claim from access token", "claim", key)
-			}
+		val, ok := atClaims[key]
+		if !ok {
+			continue
+		}
+		if mergeMissingClaim(dst, key, val) {
+			slog.Debug("merged claim from access token", "claim", key)
 		}
 	}
+
+	return nil
 }
 
-// decodeJWTPayload extracts and decodes the payload (second segment) of a JWT.
-// It does NOT verify the signature — that's already handled by the OIDC provider
-// during the token exchange. This is only used to extract claims from the
-// Keycloak access token which is a JWT.
-func decodeJWTPayload(token string) (map[string]interface{}, error) {
-	parts := strings.SplitN(token, ".", 3)
-	if len(parts) != 3 {
-		return nil, fmt.Errorf("not a valid JWT: expected 3 parts, got %d", len(parts))
+func mergeMissingClaim(dst map[string]interface{}, key string, src interface{}) bool {
+	dstVal, exists := dst[key]
+	if !exists {
+		dst[key] = src
+		return true
 	}
 
-	// Decode base64url payload (second segment)
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	dstMap, dstOK := dstVal.(map[string]interface{})
+	srcMap, srcOK := src.(map[string]interface{})
+	if !dstOK || !srcOK {
+		return false
+	}
+
+	return mergeMissingMapValues(dstMap, srcMap)
+}
+
+func mergeMissingMapValues(dst, src map[string]interface{}) bool {
+	merged := false
+	for key, srcVal := range src {
+		dstVal, exists := dst[key]
+		if !exists {
+			dst[key] = srcVal
+			merged = true
+			continue
+		}
+
+		dstMap, dstOK := dstVal.(map[string]interface{})
+		srcMap, srcOK := srcVal.(map[string]interface{})
+		if dstOK && srcOK && mergeMissingMapValues(dstMap, srcMap) {
+			merged = true
+		}
+	}
+	return merged
+}
+
+func (p *Provider) verifyAccessTokenClaims(ctx context.Context, accessToken, tokenType string) (map[string]interface{}, error) {
+	if tokenType != "" && !strings.EqualFold(tokenType, "Bearer") {
+		return nil, fmt.Errorf("%w: %q", errUnsupportedAccessTokenType, tokenType)
+	}
+
+	verifiedToken, err := p.accessTokenVerifier.Verify(ctx, accessToken)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode JWT payload: %w", err)
+		return nil, fmt.Errorf("%w: %w", errAccessTokenVerifyFailed, err)
 	}
 
 	var claims map[string]interface{}
-	if err := json.Unmarshal(payload, &claims); err != nil {
-		return nil, fmt.Errorf("failed to parse JWT payload: %w", err)
+	if err := verifiedToken.Claims(&claims); err != nil {
+		return nil, fmt.Errorf("%w: %w", errAccessTokenParseFailed, err)
+	}
+
+	if !accessTokenIssuedForClient(verifiedToken.Audience, claims, p.clientID) {
+		return nil, errAccessTokenClientMismatch
 	}
 
 	return claims, nil
+}
+
+func accessTokenClaimsErrorCategory(err error) string {
+	switch {
+	case errors.Is(err, errUnsupportedAccessTokenType):
+		return "unsupported_token_type"
+	case errors.Is(err, errAccessTokenVerifyFailed):
+		return "access_token_verify_failed"
+	case errors.Is(err, errAccessTokenParseFailed):
+		return "access_token_parse_failed"
+	case errors.Is(err, errAccessTokenClientMismatch):
+		return "client_binding_failed"
+	default:
+		return "access_token_claims_failed"
+	}
+}
+
+func accessTokenIssuedForClient(audience []string, claims map[string]interface{}, clientID string) bool {
+	for _, aud := range audience {
+		if aud == clientID {
+			return true
+		}
+	}
+
+	for _, claim := range []string{"azp", "client_id"} {
+		value, ok := claims[claim].(string)
+		if ok && value == clientID {
+			return true
+		}
+	}
+
+	return false
 }
 
 // generateCodeVerifier creates a cryptographically random PKCE code verifier.
@@ -197,6 +292,16 @@ func generateCodeChallenge(verifier string) string {
 // generateState creates a random state parameter for CSRF protection.
 // The state is 16 random bytes encoded as hex (32 characters).
 func generateState() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+// generateNonce creates a random OIDC nonce. The id_token returned by the
+// provider must echo this value, binding the token to this auth request.
+func generateNonce() (string, error) {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
 		return "", err

@@ -1,92 +1,137 @@
-#!/bin/bash
-# Generate OpenVPN client profile with embedded CA certificate
-# 
-# Usage:
-#   ./generate-client-profile.sh [ca_cert] [server_hostname] [output_file] [profile_type]
-#
-# Arguments:
-#   ca_cert          Path to CA certificate (default: /etc/openvpn/server/ca.crt)
-#   server_hostname  VPN server hostname (default: vpn.example.com)
-#   output_file      Output .ovpn file (default: client-generated.ovpn)
-#   profile_type     Profile type: universal, cli, tunnelblick, connect (default: universal)
-#
-# Examples:
-#   ./generate-client-profile.sh
-#   ./generate-client-profile.sh /etc/openvpn/server/ca.crt vpn.company.com client.ovpn universal
-#   ./generate-client-profile.sh /etc/openvpn/server/ca.crt vpn.company.com ios-profile.ovpn connect
-#
-# Optional: Include client certificate for mutual TLS
-#   ./generate-client-profile.sh ca.crt vpn.company.com client.ovpn universal client.crt client.key
+#!/usr/bin/env bash
+set -euo pipefail
 
-set -e
+# Generate an OpenVPN client profile with embedded certificates for SSO auth.
 
-##############################################
-# Configuration
-##############################################
+usage() {
+  printf 'Usage: %s [ca_cert] [server_hostname] [output_file] [profile_type] [client_cert] [client_key] [tls_auth_key]\n' "$0" >&2
+  printf 'Profile types: universal, cli, tunnelblick, connect\n' >&2
+}
 
-CA_CERT="${1:-/etc/openvpn/server/ca.crt}"
-SERVER_HOSTNAME="${2:-vpn.example.com}"
-OUTPUT_FILE="${3:-client-generated.ovpn}"
-PROFILE_TYPE="${4:-universal}"
-CLIENT_CERT="${5:-}"
-CLIENT_KEY="${6:-}"
-TA_KEY="${7:-}"
+require_command() {
+  local -r command_name="$1"
 
-##############################################
-# Validation
-##############################################
+  command -v "$command_name" >/dev/null 2>&1 || {
+    printf 'Error: %s not found in PATH\n' "$command_name" >&2
+    return 1
+  }
+}
 
-if [ ! -f "$CA_CERT" ]; then
-    echo "Error: CA certificate not found: $CA_CERT" >&2
-    echo "Usage: $0 [ca_cert] [server_hostname] [output_file] [profile_type]" >&2
-    exit 1
-fi
+require_file() {
+  local -r label="$1"
+  local -r file_path="$2"
 
-if [ -n "$CLIENT_CERT" ] && [ ! -f "$CLIENT_CERT" ]; then
-    echo "Error: Client certificate not found: $CLIENT_CERT" >&2
-    exit 1
-fi
+  if [[ ! -f "$file_path" ]]; then
+    printf 'Error: %s not found: %s\n' "$label" "$file_path" >&2
+    usage
+    return 1
+  fi
+}
 
-if [ -n "$CLIENT_KEY" ] && [ ! -f "$CLIENT_KEY" ]; then
-    echo "Error: Client private key not found: $CLIENT_KEY" >&2
-    exit 1
-fi
+validate_profile_type() {
+  local -r profile_type="$1"
 
-if [ -n "$TA_KEY" ] && [ ! -f "$TA_KEY" ]; then
-    echo "Error: TLS auth key not found: $TA_KEY" >&2
-    exit 1
-fi
-
-# Validate profile type
-case "$PROFILE_TYPE" in
-    universal|cli|tunnelblick|connect)
-        ;;
+  case "$profile_type" in
+    universal | cli | tunnelblick | connect)
+      return 0
+      ;;
     *)
-        echo "Error: Invalid profile type: $PROFILE_TYPE" >&2
-        echo "Valid types: universal, cli, tunnelblick, connect" >&2
-        exit 1
-        ;;
-esac
+      printf 'Error: invalid profile type: %s\n' "$profile_type" >&2
+      usage
+      return 1
+      ;;
+  esac
+}
 
-##############################################
-# Generate Profile
-##############################################
+validate_server_hostname() {
+  local -r server_hostname="$1"
 
-echo "Generating OpenVPN client profile..."
-echo "  Type:   $PROFILE_TYPE"
-echo "  Server: $SERVER_HOSTNAME"
-echo "  CA:     $CA_CERT"
-[ -n "$CLIENT_CERT" ] && echo "  Cert:   $CLIENT_CERT"
-[ -n "$CLIENT_KEY" ] && echo "  Key:    $CLIENT_KEY"
-[ -n "$TA_KEY" ] && echo "  TLS:    $TA_KEY"
-echo "  Output: $OUTPUT_FILE"
-echo
+  if [[ -z "$server_hostname" ]]; then
+    printf 'Error: server hostname must not be empty\n' >&2
+    return 1
+  fi
+  if [[ "$server_hostname" =~ [[:space:][:cntrl:]] ]]; then
+    printf 'Error: server hostname must not contain whitespace or control characters\n' >&2
+    return 1
+  fi
+}
 
-##############################################
-# Common Header
-##############################################
+output_directory() {
+  local -r output_file="$1"
 
-cat > "$OUTPUT_FILE" <<'EOF'
+  if [[ "$output_file" == */* ]]; then
+    printf '%s\n' "${output_file%/*}"
+  else
+    printf '.\n'
+  fi
+}
+
+write_profile_safely() {
+  local -r ca_cert="$1"
+  local -r server_hostname="$2"
+  local -r output_file="$3"
+  local -r profile_type="$4"
+  local -r client_cert="$5"
+  local -r client_key="$6"
+  local -r tls_auth_key="$7"
+  local -r output_name="${output_file##*/}"
+  local output_dir
+  local temp_file
+
+  output_dir="$(output_directory "$output_file")"
+
+  if [[ -d "$output_file" ]]; then
+    printf 'Error: output path is a directory: %s\n' "$output_file" >&2
+    return 1
+  fi
+
+  if [[ ! -d "$output_dir" || ! -w "$output_dir" ]]; then
+    printf 'Error: output directory must exist and be writable: %s\n' "$output_dir" >&2
+    return 1
+  fi
+
+  umask 077
+  temp_file="$(mktemp "${output_dir}/.${output_name}.tmp.XXXXXX")"
+  if write_profile "$ca_cert" "$server_hostname" "$temp_file" "$profile_type" "$client_cert" "$client_key" "$tls_auth_key" \
+    && chmod 600 "$temp_file" \
+    && mv -f "$temp_file" "$output_file"; then
+    return 0
+  fi
+
+  rm -f "$temp_file"
+  return 1
+}
+
+print_summary() {
+  local -r ca_cert="$1"
+  local -r server_hostname="$2"
+  local -r output_file="$3"
+  local -r profile_type="$4"
+  local -r client_cert="$5"
+  local -r client_key="$6"
+  local -r tls_auth_key="$7"
+
+  printf 'Generating OpenVPN client profile...\n'
+  printf '  Type:   %s\n' "$profile_type"
+  printf '  Server: %s\n' "$server_hostname"
+  printf '  CA:     %s\n' "$ca_cert"
+  [[ -n "$client_cert" ]] && printf '  Cert:   %s\n' "$client_cert"
+  [[ -n "$client_key" ]] && printf '  Key:    %s\n' "$client_key"
+  [[ -n "$tls_auth_key" ]] && printf '  TLS:    %s\n' "$tls_auth_key"
+  printf '  Output: %s\n\n' "$output_file"
+}
+
+write_profile() {
+  local -r ca_cert="$1"
+  local -r server_hostname="$2"
+  local -r output_file="$3"
+  local -r profile_type="$4"
+  local -r client_cert="$5"
+  local -r client_key="$6"
+  local -r tls_auth_key="$7"
+
+  {
+    cat <<'EOF'
 # OpenVPN Client Configuration for SSO Authentication
 # Auto-generated profile - DO NOT EDIT MANUALLY
 #
@@ -103,16 +148,9 @@ proto udp
 
 EOF
 
-##############################################
-# Server Configuration
-##############################################
+    printf 'remote %s 1194\n\n' "$server_hostname"
 
-cat >> "$OUTPUT_FILE" <<EOF
-remote $SERVER_HOSTNAME 1194
-
-EOF
-
-cat >> "$OUTPUT_FILE" <<'EOF'
+    cat <<'EOF'
 resolv-retry infinite
 nobind
 persist-key
@@ -120,135 +158,97 @@ persist-tun
 
 EOF
 
-##############################################
-# Profile-Specific Settings
-##############################################
-
-case "$PROFILE_TYPE" in
-    cli)
-        cat >> "$OUTPUT_FILE" <<'EOF'
+    case "$profile_type" in
+      cli)
+        cat <<'EOF'
 # Optional: Downgrade privileges after initialization
 # user nobody
 # group nogroup
 
 EOF
         ;;
-    tunnelblick)
-        cat >> "$OUTPUT_FILE" <<'EOF'
+      tunnelblick)
+        cat <<'EOF'
 # Tunnelblick-specific optimizations
 # Route all traffic through VPN (optional, uncomment to enable)
 # redirect-gateway def1
 
 EOF
         ;;
-    connect)
-        cat >> "$OUTPUT_FILE" <<'EOF'
+      connect)
+        cat <<'EOF'
 # OpenVPN Connect optimizations
 # Configure split tunneling and other features via app settings
 
 EOF
         ;;
-esac
+    esac
 
-##############################################
-# Certificates
-##############################################
-
-# CA Certificate (inline)
-cat >> "$OUTPUT_FILE" <<'EOF'
+    cat <<'EOF'
 <ca>
 EOF
-cat "$CA_CERT" >> "$OUTPUT_FILE"
-cat >> "$OUTPUT_FILE" <<'EOF'
+    cat "$ca_cert"
+    cat <<'EOF'
 </ca>
 
 EOF
 
-# Client Certificate (inline, if provided)
-if [ -n "$CLIENT_CERT" ]; then
-    cat >> "$OUTPUT_FILE" <<'EOF'
+    if [[ -n "$client_cert" ]]; then
+      cat <<'EOF'
 <cert>
 EOF
-    cat "$CLIENT_CERT" >> "$OUTPUT_FILE"
-    cat >> "$OUTPUT_FILE" <<'EOF'
+      cat "$client_cert"
+      cat <<'EOF'
 </cert>
 
 EOF
-fi
+    fi
 
-# Client Private Key (inline, if provided)
-if [ -n "$CLIENT_KEY" ]; then
-    cat >> "$OUTPUT_FILE" <<'EOF'
+    if [[ -n "$client_key" ]]; then
+      cat <<'EOF'
 <key>
 EOF
-    cat "$CLIENT_KEY" >> "$OUTPUT_FILE"
-    cat >> "$OUTPUT_FILE" <<'EOF'
+      cat "$client_key"
+      cat <<'EOF'
 </key>
 
 EOF
-fi
+    fi
 
-##############################################
-# Authentication
-##############################################
-
-cat >> "$OUTPUT_FILE" <<'EOF'
+    cat <<'EOF'
 auth-user-pass
 auth-retry interact
 
-EOF
-
-##############################################
-# Security
-##############################################
-
-cat >> "$OUTPUT_FILE" <<'EOF'
 remote-cert-tls server
 data-ciphers AES-256-GCM:AES-128-GCM:AES-256-CBC
 tls-version-min 1.2
 
 EOF
 
-# TLS Authentication Key (inline, if provided)
-if [ -n "$TA_KEY" ]; then
-    cat >> "$OUTPUT_FILE" <<'EOF'
+    if [[ -n "$tls_auth_key" ]]; then
+      cat <<'EOF'
 <tls-auth>
 EOF
-    cat "$TA_KEY" >> "$OUTPUT_FILE"
-    cat >> "$OUTPUT_FILE" <<'EOF'
+      cat "$tls_auth_key"
+      cat <<'EOF'
 </tls-auth>
 key-direction 1
 
 EOF
-fi
+    fi
 
-##############################################
-# Performance
-##############################################
-
-cat >> "$OUTPUT_FILE" <<'EOF'
+    cat <<'EOF'
 sndbuf 393216
 rcvbuf 393216
 
-EOF
-
-##############################################
-# Logging
-##############################################
-
-cat >> "$OUTPUT_FILE" <<'EOF'
 verb 3
 mute 20
 
 EOF
 
-##############################################
-# Profile-Specific Footer
-##############################################
-
-case "$PROFILE_TYPE" in
-    cli)
-        cat >> "$OUTPUT_FILE" <<'EOF'
+    case "$profile_type" in
+      cli)
+        cat <<'EOF'
 # CLI SSO Instructions:
 # 1. Start OpenVPN: openvpn --config client.ovpn
 # 2. Enter username (Keycloak username) and password (anything, e.g., "sso")
@@ -258,8 +258,8 @@ case "$PROFILE_TYPE" in
 # 6. Return to terminal - connection completes automatically
 EOF
         ;;
-    tunnelblick)
-        cat >> "$OUTPUT_FILE" <<'EOF'
+      tunnelblick)
+        cat <<'EOF'
 # Tunnelblick SSO Instructions:
 # 1. Double-click this file to import into Tunnelblick
 # 2. Click "Connect" in Tunnelblick menu
@@ -269,10 +269,10 @@ EOF
 # 6. VPN connects automatically
 EOF
         ;;
-    connect)
-        cat >> "$OUTPUT_FILE" <<'EOF'
+      connect)
+        cat <<'EOF'
 # OpenVPN Connect SSO Instructions:
-# 1. Import this profile (File → Import or drag-and-drop)
+# 1. Import this profile (File > Import or drag-and-drop)
 # 2. Tap/click to connect
 # 3. Enter Keycloak username and any password
 # 4. Built-in browser opens with Keycloak login
@@ -280,8 +280,8 @@ EOF
 # 6. VPN connects automatically
 EOF
         ;;
-    universal)
-        cat >> "$OUTPUT_FILE" <<'EOF'
+      universal)
+        cat <<'EOF'
 # SSO Authentication Instructions:
 # 1. Import this profile into your OpenVPN client
 # 2. Connect and enter your Keycloak username
@@ -293,24 +293,42 @@ EOF
 # CLI clients display a URL that you must open manually
 EOF
         ;;
-esac
+    esac
+  } >"$output_file"
+}
 
-##############################################
-# Success Message
-##############################################
+main() {
+  require_command cat
+  require_command chmod
+  require_command mktemp
+  require_command mv
+  require_command rm
 
-echo "✓ Client profile generated successfully: $OUTPUT_FILE"
-echo
-echo "Next steps:"
-echo "  1. Import $OUTPUT_FILE into your OpenVPN client"
-echo "  2. Connect using your Keycloak username"
-echo "  3. Authenticate via browser when prompted"
-echo
-echo "For detailed setup instructions, see:"
-echo "  docs/client-setup.md"
-echo
+  local -r ca_cert="${1:-/etc/openvpn/server/ca.crt}"
+  local -r server_hostname="${2:-vpn.example.com}"
+  local -r output_file="${3:-client-generated.ovpn}"
+  local -r profile_type="${4:-universal}"
+  local -r client_cert="${5:-}"
+  local -r client_key="${6:-}"
+  local -r tls_auth_key="${7:-}"
 
-# Set appropriate permissions
-chmod 644 "$OUTPUT_FILE"
+  require_file "CA certificate" "$ca_cert"
+  [[ -n "$client_cert" ]] && require_file "Client certificate" "$client_cert"
+  [[ -n "$client_key" ]] && require_file "Client private key" "$client_key"
+  [[ -n "$tls_auth_key" ]] && require_file "TLS auth key" "$tls_auth_key"
+  validate_profile_type "$profile_type"
+  validate_server_hostname "$server_hostname"
 
-exit 0
+  print_summary "$ca_cert" "$server_hostname" "$output_file" "$profile_type" "$client_cert" "$client_key" "$tls_auth_key"
+  write_profile_safely "$ca_cert" "$server_hostname" "$output_file" "$profile_type" "$client_cert" "$client_key" "$tls_auth_key"
+
+  printf 'Client profile generated successfully: %s\n\n' "$output_file"
+  printf 'Next steps:\n'
+  printf '  1. Import %s into your OpenVPN client\n' "$output_file"
+  printf '  2. Connect using your Keycloak username\n'
+  printf '  3. Authenticate via browser when prompted\n\n'
+  printf 'For detailed setup instructions, see:\n'
+  printf '  docs/client-setup.md\n'
+}
+
+main "$@"

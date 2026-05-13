@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
+
 # Uninstallation script for OpenVPN Keycloak SSO
 #
 # This script removes the OpenVPN Keycloak SSO daemon from the system.
@@ -17,8 +19,6 @@
 #
 # Requirements:
 #   - Root privileges
-
-set -e
 
 ##############################################
 # Configuration
@@ -71,6 +71,17 @@ log_warning() {
 
 log_error() {
     echo -e "${RED}[ERROR]${NC} $1" >&2
+}
+
+is_dir_empty() {
+    local -r dir_path="$1"
+    local entries
+
+    shopt -s nullglob dotglob
+    entries=("$dir_path"/*)
+    shopt -u nullglob dotglob
+
+    [ "${#entries[@]}" -eq 0 ]
 }
 
 check_root() {
@@ -239,7 +250,7 @@ remove_auth_script() {
     fi
 
     # Remove scripts directory if empty
-    if [ -d "$SCRIPTS_DIR" ] && [ -z "$(ls -A "$SCRIPTS_DIR" 2>/dev/null)" ]; then
+    if [ -d "$SCRIPTS_DIR" ] && is_dir_empty "$SCRIPTS_DIR"; then
         log_info "Removing empty scripts directory: $SCRIPTS_DIR"
         rmdir "$SCRIPTS_DIR" 2>/dev/null || true
     fi
@@ -258,7 +269,7 @@ remove_openvpn_override() {
         log_success "Override removed"
 
         # Remove the drop-in directory if empty
-        if [ -d "$OVPN_OVERRIDE_DIR" ] && [ -z "$(ls -A "$OVPN_OVERRIDE_DIR" 2>/dev/null)" ]; then
+        if [ -d "$OVPN_OVERRIDE_DIR" ] && is_dir_empty "$OVPN_OVERRIDE_DIR"; then
             rmdir "$OVPN_OVERRIDE_DIR" 2>/dev/null || true
         fi
 
@@ -356,7 +367,7 @@ remove_selinux() {
 
     if command -v semanage &> /dev/null; then
         semanage fcontext -d "$INSTALL_DIR/$BINARY_NAME" &> /dev/null || true
-        semanage fcontext -d '/var/run/openvpn-keycloak-auth(/.*)?' &> /dev/null || true
+        semanage fcontext -d '/run/openvpn-keycloak-auth(/.*)?' &> /dev/null || true
         semanage fcontext -d '/etc/openvpn/scripts(/.*)?' &> /dev/null || true
         log_success "SELinux file contexts removed"
     fi
@@ -399,7 +410,8 @@ print_success_message() {
     echo -e "${BOLD}Notes:${NC}"
     echo "  - The 'openvpn' user/group was NOT removed (may be used by OpenVPN)"
     echo "  - Firewall rules were NOT removed"
-    echo "  - SELinux contexts were NOT removed"
+    echo "  - SELinux file contexts were removed if semanage was available"
+    echo "  - SELinux booleans were NOT reverted"
     echo ""
     echo "If you want to completely clean up:"
     echo "  - Remove firewall rule: firewall-cmd --permanent --remove-port=9000/tcp && firewall-cmd --reload"

@@ -3,19 +3,23 @@ package daemon
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
-
-	"net/url"
 
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/config"
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/httpserver"
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/ipc"
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/logsanitize"
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/oidc"
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/openvpn"
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/session"
@@ -97,7 +101,7 @@ func (d *Daemon) Run() error {
 	// Start HTTP server in a goroutine (it blocks on ListenAndServe)
 	httpErrCh := make(chan error, 1)
 	go func() {
-		if err := d.httpServer.Start(); err != nil && err.Error() != "http: Server closed" {
+		if err := d.httpServer.Start(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			httpErrCh <- err
 		}
 		close(httpErrCh)
@@ -149,10 +153,27 @@ func handleAuthRequest(ctx context.Context, cfg *config.Config, oidcProvider *oi
 	sessionMgr *session.Manager, req *ipc.AuthRequest) (*ipc.AuthResponse, error) {
 
 	slog.Info("auth request received",
-		"username", req.Username,
-		"ip", req.UntrustedIP,
-		"port", req.UntrustedPort,
+		"username", logsanitize.Sanitize(req.Username),
+		"ip", logsanitize.Sanitize(req.UntrustedIP),
+		"port", logsanitize.Sanitize(req.UntrustedPort),
 	)
+
+	if err := validateOpenVPNResultPath("auth_control_file", req.AuthControlFile); err != nil {
+		return nil, err
+	}
+	if err := validateOpenVPNResultPath("auth_failed_reason_file", req.AuthFailedReasonFile); err != nil {
+		return nil, err
+	}
+	if err := validateOpenVPNResultPath("auth_pending_file", req.AuthPendingFile); err != nil {
+		if wErr := openvpn.WriteAuthFailure(
+			req.AuthControlFile,
+			req.AuthFailedReasonFile,
+			"Failed to start authentication flow",
+		); wErr != nil {
+			slog.Error("failed to write auth failure after invalid pending path", "error", wErr)
+		}
+		return nil, err
+	}
 
 	// Create session
 	sess, err := sessionMgr.Create(
@@ -178,7 +199,7 @@ func handleAuthRequest(ctx context.Context, cfg *config.Config, oidcProvider *oi
 	}
 
 	// Update session with OIDC flow data
-	err = sessionMgr.UpdateOIDCFlow(sess.ID, flowData.State, flowData.CodeVerifier, flowData.AuthURL)
+	err = sessionMgr.UpdateOIDCFlow(sess.ID, flowData.State, flowData.CodeVerifier, flowData.Nonce, flowData.AuthURL)
 	if err != nil {
 		sessionMgr.Delete(sess.ID)
 		return nil, fmt.Errorf("failed to update session: %w", err)
@@ -186,7 +207,7 @@ func handleAuthRequest(ctx context.Context, cfg *config.Config, oidcProvider *oi
 
 	slog.Debug("OIDC flow started",
 		"session_id", sess.ID,
-		"state", flowData.State,
+		"state_present", flowData.State != "",
 	)
 
 	// Build a short redirect URL for the auth_pending_file.
@@ -201,7 +222,7 @@ func handleAuthRequest(ctx context.Context, cfg *config.Config, oidcProvider *oi
 
 	slog.Debug("short auth URL built",
 		"session_id", sess.ID,
-		"short_url", shortAuthURL,
+		"short_url_length", len(shortAuthURL),
 		"full_url_length", len(flowData.AuthURL),
 	)
 
@@ -228,8 +249,8 @@ func handleAuthRequest(ctx context.Context, cfg *config.Config, oidcProvider *oi
 
 	slog.Info("auth flow initiated",
 		"session_id", sess.ID,
-		"username", req.Username,
-		"ip", req.UntrustedIP,
+		"username", logsanitize.Sanitize(req.Username),
+		"ip", logsanitize.Sanitize(req.UntrustedIP),
 	)
 
 	// Return response to auth script
@@ -239,6 +260,25 @@ func handleAuthRequest(ctx context.Context, cfg *config.Config, oidcProvider *oi
 		SessionID: sess.ID,
 		AuthURL:   shortAuthURL,
 	}, nil
+}
+
+func validateOpenVPNResultPath(name, filePath string) error {
+	if filePath == "" {
+		return fmt.Errorf("%s is required", name)
+	}
+	if strings.ContainsRune(filePath, '\x00') {
+		return fmt.Errorf("%s must not contain NUL bytes", name)
+	}
+	if !filepath.IsAbs(filePath) {
+		return fmt.Errorf("%s must be an absolute path", name)
+	}
+	if filepath.Clean(filePath) != filePath {
+		return fmt.Errorf("%s must be a canonical path", name)
+	}
+	if filepath.Dir(filePath) == filePath {
+		return fmt.Errorf("%s must reference a file path", name)
+	}
+	return nil
 }
 
 // maxWebAuthLineLen is OpenVPN's OPTION_LINE_SIZE limit for a single line in
@@ -263,9 +303,9 @@ func buildShortAuthURL(redirectURI, state string) (string, error) {
 		return "", fmt.Errorf("failed to parse redirect_uri: %w", err)
 	}
 
-	redirectPath := path.Clean(u.Path)
-	if redirectPath == "." {
-		redirectPath = "/"
+	redirectPath := u.Path
+	if redirectPath == "" || redirectPath == "/" || path.Clean(redirectPath) != redirectPath {
+		return "", fmt.Errorf("redirect_uri must include a canonical non-root callback path")
 	}
 
 	basePath := path.Dir(redirectPath)
