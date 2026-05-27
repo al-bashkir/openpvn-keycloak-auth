@@ -47,7 +47,7 @@ jobs:
           echo "✅ Coverage OK ($COVERAGE% >= 70%)"
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@cddd853df119a48c5be31a973f8cd97e12e35e16 # v6.0.1
         with:
           file: ./coverage.txt
           flags: unittests
@@ -68,7 +68,7 @@ jobs:
           cache: true
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v9
+        uses: golangci/golangci-lint-action@db582008a42febd596419635a5abc9d9815daa9c # v9.2.1
         with:
           version: latest
           args: --timeout=5m --verbose
@@ -127,8 +127,13 @@ jobs:
           go-version: "1.25"
           cache: true
 
+      - name: Run govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
       - name: Run Gosec Security Scanner
-        uses: securego/gosec@master
+        uses: securego/gosec@9c4bb74a6258fe3818db8354b376ecca985704aa # v2.26.1
         with:
           args: "-no-fail -fmt sarif -out results.sarif ./..."
 
