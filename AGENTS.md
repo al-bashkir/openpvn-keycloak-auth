@@ -57,8 +57,6 @@ config/                        sample daemon and OpenVPN configs
 deploy/                        install/uninstall/systemd assets
 docs/                          user-facing documentation
 scripts/                       OpenVPN wrapper and client profile generator
-tasks/                         historical task breakdown
-reports/                       historical reports
 ```
 
 ## Configuration Model
@@ -141,7 +139,8 @@ If `golangci-lint` was built with an older Go version than `go.mod` targets, rec
 - Preserve IPC hardening: peer credentials, bounded/deadline reads, and absolute canonical OpenVPN result paths are security-sensitive.
 - Preserve callback result-write claiming; do not reintroduce separate check/write/mark sequences that can race duplicate callbacks.
 - Prefer standard library functionality unless a dependency already exists for the task.
-- Do not reintroduce removed helpers: `decodeJWTPayload`, `Config.Redact`, `Client.SetTimeout`. They were dead code as of the audit-hardening pass; tests now exercise the real code paths instead.
+- Do not reintroduce removed helpers: `decodeJWTPayload`, `Config.Redact`, `Client.SetTimeout`, `session.Manager.ResultWritten`, `oidc.containsRole` (use `slices.Contains`), the unused `OpenVPNEnv` fields (`Password`, `ScriptType`, `Config`, `IfconfigPoolRemoteIP`, `TimeASCII`, `TimeUnix`), and the `/health` `version` field. They were dead code as of the audit passes; tests now exercise the real code paths instead.
+- The OpenVPN placeholder password is read from the via-file only to satisfy the file format and is discarded immediately; never store it on `OpenVPNEnv`, IPC messages, or logs.
 
 ## Shell Script Rules
 

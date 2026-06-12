@@ -103,7 +103,7 @@ This is **critical** for security.
 - **Client authentication**: `OFF` (toggle should be gray)
   - This makes it a **public client** (no client secret)
   - Required for PKCE-based authentication
-  
+
 - **Authorization**: `OFF` (toggle should be gray)
   - We don't need fine-grained authorization
 
@@ -125,12 +125,12 @@ This is where you configure the callback URL.
 
 - **Root URL**: Leave empty
 - **Home URL**: Leave empty
-- **Valid redirect URIs**: 
+- **Valid redirect URIs**:
   - `http://vpn.example.com:9000/callback`
   - `http://localhost:9000/callback` (for local testing)
   - Click **"+"** to add each URL
   - **Important**: Must match EXACTLY what you configure in `keycloak-sso.yaml`
-  
+
 - **Valid post logout redirect URIs**: `*` or leave empty
 - **Web origins**: `*` (allow all origins for CORS)
   - In production, specify exact origins: `http://vpn.example.com:9000`
@@ -333,15 +333,15 @@ Expected output (abbreviated):
 
 At this point, you should have:
 
-| Component | Value |
-|-----------|-------|
-| Realm | `openvpn` |
-| Client ID | `openvpn` |
-| Client Type | Public (no secret) |
-| PKCE Method | S256 |
+| Component    | Value                                  |
+| ------------ | -------------------------------------- |
+| Realm        | `openvpn`                              |
+| Client ID    | `openvpn`                              |
+| Client Type  | Public (no secret)                     |
+| PKCE Method  | S256                                   |
 | Redirect URI | `http://vpn.example.com:9000/callback` |
-| Role | `vpn-user` |
-| Test User | `testuser` with role `vpn-user` |
+| Role         | `vpn-user`                             |
+| Test User    | `testuser` with role `vpn-user`        |
 
 ---
 
@@ -365,6 +365,7 @@ http://your-keycloak-server:8080/realms/openvpn/protocol/openid-connect/auth?cli
 ```
 
 You should see:
+
 1. Keycloak login page
 2. After login, redirect to your callback URL (may fail if VPN daemon not running, but redirect should happen)
 
@@ -381,11 +382,13 @@ Try logging in with your test user credentials to verify they work.
 **Symptom**: Error message after OIDC login
 
 **Cause**: Mismatch between:
+
 - Redirect URI in Keycloak client configuration
 - Redirect URI in `keycloak-sso.yaml`
 - Redirect URI in authorization request
 
 **Solution**:
+
 1. Go to **Clients** → `openvpn` → **Settings**
 2. Check **Valid redirect URIs**
 3. Ensure exact match: `http://vpn.example.com:9000/callback`
@@ -398,6 +401,7 @@ Try logging in with your test user credentials to verify they work.
 **Cause**: Client ID mismatch
 
 **Solution**:
+
 - Verify client ID in Keycloak is exactly `openvpn`
 - Verify `client_id: openvpn` in `keycloak-sso.yaml`
 - Client IDs are case-sensitive
@@ -409,6 +413,7 @@ Try logging in with your test user credentials to verify they work.
 **Cause**: PKCE not configured or wrong method
 
 **Solution**:
+
 1. Go to **Clients** → `openvpn` → **Advanced** tab
 2. Set **Proof Key for Code Exchange Code Challenge Method**: `S256`
 3. Click **"Save"**
@@ -421,6 +426,7 @@ Try logging in with your test user credentials to verify they work.
 **Cause**: User doesn't have required role
 
 **Solution**:
+
 1. Go to **Users** → Select user → **Role mapping** tab
 2. Click **"Assign role"**
 3. Assign `vpn-user` role
@@ -433,6 +439,7 @@ Try logging in with your test user credentials to verify they work.
 **Cause**: Roles scope not assigned or roles not in token
 
 **Solution**:
+
 1. Go to **Clients** → `openvpn` → **Client scopes** tab
 2. Ensure `roles` is in **Assigned default client scopes**
 3. Verify role claim path in `keycloak-sso.yaml`: `role_claim: "realm_access.roles"`
@@ -444,6 +451,7 @@ Try logging in with your test user credentials to verify they work.
 **Cause**: Network connectivity issues
 
 **Solution**:
+
 1. Test from VPN server:
    ```bash
    curl -v http://your-keycloak-server:8080/realms/openvpn/.well-known/openid-configuration
@@ -530,4 +538,4 @@ If you encounter issues not covered here:
 
 ---
 
-*Last updated: 2026-02-15 for Keycloak 25.0.6*
+_Last updated: 2026-02-15 for Keycloak 25.0.6_

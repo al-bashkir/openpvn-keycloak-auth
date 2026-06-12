@@ -34,6 +34,7 @@ This OpenVPN setup uses **SSO authentication** instead of traditional username/p
 5. **VPN connects** - Connection completes automatically after successful authentication
 
 **Benefits:**
+
 - **Single Sign-On** - Use your organization's identity provider
 - **Stronger security** - Supports MFA, passwordless auth, hardware keys
 - **No Keycloak password sharing** - your Keycloak password is entered only on the Keycloak login page
@@ -45,17 +46,18 @@ This OpenVPN setup uses **SSO authentication** instead of traditional username/p
 
 SSO support varies by client and version:
 
-| Client | Platform | SSO Support | Notes |
-|--------|----------|-------------|-------|
-| **OpenVPN Connect 3.x** | Windows, macOS, iOS, Android, Linux | ✅ Excellent | Built-in webview, best experience |
-| **Tunnelblick 3.8.7+** | macOS | ✅ Excellent | Opens Safari automatically |
-| **OpenVPN CLI 2.6+** | Linux, Unix, macOS | ⚠️ Manual | Displays URL to copy/paste |
-| **NetworkManager** | Linux (GNOME, KDE) | ⚠️ Limited | May require manual browser opening |
-| **OpenVPN GUI 2.6+** | Windows | ⚠️ Manual | Displays URL to copy/paste |
-| **Viscosity** | macOS, Windows | ❌ Not tested | May work with manual URL opening |
-| **OpenVPN Connect 2.x** | Legacy | ❌ No support | Upgrade to 3.x required |
+| Client                  | Platform                            | SSO Support   | Notes                              |
+| ----------------------- | ----------------------------------- | ------------- | ---------------------------------- |
+| **OpenVPN Connect 3.x** | Windows, macOS, iOS, Android, Linux | ✅ Excellent  | Built-in webview, best experience  |
+| **Tunnelblick 3.8.7+**  | macOS                               | ✅ Excellent  | Opens Safari automatically         |
+| **OpenVPN CLI 2.6+**    | Linux, Unix, macOS                  | ⚠️ Manual      | Displays URL to copy/paste         |
+| **NetworkManager**      | Linux (GNOME, KDE)                  | ⚠️ Limited     | May require manual browser opening |
+| **OpenVPN GUI 2.6+**    | Windows                             | ⚠️ Manual      | Displays URL to copy/paste         |
+| **Viscosity**           | macOS, Windows                      | ❌ Not tested | May work with manual URL opening   |
+| **OpenVPN Connect 2.x** | Legacy                              | ❌ No support | Upgrade to 3.x required            |
 
 **Legend:**
+
 - ✅ **Excellent** - Opens browser automatically, seamless experience
 - ⚠️ **Manual** - Requires copying URL and opening manually
 - ❌ **No support** - Does not work with SSO
@@ -76,18 +78,21 @@ Your VPN administrator will provide you with a `.ovpn` client profile file. This
 - Performance tuning parameters
 
 **Delivery methods:**
+
 - **Email attachment** - Most common, check your inbox
 - **Download portal** - Internal website or file share
 - **QR code** - For mobile devices (if available)
 - **IT help desk** - Request via your organization's support channels
 
 **File naming:**
+
 - `client.ovpn` - Universal profile (works on most clients)
 - `client-cli.ovpn` - Linux command-line optimized
 - `client-tunnelblick.ovpn` - macOS Tunnelblick optimized
 - `client-connect.ovpn` - OpenVPN Connect optimized
 
 **Security note:** Treat your `.ovpn` file carefully:
+
 - Contains your organization's CA certificate
 - May contain client certificate/key (if using mutual TLS)
 - Don't share with unauthorized users
@@ -254,6 +259,7 @@ nmcli> quit
 ```
 
 Or via GUI:
+
 1. Click gear icon next to VPN connection
 2. **Identity** tab:
    - Username: `your-keycloak-username`
@@ -314,6 +320,7 @@ System Tray → Networks → VPN → Click connection
 **Import Profile:**
 
 **Method 1: Double-click**
+
 1. Locate your `.ovpn` file in Finder
 2. Double-click the file
 3. Tunnelblick opens and prompts: "Install configuration"
@@ -322,11 +329,13 @@ System Tray → Networks → VPN → Click connection
 6. Configuration installed successfully
 
 **Method 2: Drag-and-drop**
+
 1. Launch Tunnelblick
 2. Drag `.ovpn` file onto Tunnelblick icon in menu bar
 3. Follow prompts to install
 
 **Method 3: Tunnelblick Menu**
+
 1. Click Tunnelblick icon in menu bar
 2. **VPN Details...** → **Configurations** tab
 3. Click **+** (bottom left) → **Add a VPN Configuration**
@@ -395,6 +404,7 @@ Tunnelblick icon → VPN Details → Select configuration → Settings:
 4. Launch **OpenVPN Connect** from Start menu
 
 **System Requirements:**
+
 - Windows 10/11 (64-bit)
 - Administrator privileges for first connection
 - .NET Framework 4.8+
@@ -402,12 +412,14 @@ Tunnelblick icon → VPN Details → Select configuration → Settings:
 **Import Profile:**
 
 **Method 1: File → Import**
+
 1. Launch OpenVPN Connect
 2. Click **File** → **Import Profile** → **From Local File**
 3. Browse and select your `.ovpn` file
 4. Profile appears in the main window
 
 **Method 2: Drag-and-drop**
+
 1. Open File Explorer, locate `.ovpn` file
 2. Drag file onto OpenVPN Connect window
 3. Profile imports automatically
@@ -453,6 +465,7 @@ Tunnelblick icon → VPN Details → Select configuration → Settings:
 **Advanced Features:**
 
 Settings (gear icon):
+
 - **Launch on startup:** Auto-start OpenVPN Connect
 - **Connect on launch:** Auto-connect to VPN
 - **Reconnect on network change:** Yes (recommended)
@@ -473,6 +486,7 @@ Settings (gear icon):
 **Import Profile:**
 
 **Method 1: Email**
+
 1. Email the `.ovpn` file to yourself
 2. Open email on your iPhone/iPad
 3. Tap the `.ovpn` attachment
@@ -481,12 +495,14 @@ Settings (gear icon):
 6. Tap **Add**
 
 **Method 2: Cloud Storage**
+
 1. Upload `.ovpn` to iCloud Drive, Dropbox, or Google Drive
 2. Open file in Files app or cloud storage app
 3. Tap file → **Share** → **OpenVPN**
 4. Tap **Add** in OpenVPN Connect
 
 **Method 3: AirDrop**
+
 1. On Mac: Right-click `.ovpn` → Share → AirDrop
 2. Select your iPhone/iPad
 3. File transfers to device
@@ -532,6 +548,7 @@ Settings (gear icon):
 Settings → VPN → OpenVPN → **Connect On Demand**
 
 Configure rules:
+
 - Connect when: Wi-Fi, Cellular, or Both
 - Disconnect when: Never (stay connected)
 
@@ -563,6 +580,7 @@ Configure rules:
 **Import Profile:**
 
 **Method 1: Email**
+
 1. Email `.ovpn` file to yourself
 2. Open email on Android device
 3. Tap the attachment
@@ -570,6 +588,7 @@ Configure rules:
 5. Tap **Import** → **Add**
 
 **Method 2: File Manager**
+
 1. Download or copy `.ovpn` to device
 2. Open Files app / File Manager
 3. Navigate to `.ovpn` file
@@ -577,6 +596,7 @@ Configure rules:
 5. Tap **Import** → **Add**
 
 **Method 3: Cloud Storage**
+
 1. Upload to Google Drive, Dropbox, etc.
 2. Open file in cloud app
 3. Tap **Open in** → **OpenVPN**
@@ -619,12 +639,14 @@ Configure rules:
 **Always-On VPN:**
 
 Settings → Network & Internet → VPN → ⚙️ (gear icon) → OpenVPN:
+
 - **Always-on VPN:** Toggle ON
 - **Block connections without VPN:** Toggle ON (optional, more secure)
 
 **Battery Optimization:**
 
 For reliable VPN:
+
 1. Settings → Apps → OpenVPN Connect
 2. Battery → **Unrestricted**
 3. Prevents Android from killing VPN in background
@@ -682,11 +704,13 @@ For reliable VPN:
 ### Subsequent Connections
 
 **Saved credentials:**
+
 - Most clients can save your **username** (not password)
 - Next time: just click connect, then use the browser flow when prompted
 - No need to re-enter username
 
 **Token lifetime:**
+
 - Keycloak issues tokens with expiration (typically 5-60 minutes)
 - You'll need to re-authenticate when token expires
 - Some clients handle this automatically with refresh tokens
@@ -789,6 +813,7 @@ For reliable VPN:
 ### Security Features
 
 **PKCE (Proof Key for Code Exchange):**
+
 - Prevents authorization code interception attacks
 - Client generates random verifier and challenge
 - Challenge sent in authorization request
@@ -796,17 +821,20 @@ For reliable VPN:
 - Server validates verifier matches challenge
 
 **State Parameter:**
+
 - CSRF (Cross-Site Request Forgery) protection
 - Random state value tied to session ID
 - Validated on callback to ensure request originated from this client
 
 **Token Validation:**
+
 - JWT signature verified using Keycloak's public keys (JWKS)
 - All claims validated (issuer, audience, expiration, etc.)
 - Username extracted from preferred_username claim
 - Optional: group/role membership enforced
 
 **No Password Transmission:**
+
 - VPN server never sees user's Keycloak password
 - Only receives cryptographically signed token
 - Reduces attack surface significantly
@@ -818,6 +846,7 @@ For reliable VPN:
 ### Browser Doesn't Open
 
 **Symptoms:**
+
 - Click connect, but no browser window appears
 - Connection hangs or times out
 
@@ -847,6 +876,7 @@ For reliable VPN:
 ### Authentication Hangs After Browser Login
 
 **Symptoms:**
+
 - Successfully log in to Keycloak
 - Success page appears
 - But VPN connection doesn't complete
@@ -886,6 +916,7 @@ For reliable VPN:
 ### "Authentication Failed" Error
 
 **Symptoms:**
+
 - Browser login succeeds
 - But client shows "Authentication failed"
 - Connection rejected
@@ -918,6 +949,7 @@ For reliable VPN:
 ### Connection Timeout
 
 **Symptoms:**
+
 - Browser doesn't open within timeout period
 - Or user doesn't complete login in time
 - Connection times out after 5 minutes
@@ -941,6 +973,7 @@ For reliable VPN:
 ### Certificate Errors
 
 **Symptoms:**
+
 - "TLS Error: TLS handshake failed"
 - "Certificate verify failed"
 - "SSL: error"
@@ -970,6 +1003,7 @@ For reliable VPN:
 ### Can't Import Profile
 
 **Symptoms:**
+
 - Client rejects `.ovpn` file
 - "Invalid configuration" error
 - Import fails silently
@@ -1000,6 +1034,7 @@ For reliable VPN:
 ### Frequent Disconnections
 
 **Symptoms:**
+
 - VPN connects successfully
 - But disconnects frequently (every few minutes)
 - Reconnects automatically or requires manual reconnection
@@ -1041,10 +1076,13 @@ For reliable VPN:
 **Enable verbose logging:**
 
 Edit your `.ovpn` file, change:
+
 ```
 verb 3
 ```
+
 To:
+
 ```
 verb 4
 ```
@@ -1219,6 +1257,7 @@ nc -v vpn.example.com 1194
    - Or take screenshot of error
 
 **Support channels:**
+
 - Email: it-support@example.com
 - Help desk: https://helpdesk.example.com
 - Phone: +1-555-1234 (8am-5pm EST)
@@ -1301,8 +1340,8 @@ journalctl -u NetworkManager -f
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** 2026-02-15  
+**Document Version:** 1.0\
+**Last Updated:** 2026-02-15\
 **Maintained By:** OpenVPN SSO Project Team
 
 For questions or feedback about this documentation, please contact the project maintainers or open an issue on the project repository.

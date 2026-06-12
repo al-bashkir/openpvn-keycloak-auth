@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -254,10 +255,8 @@ func accessTokenClaimsErrorCategory(err error) string {
 }
 
 func accessTokenIssuedForClient(audience []string, claims map[string]interface{}, clientID string) bool {
-	for _, aud := range audience {
-		if aud == clientID {
-			return true
-		}
+	if slices.Contains(audience, clientID) {
+		return true
 	}
 
 	for _, claim := range []string{"azp", "client_id"} {

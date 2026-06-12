@@ -8,15 +8,13 @@ import (
 
 // HealthResponse is the JSON response for the health check endpoint
 type HealthResponse struct {
-	Status  string `json:"status"`
-	Version string `json:"version,omitempty"`
+	Status string `json:"status"`
 }
 
 // handleHealth handles health check requests
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	resp := HealthResponse{
-		Status:  "ok",
-		Version: "dev", // This will be set from build-time ldflags in production
+		Status: "ok",
 	}
 
 	w.Header().Set("Content-Type", "application/json")

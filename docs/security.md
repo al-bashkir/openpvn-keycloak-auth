@@ -27,17 +27,17 @@ The OpenVPN Keycloak SSO system implements multiple layers of security:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Layer 1: Network Security (Firewall, TLS)                  │
+│ Layer 1: Network Security (Firewall, TLS)                   │
 ├─────────────────────────────────────────────────────────────┤
-│ Layer 2: Authentication (OIDC + PKCE + MFA)                │
+│ Layer 2: Authentication (OIDC + PKCE + MFA)                 │
 ├─────────────────────────────────────────────────────────────┤
-│ Layer 3: Authorization (Token Validation + Role Checks)    │
+│ Layer 3: Authorization (Token Validation + Role Checks)     │
 ├─────────────────────────────────────────────────────────────┤
-│ Layer 4: Application Security (Rate Limiting, Input Valid) │
+│ Layer 4: Application Security (Rate Limiting, Input Valid)  │
 ├─────────────────────────────────────────────────────────────┤
-│ Layer 5: System Security (systemd sandboxing, SELinux)     │
+│ Layer 5: System Security (systemd sandboxing, SELinux)      │
 ├─────────────────────────────────────────────────────────────┤
-│ Layer 6: Monitoring (Logging, Audit Trail)                 │
+│ Layer 6: Monitoring (Logging, Audit Trail)                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -58,6 +58,7 @@ The OpenVPN Keycloak SSO system implements multiple layers of security:
 **Purpose:** Prevents authorization code interception attacks
 
 **Implementation:**
+
 ```go
 // Code verifier: 32 bytes from crypto/rand
 verifier := generateCodeVerifier() // 32 random bytes, base64url encoded
@@ -74,6 +75,7 @@ token := exchangeCode(code, verifier)
 ```
 
 **Security Properties:**
+
 - Code verifier is 32 bytes from `crypto/rand` (256 bits of entropy)
 - Challenge method is S256 (SHA-256 hash)
 - Verifier is never sent in authorization request (only challenge)
@@ -87,6 +89,7 @@ token := exchangeCode(code, verifier)
 **Purpose:** Prevents cross-site request forgery attacks
 
 **Implementation:**
+
 ```go
 // State parameter: 16 bytes from crypto/rand
 state := generateState() // 16 random bytes, hex encoded (32 characters)
@@ -106,6 +109,7 @@ if err != nil {
 ```
 
 **Security Properties:**
+
 - State is 16 bytes from `crypto/rand` (128 bits of entropy)
 - Unique per authentication attempt
 - Validated on callback before accepting code
@@ -117,6 +121,7 @@ if err != nil {
 **Purpose:** Binds the issued ID token to the specific authorization request, preventing token replay across flows.
 
 **Implementation:**
+
 - 16-byte `crypto/rand` nonce generated alongside state and PKCE verifier in `StartAuthFlow`.
 - Nonce is sent on the authorization request via `oidc.Nonce(...)` and stored on the session.
 - `ExchangeCode` verifies the ID token's `nonce` claim matches the stored value after JWT signature, issuer, audience, and expiry validation. Mismatch returns `errIDTokenNonceMismatch`.
@@ -126,6 +131,7 @@ if err != nil {
 **Purpose:** Unique identifier for each authentication attempt
 
 **Implementation:**
+
 ```go
 // Session ID: 32 bytes from crypto/rand
 id := make([]byte, 32)
@@ -136,6 +142,7 @@ sessionID := hex.EncodeToString(id) // 64 hex characters
 ```
 
 **Security Properties:**
+
 - 32 bytes from `crypto/rand` (256 bits of entropy)
 - Hex encoded (64 characters)
 - Unique per authentication attempt
@@ -167,14 +174,14 @@ sessionID := hex.EncodeToString(id) // 64 hex characters
     │ 5. Open browser   │                   │                    │
     │<──────────────────┤                   │                    │
     │                   │                   │                    │
-    │ 6. Redirect to Keycloak (with PKCE challenge + state)     │
-    ├────────────────────────────────────────────────────────────>│
+    │ 6. Redirect to Keycloak (with PKCE challenge + state)      │
+    ├───────────────────────────────────────────────────────────>│
     │                   │                   │                    │
     │ 7. User login + MFA                   │                    │
-    │<───────────────────────────────────────────────────────────>│
+    │<──────────────────────────────────────────────────────────>│
     │                   │                   │                    │
     │ 8. Redirect to callback (code + state)                     │
-    ├─────────────────────────────────────>│                    │
+    ├─────────────────────────────────────>│                     │
     │                   │                   │                    │
     │                   │                   │ 9. Validate state  │
     │                   │                   │                    │
@@ -201,14 +208,14 @@ sessionID := hex.EncodeToString(id) // 64 hex characters
 
 ### Attack Mitigation
 
-| Attack | Mitigation |
-|--------|------------|
-| **Authorization Code Interception** | PKCE prevents use of intercepted code |
-| **CSRF** | State parameter validation |
-| **Session Fixation** | New session ID per attempt, tied to OpenVPN session |
-| **Man-in-the-Middle** | TLS for all communications, JWT signature validation |
-| **Replay Attacks** | Short-lived tokens (exp claim), one-time authorization codes |
-| **Token Injection** | State parameter ties token to specific session |
+| Attack                              | Mitigation                                                   |
+| ----------------------------------- | ------------------------------------------------------------ |
+| **Authorization Code Interception** | PKCE prevents use of intercepted code                        |
+| **CSRF**                            | State parameter validation                                   |
+| **Session Fixation**                | New session ID per attempt, tied to OpenVPN session          |
+| **Man-in-the-Middle**               | TLS for all communications, JWT signature validation         |
+| **Replay Attacks**                  | Short-lived tokens (exp claim), one-time authorization codes |
+| **Token Injection**                 | State parameter ties token to specific session               |
 
 ---
 
@@ -217,6 +224,7 @@ sessionID := hex.EncodeToString(id) // 64 hex characters
 ### JWT Signature Verification
 
 **Implementation:**
+
 ```go
 // Fetch JWKS from Keycloak
 keySet := oidc.NewRemoteKeySet(ctx, jwksURL)
@@ -230,6 +238,7 @@ idToken, err := verifier.Verify(ctx, rawToken)
 ```
 
 **Security Properties:**
+
 - Public keys fetched from Keycloak's JWKS endpoint
 - Keys cached with TTL to reduce latency
 - Signature verified using RS256 (RSA SHA-256)
@@ -239,16 +248,17 @@ idToken, err := verifier.Verify(ctx, rawToken)
 
 All JWT claims are validated before accepting a token:
 
-| Claim | Validation | Purpose |
-|-------|------------|---------|
-| `iss` (Issuer) | Must match configured Keycloak URL | Prevents token from other issuers |
-| `aud` (Audience) | Must match client ID | Prevents token for other applications |
-| `exp` (Expiration) | Must be in the future | Prevents use of expired tokens |
-| `iat` (Issued At) | Must be in the past | Prevents premature token use |
-| `nbf` (Not Before) | Must be in the past or now | Prevents premature token use |
-| `preferred_username` | Must match OpenVPN username | Ensures correct user |
+| Claim                | Validation                         | Purpose                               |
+| -------------------- | ---------------------------------- | ------------------------------------- |
+| `iss` (Issuer)       | Must match configured Keycloak URL | Prevents token from other issuers     |
+| `aud` (Audience)     | Must match client ID               | Prevents token for other applications |
+| `exp` (Expiration)   | Must be in the future              | Prevents use of expired tokens        |
+| `iat` (Issued At)    | Must be in the past                | Prevents premature token use          |
+| `nbf` (Not Before)   | Must be in the past or now         | Prevents premature token use          |
+| `preferred_username` | Must match OpenVPN username        | Ensures correct user                  |
 
 **Implementation:**
+
 ```go
 // Automatic validation by go-oidc library
 idToken, err := verifier.Verify(ctx, rawToken)
@@ -279,11 +289,13 @@ if len(requiredRoles) > 0 {
 ### Token Lifetime
 
 **Recommendations:**
+
 - **Access Token:** 5 minutes (Keycloak default: 5 minutes)
 - **ID Token:** 5 minutes (Keycloak default: 5 minutes)
 - **Session TTL (daemon):** 5 minutes (configurable)
 
 **Rationale:**
+
 - Short lifetime reduces window for token theft
 - Sessions are short-lived (just for authentication)
 - VPN session lasts longer than SSO session
@@ -308,6 +320,7 @@ User → [password] → Keycloak → [token] → Daemon → VPN Server
 OpenVPN still supplies a two-line via-file credentials file to the wrapper. The wrapper reads the placeholder OpenVPN password because of OpenVPN's script interface, but ignores it for SSO and does not send it over IPC to the daemon or to Keycloak.
 
 **Benefits:**
+
 - VPN server never sees or stores Keycloak passwords
 - Keycloak password is only entered on the trusted Keycloak server
 - Reduces attack surface significantly
@@ -320,18 +333,21 @@ OpenVPN still supplies a two-line via-file credentials file to the wrapper. The 
 ### TLS Requirements
 
 **Keycloak Connection:**
+
 - **Minimum:** TLS 1.2
 - **Recommended:** TLS 1.3
 - **Cipher Suites:** Modern AEAD ciphers (AES-GCM)
 - **Certificate Validation:** Required (system CA bundle)
 
 **HTTP Callback Server:**
+
 - **Default:** HTTP on port 9000
 - **Recommended:** HTTPS with TLS termination at reverse proxy
 - **Production:** Always use HTTPS for callback URL
 - **When `tls.enabled: true`**: built-in listener requires TLS 1.3 minimum (no cipher pinning needed; TLS 1.3 has only AEAD suites)
 
 **Example nginx reverse proxy:**
+
 ```nginx
 server {
     listen 443 ssl http2;
@@ -356,6 +372,7 @@ server {
 ### Firewall Configuration
 
 **Inbound Rules:**
+
 ```bash
 # Allow HTTPS for reverse proxy (if using nginx)
 firewall-cmd --permanent --add-service=https
@@ -368,6 +385,7 @@ firewall-cmd --reload
 ```
 
 **Outbound Rules:**
+
 ```bash
 # Allow HTTPS to Keycloak
 # (usually default ALLOW on Rocky Linux)
@@ -403,6 +421,7 @@ var globalLimiter = newIPRateLimiter(30, 100)
 **IP Extraction:**
 
 Rate limiting considers proxy headers:
+
 1. `X-Forwarded-For` (first IP if behind proxy)
 2. `X-Real-IP` (if set by proxy)
 3. `RemoteAddr` (fallback)
@@ -413,13 +432,13 @@ Rate limiting considers proxy headers:
 
 All HTTP responses include security headers:
 
-| Header | Value | Purpose |
-|--------|-------|---------|
-| `X-Frame-Options` | `DENY` | Prevent clickjacking |
-| `X-Content-Type-Options` | `nosniff` | Prevent MIME sniffing |
-| `Referrer-Policy` | `no-referrer` | Don't leak referer |
-| `Content-Security-Policy` | `default-src 'self'; style-src 'self' 'unsafe-inline'` | Restrict content sources |
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | Force HTTPS (only when TLS is enabled) |
+| Header                      | Value                                                  | Purpose                                |
+| --------------------------- | ------------------------------------------------------ | -------------------------------------- |
+| `X-Frame-Options`           | `DENY`                                                 | Prevent clickjacking                   |
+| `X-Content-Type-Options`    | `nosniff`                                              | Prevent MIME sniffing                  |
+| `Referrer-Policy`           | `no-referrer`                                          | Don't leak referer                     |
+| `Content-Security-Policy`   | `default-src 'self'; style-src 'self' 'unsafe-inline'` | Restrict content sources               |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains`                  | Force HTTPS (only when TLS is enabled) |
 
 `X-XSS-Protection` is intentionally **not** set. Modern browsers (Chrome/Edge)
 removed support, and OWASP recommends omitting it because `1; mode=block` can
@@ -438,14 +457,14 @@ suites are not pinned because TLS 1.3 negotiates only AEAD-secure suites.
 
 All sensitive files must have restrictive permissions:
 
-| File/Directory | Permissions | Owner:Group | Contents |
-|----------------|-------------|-------------|----------|
-| `/etc/openvpn/keycloak-sso.yaml` | `0640` | `root:openvpn` | Keycloak client ID, issuer URL |
-| `/usr/local/bin/openvpn-keycloak-auth` | `0755` | `root:root` | Binary (world-readable OK) |
-| `/etc/openvpn/scripts/auth-keycloak.sh` | `0755` | `root:root` | Auth script (executable) |
-| `/var/lib/openvpn-keycloak-auth/` | `0755` | `openvpn:openvpn` | Data directory |
-| `/run/openvpn-keycloak-auth/` | `0770` | `openvpn:openvpn` | Socket directory (runtime) |
-| `/run/openvpn-keycloak-auth/auth.sock` | `0660` | `openvpn:openvpn` | Unix socket |
+| File/Directory                          | Permissions | Owner:Group       | Contents                       |
+| --------------------------------------- | ----------- | ----------------- | ------------------------------ |
+| `/etc/openvpn/keycloak-sso.yaml`        | `0640`      | `root:openvpn`    | Keycloak client ID, issuer URL |
+| `/usr/local/bin/openvpn-keycloak-auth`  | `0755`      | `root:root`       | Binary (world-readable OK)     |
+| `/etc/openvpn/scripts/auth-keycloak.sh` | `0755`      | `root:root`       | Auth script (executable)       |
+| `/var/lib/openvpn-keycloak-auth/`       | `0755`      | `openvpn:openvpn` | Data directory                 |
+| `/run/openvpn-keycloak-auth/`           | `0770`      | `openvpn:openvpn` | Socket directory (runtime)     |
+| `/run/openvpn-keycloak-auth/auth.sock`  | `0660`      | `openvpn:openvpn` | Unix socket                    |
 
 ### Verification Script
 
@@ -457,24 +476,24 @@ check_perms() {
     local file="$1"
     local expected_perms="$2"
     local expected_owner="$3"
-    
+
     if [ ! -e "$file" ]; then
         echo "❌ $file does not exist"
         return 1
     fi
-    
+
     actual_perms=$(stat -c '%a' "$file")
     actual_owner=$(stat -c '%U:%G' "$file")
-    
+
     if [ "$actual_perms" != "$expected_perms" ]; then
         echo "❌ $file has wrong permissions: $actual_perms (expected $expected_perms)"
         return 1
     fi
-    
+
     if [ "$actual_owner" != "$expected_owner" ]; then
         echo "⚠️  $file has wrong owner: $actual_owner (expected $expected_owner)"
     fi
-    
+
     echo "✅ $file: $actual_perms $actual_owner"
 }
 
@@ -529,6 +548,7 @@ restorecon -Rv /etc/openvpn/
 **Critical Rule:** Never log sensitive data
 
 **Prohibited:**
+
 - ❌ Keycloak client secrets
 - ❌ Access tokens or ID tokens
 - ❌ Authorization codes
@@ -536,6 +556,7 @@ restorecon -Rv /etc/openvpn/
 - ❌ User passwords (shouldn't have them anyway)
 
 **Code Review:**
+
 ```bash
 # Check for potential secret leakage
 grep -r "slog.*token\|slog.*secret\|slog.*password" --include="*.go" internal/
@@ -560,18 +581,21 @@ slog.Debug("token", "value", tokenString) // NEVER LOG TOKENS!
 All authentication attempts are logged:
 
 **Successful Authentication:**
+
 ```
 INFO user authenticated successfully session_id=abc123 username=john.doe ip=203.0.113.10
 INFO auth success written session_id=abc123 username=john.doe ip=203.0.113.10
 ```
 
 **Failed Authentication:**
+
 ```
 ERROR token validation failed session_id=abc123 username=john.doe error="username mismatch"
 INFO auth failure written session_id=abc123 reason="username mismatch"
 ```
 
 **Rate Limiting:**
+
 ```
 WARN rate limit exceeded ip=203.0.113.50 path=/callback
 ```
@@ -590,6 +614,7 @@ MaxRetentionSec=2weeks
 ```
 
 Restart journald:
+
 ```bash
 systemctl restart systemd-journald
 ```
@@ -597,6 +622,7 @@ systemctl restart systemd-journald
 ### PII Minimization
 
 **Logged Data:**
+
 - ✅ Usernames (required for audit trail)
 - ✅ IP addresses (required for security monitoring)
 - ✅ Session IDs (required for troubleshooting)
@@ -604,6 +630,7 @@ systemctl restart systemd-journald
 - ✅ Success/failure status
 
 **Not Logged:**
+
 - ❌ Full names or email addresses (unless part of username)
 - ❌ Phone numbers
 - ❌ Any data not required for security or troubleshooting
@@ -724,6 +751,7 @@ cat /proc/$(systemctl show -p MainPID --value openvpn-keycloak-auth)/status | gr
 **Highly Recommended:** Enable MFA for all VPN users
 
 **Supported Methods:**
+
 - TOTP (Time-based One-Time Password) - Google Authenticator, Authy
 - WebAuthn - YubiKey, TouchID, Windows Hello
 - SMS (less secure, but better than nothing)
@@ -759,6 +787,7 @@ Enable audit logging:
 5. Saved Types: Select all login/logout events
 
 **Monitor for:**
+
 - Failed login attempts
 - Unexpected login locations
 - Multiple rapid logins (potential token theft)
@@ -788,22 +817,26 @@ verify-client-cert require  # or 'optional' for SSO-only
 ### Certificate Security
 
 **Key Sizes:**
+
 - CA: 4096-bit RSA or EC P-384
 - Server: 2048-bit RSA or EC P-256
 - Client: 2048-bit RSA or EC P-256 (if using)
 
 **Lifetimes:**
+
 - CA: 10 years maximum
 - Server: 2-3 years
 - Client: 1-2 years
 
 **Revocation:**
+
 - Maintain CRL (Certificate Revocation List)
 - Or use OCSP stapling
 
 ### Network Security
 
 **Routing:**
+
 ```conf
 # Only push necessary routes (principle of least privilege)
 push "route 10.0.0.0 255.0.0.0"  # Internal network only
@@ -816,6 +849,7 @@ push "dhcp-option DNS 10.0.0.1"  # Internal DNS server
 ```
 
 **Firewall:**
+
 ```bash
 # Allow only OpenVPN and SSH
 firewall-cmd --permanent --add-service=openvpn
@@ -829,15 +863,15 @@ firewall-cmd --reload
 
 ### In-Scope Threats
 
-| Threat | Likelihood | Impact | Mitigation |
-|--------|-----------|--------|------------|
-| Phishing | High | High | User education, MFA |
-| Credential stuffing | Medium | High | Unique passwords, MFA |
-| Token theft | Low | High | Short token lifetime, TLS |
-| Man-in-the-Middle | Low | High | TLS everywhere, cert pinning |
-| Brute force | Medium | Medium | Rate limiting, account lockout |
-| DoS | Medium | Medium | Rate limiting, firewall |
-| Session hijacking | Low | High | CSRF protection, short sessions |
+| Threat              | Likelihood | Impact | Mitigation                      |
+| ------------------- | ---------- | ------ | ------------------------------- |
+| Phishing            | High       | High   | User education, MFA             |
+| Credential stuffing | Medium     | High   | Unique passwords, MFA           |
+| Token theft         | Low        | High   | Short token lifetime, TLS       |
+| Man-in-the-Middle   | Low        | High   | TLS everywhere, cert pinning    |
+| Brute force         | Medium     | Medium | Rate limiting, account lockout  |
+| DoS                 | Medium     | Medium | Rate limiting, firewall         |
+| Session hijacking   | Low        | High   | CSRF protection, short sessions |
 
 ### Out-of-Scope Threats
 
@@ -850,18 +884,20 @@ firewall-cmd --reload
 
 **Scenario 1: Stolen Authorization Code**
 
-*Attack:* Attacker intercepts authorization code
+_Attack:_ Attacker intercepts authorization code
 
-*Mitigation:*
+_Mitigation:_
+
 - PKCE prevents use of stolen code (attacker doesn't have verifier)
 - Code is one-time use only
 - Code expires in 60 seconds
 
 **Scenario 2: Stolen Access Token**
 
-*Attack:* Attacker steals access token from network or logs
+_Attack:_ Attacker steals access token from network or logs
 
-*Mitigation:*
+_Mitigation:_
+
 - Tokens never logged
 - TLS encrypts network traffic
 - Short token lifetime (5 minutes)
@@ -869,27 +905,30 @@ firewall-cmd --reload
 
 **Scenario 3: CSRF Attack**
 
-*Attack:* Attacker tricks user into using attacker's authorization code
+_Attack:_ Attacker tricks user into using attacker's authorization code
 
-*Mitigation:*
+_Mitigation:_
+
 - State parameter ties callback to specific session
 - State is random and unpredictable
 - State validated before accepting code
 
 **Scenario 4: Session Fixation**
 
-*Attack:* Attacker forces user to use known session ID
+_Attack:_ Attacker forces user to use known session ID
 
-*Mitigation:*
+_Mitigation:_
+
 - Session ID generated server-side from crypto/rand
 - New session ID for each authentication attempt
 - Session ID tied to OpenVPN connection
 
 **Scenario 5: DoS via Unlimited Requests**
 
-*Attack:* Attacker floods callback endpoint
+_Attack:_ Attacker floods callback endpoint
 
-*Mitigation:*
+_Mitigation:_
+
 - Rate limiting (10 req/s per IP)
 - Firewall can block abusive IPs
 - systemd resource limits prevent resource exhaustion
@@ -922,17 +961,20 @@ firewall-cmd --reload
 ### Regular Maintenance
 
 **Weekly:**
+
 - [ ] Review authentication logs for anomalies
 - [ ] Check for failed login attempts
 - [ ] Verify services are running
 
 **Monthly:**
+
 - [ ] Review and rotate logs
 - [ ] Check for security updates (OpenVPN, Keycloak, daemon)
 - [ ] Review Keycloak event logs
 - [ ] Test backup recovery
 
 **Quarterly:**
+
 - [ ] Review user access (remove inactive users)
 - [ ] Update dependencies (go.mod)
 - [ ] Security audit with automated tools
@@ -940,6 +982,7 @@ firewall-cmd --reload
 - [ ] Test incident response procedures
 
 **Annually:**
+
 - [ ] Renew certificates before expiration
 - [ ] Full security penetration test
 - [ ] Review and update security policies
@@ -1041,10 +1084,10 @@ journalctl -u openvpn-keycloak-auth --since "1 hour ago" \
    ```bash
    # Stop the service
    sudo systemctl stop openvpn-keycloak-auth
-   
+
    # Block suspicious IP in firewall
    sudo firewall-cmd --add-rich-rule="rule family='ipv4' source address='<IP>' reject"
-   
+
    # Disable affected user in Keycloak
    # (via Keycloak admin console)
    ```
@@ -1054,10 +1097,10 @@ journalctl -u openvpn-keycloak-auth --since "1 hour ago" \
    # Collect logs
    journalctl -u openvpn-keycloak-auth --since "24 hours ago" > incident-$(date +%Y%m%d).log
    journalctl -u openvpn@server --since "24 hours ago" >> incident-$(date +%Y%m%d).log
-   
+
    # Check active VPN connections
    sudo openvpn --status /var/log/openvpn/status.log
-   
+
    # Review Keycloak event logs
    # (via Keycloak admin console → Events)
    ```
@@ -1083,11 +1126,13 @@ journalctl -u openvpn-keycloak-auth --since "1 hour ago" \
 ### Reporting
 
 **Internal:**
+
 - Document incident in security log
 - Notify security team and management
 - Update risk register
 
 **External:**
+
 - Notify users if credentials compromised
 - Report to regulatory bodies if required (GDPR, etc.)
 
@@ -1104,8 +1149,8 @@ journalctl -u openvpn-keycloak-auth --since "1 hour ago" \
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** 2026-02-15  
+**Document Version:** 1.0\
+**Last Updated:** 2026-02-15\
 **Maintained By:** OpenVPN SSO Security Team
 
 For security issues, see [SECURITY.md](../SECURITY.md) for responsible disclosure information.

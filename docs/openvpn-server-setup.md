@@ -43,6 +43,7 @@ openvpn --version
 ### Why OpenVPN 2.6.2+?
 
 OpenVPN 2.6 introduced critical features for SSO:
+
 - **Script-based deferred authentication** (exit code 2)
 - **`auth_pending_file` support** for browser opening
 - **`auth_failed_reason_file`** for custom error messages
@@ -198,7 +199,7 @@ sudo vi /etc/openvpn/server/server.conf
    # For full tunnel (all traffic through VPN)
    push "dhcp-option DNS 8.8.8.8"
    push "dhcp-option DNS 8.8.4.4"
-   
+
    # Or use your internal DNS for split tunnel
    push "dhcp-option DNS 192.168.1.1"
    ```
@@ -207,7 +208,7 @@ sudo vi /etc/openvpn/server/server.conf
    ```conf
    # Comment out this line for split tunnel:
    # push "redirect-gateway def1 bypass-dhcp"
-   
+
    # Add specific routes instead:
    push "route 10.0.0.0 255.0.0.0"
    push "route 192.168.1.0 255.255.255.0"
@@ -266,6 +267,7 @@ sudo vi /etc/openvpn/scripts/auth-keycloak.sh
 ```
 
 Change this line if needed:
+
 ```bash
 local -r binary="/usr/local/bin/openvpn-keycloak-auth"
 ```
@@ -398,6 +400,7 @@ cat /var/log/openvpn/openvpn-status.log
 ```
 
 Should show:
+
 ```
 OpenVPN CLIENT LIST
 Updated,Fri Feb 15 20:00:00 2026
@@ -467,6 +470,7 @@ cat /tmp/test_apf
 ### Issue: Server Won't Start
 
 **Check logs:**
+
 ```bash
 sudo journalctl -u openvpn-server@server -xe
 ```
@@ -561,6 +565,7 @@ sudo journalctl -u openvpn-server@server -xe
 ### Issue: SELinux Blocking Script
 
 **Check SELinux denials:**
+
 ```bash
 sudo ausearch -m avc -ts recent | grep openvpn
 ```
@@ -590,6 +595,7 @@ sudo mkdir -p /etc/openvpn/ccd
 ```
 
 Enable in `server.conf`:
+
 ```conf
 client-config-dir /etc/openvpn/ccd
 ```
@@ -620,6 +626,7 @@ sudo systemctl start openvpn-server@server2
 ### Logging to File
 
 Add to `server.conf`:
+
 ```conf
 log /var/log/openvpn/openvpn.log
 status /var/log/openvpn/status.log 60
@@ -711,14 +718,14 @@ After OpenVPN server is configured:
 
 ### Important File Locations
 
-| File/Directory | Purpose |
-|----------------|---------|
-| `/etc/openvpn/server/server.conf` | Server configuration |
-| `/etc/openvpn/server/*.crt, *.key` | Certificates and keys |
-| `/etc/openvpn/scripts/auth-keycloak.sh` | Auth script wrapper |
-| `/var/log/openvpn/` | Log files |
-| `/run/openvpn-keycloak-auth/` | Daemon socket |
-| `/etc/openvpn/ccd/` | Per-client configs |
+| File/Directory                          | Purpose               |
+| --------------------------------------- | --------------------- |
+| `/etc/openvpn/server/server.conf`       | Server configuration  |
+| `/etc/openvpn/server/*.crt, *.key`      | Certificates and keys |
+| `/etc/openvpn/scripts/auth-keycloak.sh` | Auth script wrapper   |
+| `/var/log/openvpn/`                     | Log files             |
+| `/run/openvpn-keycloak-auth/`           | Daemon socket         |
+| `/etc/openvpn/ccd/`                     | Per-client configs    |
 
 ### Useful Commands
 
@@ -745,4 +752,4 @@ sudo openvpn --config /etc/openvpn/server/server.conf --test-crypto
 
 ---
 
-*Last updated: 2026-02-15 for OpenVPN 2.6.2+; examples target OpenVPN 2.6.19 on Rocky Linux 9*
+_Last updated: 2026-02-15 for OpenVPN 2.6.2+; examples target OpenVPN 2.6.19 on Rocky Linux 9_

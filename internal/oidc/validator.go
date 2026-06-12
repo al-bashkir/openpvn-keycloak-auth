@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/config"
@@ -83,7 +84,7 @@ func (v *Validator) validateRoles(claims map[string]interface{}) error {
 
 	// Check if user has at least one of the required roles
 	for _, requiredRole := range v.oidcCfg.RequiredRoles {
-		if containsRole(roles, requiredRole) {
+		if slices.Contains(roles, requiredRole) {
 			return nil // User has required role
 		}
 	}
@@ -151,14 +152,4 @@ func getNestedClaim(claims map[string]interface{}, path string) (interface{}, er
 	}
 
 	return current, nil
-}
-
-// containsRole checks if a role is present in the roles slice.
-func containsRole(roles []string, role string) bool {
-	for _, r := range roles {
-		if r == role {
-			return true
-		}
-	}
-	return false
 }

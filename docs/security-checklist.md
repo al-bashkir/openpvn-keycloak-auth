@@ -6,16 +6,17 @@ This checklist helps ensure your OpenVPN Keycloak SSO deployment is secure. Use 
 
 **Security Score:** ___/100
 
-| Category | Weight | Score | Notes |
-|----------|--------|-------|-------|
-| Network Security | 20 | __/20 | |
-| Authentication | 25 | __/25 | |
-| Authorization | 15 | __/15 | |
-| System Hardening | 20 | __/20 | |
-| Logging & Monitoring | 10 | __/10 | |
-| Maintenance | 10 | __/10 | |
+| Category             | Weight | Score | Notes |
+| -------------------- | ------ | ----- | ----- |
+| Network Security     | 20     | __/20 |       |
+| Authentication       | 25     | __/25 |       |
+| Authorization        | 15     | __/15 |       |
+| System Hardening     | 20     | __/20 |       |
+| Logging & Monitoring | 10     | __/10 |       |
+| Maintenance          | 10     | __/10 |       |
 
 **Grade:**
+
 - 90-100: Excellent ✅
 - 75-89: Good ✓
 - 60-74: Needs Improvement ⚠️
@@ -33,6 +34,7 @@ This checklist helps ensure your OpenVPN Keycloak SSO deployment is secure. Use 
 - [ ] **2 pts** - Valid SSL/TLS certificates (not self-signed in production)
 
 **Verification:**
+
 ```bash
 # Check Keycloak TLS
 curl -I https://keycloak.example.com/realms/myrealm | grep -i "server:\|strict-transport"
@@ -51,6 +53,7 @@ openssl s_client -connect keycloak.example.com:443 -showcerts </dev/null 2>/dev/
 - [ ] **2 pts** - Outbound HTTPS allowed to Keycloak only
 
 **Verification:**
+
 ```bash
 # Check firewall status
 sudo firewall-cmd --state
@@ -69,6 +72,7 @@ sudo firewall-cmd --list-all
 - [ ] **1 pt** - Brute force protection enabled in Keycloak
 
 **Verification:**
+
 ```bash
 # Check daemon rate limiting (in code/config)
 grep -A3 "rateLimitMiddleware" internal/httpserver/server.go
@@ -97,6 +101,7 @@ for i in {1..60}; do curl http://localhost:9000/health; done
 - [ ] **2 pts** - OIDC discovery working
 
 **Verification:**
+
 ```bash
 # Check daemon config
 sudo grep -A8 "oidc:" /etc/openvpn/keycloak-sso.yaml
@@ -115,6 +120,7 @@ curl https://keycloak.example.com/realms/myrealm/.well-known/openid-configuratio
 - [ ] **2 pts** - WebAuthn/FIDO2 configured (bonus)
 
 **Verification:**
+
 ```bash
 # Check in Keycloak Admin Console:
 # - Realm → Authentication → Required Actions → "Configure OTP" enabled
@@ -129,6 +135,7 @@ curl https://keycloak.example.com/realms/myrealm/.well-known/openid-configuratio
 - [ ] **1 pt** - Password expiration configured (90 days recommended)
 
 **Verification:**
+
 ```bash
 # Check in Keycloak Admin Console:
 # - Realm → Authentication → Password Policy
@@ -141,6 +148,7 @@ curl https://keycloak.example.com/realms/myrealm/.well-known/openid-configuratio
 - [ ] **1 pt** - Idle timeout configured (Keycloak)
 
 **Verification:**
+
 ```bash
 # Check daemon config
 grep -A5 "auth:" /etc/openvpn/keycloak-sso.yaml
@@ -162,6 +170,7 @@ grep -A5 "auth:" /etc/openvpn/keycloak-sso.yaml
 - [ ] **2 pts** - Principle of least privilege applied
 
 **Verification:**
+
 ```bash
 # Check daemon config
 grep -A3 "required_roles" /etc/openvpn/keycloak-sso.yaml
@@ -181,6 +190,7 @@ grep -A3 "required_roles" /etc/openvpn/keycloak-sso.yaml
 - [ ] **1 pt** - Username matching enforced (unless explicitly disabled)
 
 **Verification:**
+
 ```bash
 # Check code in internal/oidc/validator.go
 # Verify ValidateToken function checks all claims
@@ -198,6 +208,7 @@ grep -A3 "required_roles" /etc/openvpn/keycloak-sso.yaml
 - [ ] **2 pts** - Data directory: 0755, openvpn:openvpn
 
 **Verification:**
+
 ```bash
 # Run verification script
 bash << 'EOF'
@@ -227,6 +238,7 @@ EOF
 - [ ] **1 pt** - CapabilityBoundingSet minimal or empty
 
 **Verification:**
+
 ```bash
 # Check service file
 grep -E "NoNewPrivileges|ProtectSystem|PrivateTmp" /etc/systemd/system/openvpn-keycloak-auth.service
@@ -242,6 +254,7 @@ systemd-analyze security openvpn-keycloak-auth.service
 - [ ] **1 pt** - No denials in audit log
 
 **Verification:**
+
 ```bash
 # Check SELinux status
 getenforce  # Should show "Enforcing"
@@ -262,6 +275,7 @@ ausearch -m avc -ts recent | grep openvpn-keycloak-auth
 - [ ] **1 pt** - No unnecessary capabilities granted
 
 **Verification:**
+
 ```bash
 # Check running process
 ps aux | grep openvpn-keycloak-auth | grep -v grep
@@ -282,6 +296,7 @@ sudo cat /proc/$(pgrep openvpn-keycloak-auth)/status | grep Cap
 - [ ] **2 pts** - Audit trail for all authentication attempts
 
 **Verification:**
+
 ```bash
 # Check for secrets in logs
 journalctl -u openvpn-keycloak-auth --since "24 hours ago" \
@@ -299,6 +314,7 @@ journalctl -u openvpn-keycloak-auth --since "1 hour ago" \
 - [ ] **1 pt** - Logs retained for compliance period (30+ days)
 
 **Verification:**
+
 ```bash
 # Check journal configuration
 cat /etc/systemd/journald.conf | grep -E "SystemMaxUse|MaxRetentionSec"
@@ -315,6 +331,7 @@ journalctl --disk-usage
 - [ ] **1 pt** - Anomaly detection (unusual login times/locations)
 
 **Verification:**
+
 ```bash
 # Check health endpoint
 curl http://localhost:9000/health
@@ -336,6 +353,7 @@ journalctl -u openvpn-keycloak-auth --since "1 hour ago" \
 - [ ] **1 pt** - Daemon up to date (latest release)
 
 **Verification:**
+
 ```bash
 # Check system updates
 sudo dnf check-update
@@ -354,6 +372,7 @@ openvpn --version
 - [ ] **1 pt** - Recovery procedure tested
 
 **Verification:**
+
 ```bash
 # Check backup script exists
 ls -l /usr/local/bin/backup-vpn-config.sh
@@ -381,7 +400,7 @@ SCORE=0
 MAX_SCORE=100
 
 echo "╔════════════════════════════════════════════════════════════╗"
-echo "║        OpenVPN Keycloak SSO - Security Check              ║"
+echo "║        OpenVPN Keycloak SSO - Security Check               ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -504,11 +523,13 @@ exit 0
 ```
 
 Make executable:
+
 ```bash
 sudo chmod +x /usr/local/bin/security-check.sh
 ```
 
 Run regularly:
+
 ```bash
 sudo /usr/local/bin/security-check.sh
 ```
@@ -553,21 +574,25 @@ For EU user data:
 Based on your security assessment:
 
 **Score 90-100 (Excellent):**
+
 - Maintain current posture
 - Regular quarterly reviews
 - Stay updated on security advisories
 
 **Score 75-89 (Good):**
+
 - Address any failed checks
 - Implement missing MFA if not enabled
 - Review and update documentation
 
 **Score 60-74 (Needs Improvement):**
+
 - Prioritize failed checks in Network and Authentication sections
 - Schedule security audit
 - Implement missing controls within 30 days
 
 **Score <60 (Urgent):**
+
 - Stop deployment to production
 - Fix critical issues immediately
 - Engage security team for review
@@ -575,8 +600,8 @@ Based on your security assessment:
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** 2026-02-15  
+**Document Version:** 1.0\
+**Last Updated:** 2026-02-15\
 **Review Frequency:** Quarterly
 
 For questions about this checklist, see [docs/security.md](security.md) or consult your security team.

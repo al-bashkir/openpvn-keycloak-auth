@@ -144,20 +144,6 @@ func (m *Manager) GetByState(state string) (*Session, error) {
 	return session, nil
 }
 
-// ResultWritten returns whether a session has written an auth result.
-// The second return value is false if the session does not exist (deleted/expired).
-func (m *Manager) ResultWritten(sessionID string) (bool, bool) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	session, ok := m.sessions[sessionID]
-	if !ok {
-		return false, false
-	}
-
-	return session.ResultWritten, true
-}
-
 // MarkResultWritten atomically sets ResultWritten on a session.
 // Returns false if the session was not found or was already marked.
 func (m *Manager) MarkResultWritten(sessionID string) bool {

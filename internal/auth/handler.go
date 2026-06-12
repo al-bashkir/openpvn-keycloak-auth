@@ -43,20 +43,18 @@ func (h *Handler) Run(ctx context.Context, credentialsFile string) int {
 		return ExitFailure
 	}
 
-	// Read credentials from via-file
-	username, password, err := readCredentialsFile(credentialsFile)
+	// Read credentials from via-file. The password is intentionally discarded:
+	// SSO ignores it and it must never reach IPC messages or logs.
+	username, _, err := readCredentialsFile(credentialsFile)
 	if err != nil {
 		slog.Error("failed to read credentials file", "error", err, "file", credentialsFile)
 		fmt.Fprintf(os.Stderr, "Error reading credentials: %v\n", err)
 		return ExitFailure
 	}
 
-	// Override env username/password if present in file
+	// Override env username if present in file
 	if username != "" {
 		env.Username = username
-	}
-	if password != "" {
-		env.Password = password
 	}
 
 	// Validate username

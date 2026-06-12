@@ -18,6 +18,7 @@ Single Go binary runs in two modes: **auth script** (short-lived, per-connection
 **User** starts VPN client, enters Keycloak username + any password (e.g., `"sso"`).
 
 **OpenVPN server** (protocol: OpenVPN UDP/TCP on port 1194):
+
 - Receives TLS handshake + auth credentials
 - Creates 3 temporary files on disk:
   - `auth_control_file` -- will receive `"1"` (success) or `"0"` (failure)
@@ -31,6 +32,7 @@ Single Go binary runs in two modes: **auth script** (short-lived, per-connection
 ```
 
 **Env vars set by OpenVPN:**
+
 ```
 username=jdoe
 common_name=jdoe
@@ -43,6 +45,7 @@ auth_failed_reason_file=/tmp/openvpn_arf_XXXXX
 ```
 
 **Credentials file** (2 lines):
+
 ```
 jdoe
 sso
@@ -139,6 +142,7 @@ IPC client (`internal/ipc/client.go`): connects with `net.DialTimeout("unix", so
 **Auth script** receives `"deferred"` response, **exits with code `2`** (tells OpenVPN: "auth is pending").
 
 **OpenVPN server** reads `auth_pending_file`, sends to client via the OpenVPN control channel:
+
 ```
 AUTH_PENDING,300,webauth,WEB_AUTH::https://vpn.example.com:9000/auth/a1b2c3d4e5f6...
 ```
@@ -152,6 +156,7 @@ AUTH_PENDING,300,webauth,WEB_AUTH::https://vpn.example.com:9000/auth/a1b2c3d4e5f
 **Browser** -> `GET https://vpn.example.com:9000/auth/a1b2c3d4e5f6...` (HTTPS)
 
 **HTTP server** (`internal/httpserver/callback.go`) -- `handleAuthRedirect`:
+
 1. Extracts state from URL path
 2. Looks up session via `sessionMgr.GetByState(state)`
 3. **Returns HTTP 302 redirect** to the full Keycloak authorization URL:
@@ -161,6 +166,7 @@ AUTH_PENDING,300,webauth,WEB_AUTH::https://vpn.example.com:9000/auth/a1b2c3d4e5f
    ```
 
 Middleware applied to all requests (`internal/httpserver/middleware.go`):
+
 - Rate limiting: per-IP token bucket, 10 req/s burst 50
 - Security headers: `X-Frame-Options: DENY`, CSP, `X-Content-Type-Options: nosniff`, HSTS
 - Request logging (all inputs sanitized)
@@ -173,6 +179,7 @@ Middleware applied to all requests (`internal/httpserver/middleware.go`):
 **Browser** follows redirect to Keycloak (HTTPS). **User** authenticates (password, MFA, etc.).
 
 **Keycloak** redirects browser back:
+
 ```
 HTTP/1.1 302 Found
 Location: https://vpn.example.com:9000/callback?code=AUTHORIZATION_CODE&state=a1b2c3d4e5f6...
@@ -229,6 +236,7 @@ Location: https://vpn.example.com:9000/callback?code=AUTHORIZATION_CODE&state=a1
 ## Phase 8: Result Written to OpenVPN
 
 **On success** (`internal/httpserver/callback.go`):
+
 - Claims the final result write for this session so duplicate callbacks cannot race to write twice
 - Writes `"1"` to `auth_control_file` (file I/O, mode 0600)
 - Marks session `ResultWritten = true` after the write succeeds
@@ -238,6 +246,7 @@ Location: https://vpn.example.com:9000/callback?code=AUTHORIZATION_CODE&state=a1
 **OpenVPN** reads `"1"` -> **VPN tunnel established**
 
 **On failure** (`internal/httpserver/callback.go`):
+
 - Writes reason to `auth_failed_reason_file` **first** (critical ordering -- `internal/openvpn/authfile.go`)
 - Writes `"0"` to `auth_control_file`
 - Marks session, deletes it
@@ -261,41 +270,41 @@ Missing or unknown callback states have no associated OpenVPN result path, and f
 
 ## Protocol Summary
 
-| Hop | Protocol | Data Format |
-|-----|----------|-------------|
-| User -> OpenVPN | OpenVPN (TLS over UDP/TCP :1194) | username + password |
-| OpenVPN -> Auth Script | Process exec + env vars + temp file | Env vars + 2-line credentials file |
-| Auth Script -> Daemon | Unix socket (`AF_UNIX SOCK_STREAM`) | JSON (`AuthRequest`) |
-| Daemon -> Auth Script | Unix socket | JSON (`AuthResponse`) |
-| Daemon -> OpenVPN | File I/O (`auth_pending_file`) | 3-line text: `timeout\nmethod\nWEB_AUTH::url\n` |
-| OpenVPN -> Client | OpenVPN control channel | `AUTH_PENDING` message |
-| Client -> Browser | OS URL open | HTTPS URL |
-| Browser -> Daemon | HTTPS (`GET /auth/<state>`) | HTTP request |
-| Daemon -> Browser | HTTPS (302 redirect) | `Location:` header to Keycloak |
-| Browser -> Keycloak | HTTPS | OIDC Authorization Request |
-| Keycloak -> Browser | HTTPS (302 redirect) | `Location:` header with auth code |
-| Browser -> Daemon | HTTPS (`GET /callback`) | Query params: `code`, `state` |
-| Daemon -> Keycloak | HTTPS (`POST` token endpoint) | `application/x-www-form-urlencoded` (code + PKCE verifier) |
-| Keycloak -> Daemon | HTTPS | JSON (access_token, id_token, refresh_token) |
-| Daemon -> Keycloak | HTTPS (`GET` JWKS) | JSON Web Key Set (for JWT verification) |
-| Daemon -> OpenVPN | File I/O (`auth_control_file`) | Single char: `"1"` or `"0"` |
-| Daemon -> Browser | HTTPS | HTML success/error page |
+| Hop                    | Protocol                            | Data Format                                                |
+| ---------------------- | ----------------------------------- | ---------------------------------------------------------- |
+| User -> OpenVPN        | OpenVPN (TLS over UDP/TCP :1194)    | username + password                                        |
+| OpenVPN -> Auth Script | Process exec + env vars + temp file | Env vars + 2-line credentials file                         |
+| Auth Script -> Daemon  | Unix socket (`AF_UNIX SOCK_STREAM`) | JSON (`AuthRequest`)                                       |
+| Daemon -> Auth Script  | Unix socket                         | JSON (`AuthResponse`)                                      |
+| Daemon -> OpenVPN      | File I/O (`auth_pending_file`)      | 3-line text: `timeout\nmethod\nWEB_AUTH::url\n`            |
+| OpenVPN -> Client      | OpenVPN control channel             | `AUTH_PENDING` message                                     |
+| Client -> Browser      | OS URL open                         | HTTPS URL                                                  |
+| Browser -> Daemon      | HTTPS (`GET /auth/<state>`)         | HTTP request                                               |
+| Daemon -> Browser      | HTTPS (302 redirect)                | `Location:` header to Keycloak                             |
+| Browser -> Keycloak    | HTTPS                               | OIDC Authorization Request                                 |
+| Keycloak -> Browser    | HTTPS (302 redirect)                | `Location:` header with auth code                          |
+| Browser -> Daemon      | HTTPS (`GET /callback`)             | Query params: `code`, `state`                              |
+| Daemon -> Keycloak     | HTTPS (`POST` token endpoint)       | `application/x-www-form-urlencoded` (code + PKCE verifier) |
+| Keycloak -> Daemon     | HTTPS                               | JSON (access_token, id_token, refresh_token)               |
+| Daemon -> Keycloak     | HTTPS (`GET` JWKS)                  | JSON Web Key Set (for JWT verification)                    |
+| Daemon -> OpenVPN      | File I/O (`auth_control_file`)      | Single char: `"1"` or `"0"`                                |
+| Daemon -> Browser      | HTTPS                               | HTML success/error page                                    |
 
 ---
 
 ## Security Architecture
 
-| Concern | Mitigation |
-|---------|-----------|
-| CSRF | OIDC `state` parameter (16 random bytes) |
-| Code interception | PKCE S256 (32-byte verifier) |
-| Token tampering | JWT signature verification via JWKS |
-| Credential exposure | Password excluded from IPC; tokens tagged `json:"-"` |
-| Log injection | Control characters stripped from all external inputs (CWE-117) |
-| Rate limiting | Per-IP token bucket (10/s, burst 50) |
-| Socket access | Unix socket mode 0660, group `openvpn` |
-| Session IDs | 32 bytes from `crypto/rand` |
-| Double-write | Atomic `MarkResultWritten` prevents duplicate auth results |
-| Hanging connections | Safety-net defer + TTL cleanup guarantee `auth_control_file` is always written |
-| Privilege escalation | systemd hardening: NoNewPrivileges, ProtectSystem=strict, syscall filtering |
-| XSS/Clickjacking | Security headers: CSP, X-Frame-Options, HSTS |
+| Concern              | Mitigation                                                                     |
+| -------------------- | ------------------------------------------------------------------------------ |
+| CSRF                 | OIDC `state` parameter (16 random bytes)                                       |
+| Code interception    | PKCE S256 (32-byte verifier)                                                   |
+| Token tampering      | JWT signature verification via JWKS                                            |
+| Credential exposure  | Password excluded from IPC; tokens tagged `json:"-"`                           |
+| Log injection        | Control characters stripped from all external inputs (CWE-117)                 |
+| Rate limiting        | Per-IP token bucket (10/s, burst 50)                                           |
+| Socket access        | Unix socket mode 0660, group `openvpn`                                         |
+| Session IDs          | 32 bytes from `crypto/rand`                                                    |
+| Double-write         | Atomic `MarkResultWritten` prevents duplicate auth results                     |
+| Hanging connections  | Safety-net defer + TTL cleanup guarantee `auth_control_file` is always written |
+| Privilege escalation | systemd hardening: NoNewPrivileges, ProtectSystem=strict, syscall filtering    |
+| XSS/Clickjacking     | Security headers: CSP, X-Frame-Options, HSTS                                   |
