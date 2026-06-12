@@ -102,6 +102,7 @@ internal/<package>/
 Location: `internal/config/config_test.go`
 
 **Key Tests:**
+
 - `TestLoadConfig` - Valid and invalid YAML
 - `TestValidateConfig` - Field validation
 - `TestDefaultValues` - Default configuration
@@ -133,6 +134,7 @@ ok  	github.com/al-bashkir/openvpn-keycloak-auth/internal/config	0.015s	coverage
 Location: `internal/session/session_test.go`
 
 **Key Tests:**
+
 - `TestCreateSession` - Session creation
 - `TestGetSession` - Session retrieval
 - `TestDeleteSession` - Session deletion
@@ -164,6 +166,7 @@ ok  	github.com/al-bashkir/openvpn-keycloak-auth/internal/session	0.306s	coverag
 Location: `internal/oidc/validator_test.go`, `internal/oidc/flow_test.go`
 
 **Key Tests:**
+
 - `TestValidateToken` - JWT token validation
 - `TestValidateUsername` - Username claim validation
 - `TestValidateRoles` - Role-based authorization
@@ -326,7 +329,7 @@ For automated integration testing:
 **Create `tests/integration/docker-compose.yml`:**
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   keycloak:
@@ -434,6 +437,7 @@ Before manual testing:
 **Expected Result:** ✅ VPN connected, can ping gateway
 
 **Logs to check:**
+
 ```bash
 # Daemon logs
 journalctl -u openvpn-keycloak-auth | grep testuser
@@ -464,6 +468,7 @@ journalctl -u openvpn@server | grep testuser
 **Expected Result:** ❌ Authentication fails with "username mismatch"
 
 **Logs to check:**
+
 ```bash
 journalctl -u openvpn-keycloak-auth --since "10 minutes ago"
 
@@ -486,6 +491,7 @@ journalctl -u openvpn-keycloak-auth --since "10 minutes ago"
 **Expected Result:** ❌ Session expired error
 
 **Logs to check:**
+
 ```bash
 journalctl -u openvpn-keycloak-auth | grep expired
 
@@ -498,6 +504,7 @@ journalctl -u openvpn-keycloak-auth | grep expired
 **Objective:** Verify role enforcement
 
 **Prerequisites:**
+
 - Configure `required_roles: ["vpn-user"]` in daemon config
 - Create two test users: one with role, one without
 
@@ -512,6 +519,7 @@ journalctl -u openvpn-keycloak-auth | grep expired
    - **Expected:** ❌ Fails with "insufficient roles"
 
 **Logs to check:**
+
 ```bash
 journalctl -u openvpn-keycloak-auth | grep role
 
@@ -532,6 +540,7 @@ journalctl -u openvpn-keycloak-auth | grep role
 **Expected Result:** ✅ All users can authenticate concurrently
 
 **Verification:**
+
 ```bash
 # Check active sessions
 journalctl -u openvpn-keycloak-auth --since "5 minutes ago" | grep "session_id" | sort | uniq
@@ -557,6 +566,7 @@ sudo cat /var/log/openvpn/status.log | grep CLIENT_LIST
 **Expected Result:** ❌ Session lost, need to reconnect
 
 **Recovery:**
+
 - Disconnect VPN client
 - Reconnect (new session created)
 - Authentication succeeds
@@ -580,6 +590,7 @@ sudo cat /var/log/openvpn/status.log | grep CLIENT_LIST
 **Expected Result:** After ~50 requests, see "Rate limit exceeded"
 
 **Logs to check:**
+
 ```bash
 journalctl -u openvpn-keycloak-auth | grep "rate limit"
 
@@ -599,6 +610,7 @@ journalctl -u openvpn-keycloak-auth | grep "rate limit"
 **Expected Result:** ❌ Service fails to start
 
 **Logs to check:**
+
 ```bash
 sudo systemctl status openvpn-keycloak-auth
 
@@ -619,6 +631,7 @@ sudo systemctl status openvpn-keycloak-auth
 **Expected Result:** ❌ Certificate verification fails
 
 **Logs to check:**
+
 ```bash
 journalctl -u openvpn-keycloak-auth
 
@@ -639,6 +652,7 @@ journalctl -u openvpn-keycloak-auth
 **Expected Result:** ❌ Timeout or connection error
 
 **Recovery:**
+
 - Restore network
 - Retry authentication
 - Should succeed
@@ -685,12 +699,14 @@ rm -f /tmp/vpn-client-*.log
 ```
 
 **Expected Performance:**
+
 - 50 concurrent users should authenticate within 60 seconds
 - No failures due to resource exhaustion
 - Memory usage < 100MB
 - CPU usage < 50%
 
 **Monitoring:**
+
 ```bash
 # Monitor daemon resources
 watch "ps aux | grep openvpn-keycloak-auth | grep -v grep"
@@ -827,122 +843,122 @@ name: Test and Build
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.22'
-    
-    - name: Cache Go modules
-      uses: actions/cache@v4
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-    
-    - name: Download dependencies
-      run: go mod download
-    
-    - name: Run tests
-      run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
-    
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        file: ./coverage.txt
-        flags: unittests
-    
-    - name: Check coverage threshold
-      run: |
-        COVERAGE=$(go tool cover -func=coverage.txt | grep total | awk '{print $3}' | sed 's/%//')
-        echo "Coverage: $COVERAGE%"
-        if (( $(echo "$COVERAGE < 75" | bc -l) )); then
-          echo "❌ Coverage below 75%"
-          exit 1
-        fi
-        echo "✅ Coverage OK"
-  
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.txt
+          flags: unittests
+
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.txt | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Coverage: $COVERAGE%"
+          if (( $(echo "$COVERAGE < 75" | bc -l) )); then
+            echo "❌ Coverage below 75%"
+            exit 1
+          fi
+          echo "✅ Coverage OK"
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.22'
-    
-    - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v4
-      with:
-        version: latest
-        args: --timeout=5m
-  
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: latest
+          args: --timeout=5m
+
   build:
     name: Build
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.22'
-    
-    - name: Build binary
-      run: make build
-    
-    - name: Check binary
-      run: |
-        file openvpn-keycloak-auth
-        ./openvpn-keycloak-auth version
-    
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: openvpn-keycloak-auth-linux-amd64
-        path: openvpn-keycloak-auth
-  
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Build binary
+        run: make build
+
+      - name: Check binary
+        run: |
+          file openvpn-keycloak-auth
+          ./openvpn-keycloak-auth version
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openvpn-keycloak-auth-linux-amd64
+          path: openvpn-keycloak-auth
+
   security:
     name: Security Scan
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.22'
-    
-    - name: Run gosec
-      uses: securego/gosec@master
-      with:
-        args: '-no-fail -fmt sarif -out results.sarif ./...'
-    
-    - name: Upload SARIF file
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: results.sarif
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Run gosec
+        uses: securego/gosec@master
+        with:
+          args: "-no-fail -fmt sarif -out results.sarif ./..."
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
 ```
 
 ### Running CI Locally
@@ -971,6 +987,7 @@ act
 **Symptom:** `go test -race` reports data races
 
 **Solution:**
+
 ```bash
 # Run race detector with verbose output
 go test -race -v ./internal/session
@@ -984,6 +1001,7 @@ go test -race -v ./internal/session
 **Symptom:** Tests timeout
 
 **Solution:**
+
 ```bash
 # Increase timeout
 go test -timeout 5m ./...
@@ -996,11 +1014,13 @@ go test -timeout 5m ./...
 **Symptom:** Tests pass/fail randomly
 
 **Common causes:**
+
 - Time-dependent tests
 - Concurrent access without proper sync
 - External dependencies
 
 **Solution:**
+
 - Use `time.After` instead of `time.Sleep` where possible
 - Add proper synchronization
 - Mock external dependencies
@@ -1020,6 +1040,7 @@ go tool cover -html=coverage.out
 ```
 
 **Improve coverage:**
+
 - Add tests for error paths
 - Test edge cases
 - Add table-driven tests for multiple scenarios
@@ -1029,11 +1050,13 @@ go tool cover -html=coverage.out
 #### Build Fails on CI but Works Locally
 
 **Common causes:**
+
 - Different Go version
 - Missing environment variables
 - Different OS (Linux vs macOS)
 
 **Solution:**
+
 ```bash
 # Check Go version
 go version
@@ -1071,11 +1094,13 @@ When modifying code:
 ### Regular Test Reviews
 
 **Monthly:**
+
 - Review test coverage
 - Remove obsolete tests
 - Add tests for new edge cases discovered
 
 **Quarterly:**
+
 - Review test performance (slow tests)
 - Update test data
 - Review mocking strategies
@@ -1125,8 +1150,8 @@ Before releasing:
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** 2026-02-15  
+**Document Version:** 1.0\
+**Last Updated:** 2026-02-15\
 **Next Review:** 2026-05-15
 
 For questions about testing, see project documentation or open an issue on GitHub.

@@ -358,30 +358,6 @@ func TestGetRolesFromClaim(t *testing.T) {
 	}
 }
 
-func TestContainsRole(t *testing.T) {
-	roles := []string{"admin", "vpn-user", "developer"}
-
-	tests := []struct {
-		name string
-		role string
-		want bool
-	}{
-		{"role exists", "vpn-user", true},
-		{"role exists at start", "admin", true},
-		{"role exists at end", "developer", true},
-		{"role does not exist", "nonexistent", false},
-		{"empty role", "", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := containsRole(roles, tt.role); got != tt.want {
-				t.Errorf("containsRole() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestValidateToken_MultipleRequiredRoles(t *testing.T) {
 	oidcCfg := &config.OIDCConfig{
 		RequiredRoles: []string{"vpn-user", "vpn-admin"},

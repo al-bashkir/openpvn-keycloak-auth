@@ -7,14 +7,12 @@ import (
 	"strings"
 )
 
-// OpenVPNEnv contains environment variables set by OpenVPN when calling the auth script
+// OpenVPNEnv contains environment variables set by OpenVPN when calling the auth script.
+// The OpenVPN password is intentionally never captured here: SSO ignores it and it
+// must not reach IPC messages or logs.
 type OpenVPNEnv struct {
-	// User credentials (may be empty when using via-file)
+	// Username may be empty when using via-file; the via-file value takes precedence.
 	Username string
-	// Password is intentionally excluded from all IPC messages and logs.
-	// The json tag prevents accidental serialization should this struct ever
-	// be marshalled in the future.
-	Password string `json:"-"`
 
 	// Client information
 	CommonName    string
@@ -29,33 +27,18 @@ type OpenVPNEnv struct {
 	AuthControlFile      string
 	AuthPendingFile      string
 	AuthFailedReasonFile string
-
-	// Script metadata
-	ScriptType string
-
-	// Additional useful fields
-	Config               string
-	IfconfigPoolRemoteIP string
-	TimeASCII            string
-	TimeUnix             string
 }
 
 // ParseEnv reads and validates OpenVPN environment variables
 func ParseEnv() (*OpenVPNEnv, error) {
 	env := &OpenVPNEnv{
 		Username:             os.Getenv("username"),
-		Password:             os.Getenv("password"),
 		CommonName:           os.Getenv("common_name"),
 		UntrustedIP:          os.Getenv("untrusted_ip"),
 		UntrustedPort:        os.Getenv("untrusted_port"),
 		AuthControlFile:      os.Getenv("auth_control_file"),
 		AuthPendingFile:      os.Getenv("auth_pending_file"),
 		AuthFailedReasonFile: os.Getenv("auth_failed_reason_file"),
-		ScriptType:           os.Getenv("script_type"),
-		Config:               os.Getenv("config"),
-		IfconfigPoolRemoteIP: os.Getenv("ifconfig_pool_remote_ip"),
-		TimeASCII:            os.Getenv("time_ascii"),
-		TimeUnix:             os.Getenv("time_unix"),
 	}
 
 	// Parse IV_SSO client capabilities (e.g. "webauth,crtext" or "openurl").

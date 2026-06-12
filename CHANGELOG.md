@@ -23,8 +23,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Daemon shutdown** now uses `errors.Is(err, http.ErrServerClosed)` instead
   of comparing the error text, eliminating a brittle string match.
 
+### Changed
+
+- `auth` mode now logs a warning when the config file cannot be loaded and it
+  falls back to the default Unix socket path, instead of silently producing a
+  generic "daemon communication failed" error later.
+- `/health` no longer returns a `version` field; it was hardcoded to `"dev"`
+  and never wired to build-time version information. The response is now
+  `{"status":"ok"}`.
+
 ### Removed
 
+- Unused `OpenVPNEnv` fields in `internal/auth`: `Password`, `ScriptType`,
+  `Config`, `IfconfigPoolRemoteIP`, `TimeASCII`, `TimeUnix`. None were read
+  anywhere; dropping `Password` also stops the OpenVPN placeholder password
+  from being retained in memory at all (it was already excluded from IPC and
+  logs).
+- Dead accessor `Manager.ResultWritten` in `internal/session` (only referenced
+  by its own unit test; no production caller).
+- Trivial helper `containsRole` in `internal/oidc` (replaced by
+  `slices.Contains`; dedicated unit test removed with it).
 - Unused `ExitSuccess` constant from `cmd/openvpn-keycloak-auth` (the binary
   never returns code 0 by intent: success is always deferred via OpenVPN).
 - Dead helper `decodeJWTPayload` in `internal/oidc` (only referenced by tests).

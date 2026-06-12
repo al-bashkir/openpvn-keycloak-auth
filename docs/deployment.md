@@ -134,16 +134,16 @@ sudo ./deploy/install.sh
 2. **Creates user/group** - Creates `openvpn` system user and group
 3. **Installs binary** - Copies to `/usr/local/bin/openvpn-keycloak-auth`
 4. **Creates directories:**
-    - `/etc/openvpn` - Configuration files
-    - `/etc/openvpn/scripts` - OpenVPN auth wrapper scripts
-    - `/var/lib/openvpn-keycloak-auth` - Data directory
-    - `/var/lib/openvpn-keycloak-auth/tmp` - Shared OpenVPN temp directory
-    - `/run/openvpn-keycloak-auth` - Runtime socket directory
+   - `/etc/openvpn` - Configuration files
+   - `/etc/openvpn/scripts` - OpenVPN auth wrapper scripts
+   - `/var/lib/openvpn-keycloak-auth` - Data directory
+   - `/var/lib/openvpn-keycloak-auth/tmp` - Shared OpenVPN temp directory
+   - `/run/openvpn-keycloak-auth` - Runtime socket directory
 5. **Installs files:**
-    - `/etc/openvpn/keycloak-sso.yaml` - Configuration (if not exists)
-    - `/etc/openvpn/scripts/auth-keycloak.sh` - Auth script
-    - `/etc/systemd/system/openvpn-keycloak-auth.service` - systemd unit
-    - `/etc/systemd/system/openvpn-server@.service.d/sso-override.conf` - OpenVPN service override
+   - `/etc/openvpn/keycloak-sso.yaml` - Configuration (if not exists)
+   - `/etc/openvpn/scripts/auth-keycloak.sh` - Auth script
+   - `/etc/systemd/system/openvpn-keycloak-auth.service` - systemd unit
+   - `/etc/systemd/system/openvpn-server@.service.d/sso-override.conf` - OpenVPN service override
 6. **Configures firewall** - Opens port 9000/tcp (if firewalld is running)
 7. **Configures SELinux** - Sets file contexts (if SELinux is enabled)
 
@@ -151,7 +151,7 @@ sudo ./deploy/install.sh
 
 ```
 ╔══════════════════════════════════════════════════════════════╗
-║     OpenVPN Keycloak SSO - Installation Script             ║
+║     OpenVPN Keycloak SSO - Installation Script               ║
 ╚══════════════════════════════════════════════════════════════╝
 
 [INFO] Performing preliminary checks...
@@ -383,6 +383,7 @@ See [docs/openvpn-server-setup.md](./openvpn-server-setup.md) section "Testing t
 ### Service Won't Start
 
 **Check logs:**
+
 ```bash
 sudo journalctl -u openvpn-keycloak-auth -n 50
 ```
@@ -412,9 +413,12 @@ sudo journalctl -u openvpn-keycloak-auth -n 50
 
 4. **Permission denied**
    ```
-ERROR failed to create socket: listen unix /run/openvpn-keycloak-auth/auth.sock: bind: permission denied
    ```
-   **Solution:** Check directory permissions, ensure RuntimeDirectory in service file
+
+ERROR failed to create socket: listen unix /run/openvpn-keycloak-auth/auth.sock: bind: permission denied
+
+````
+**Solution:** Check directory permissions, ensure RuntimeDirectory in service file
 
 ### Socket Not Created
 
@@ -427,7 +431,7 @@ drwxrwx---. 2 openvpn openvpn 60 Feb 15 12:00 /run/openvpn-keycloak-auth/
 
 # If directory missing, restart service
 sudo systemctl restart openvpn-keycloak-auth
-```
+````
 
 ### HTTP Server Not Responding
 
@@ -680,7 +684,7 @@ To further harden the system:
 1. **Run on non-standard port** (reduces automated attacks)
    ```yaml
    listen:
-     http: "0.0.0.0:9443"  # Instead of :9000
+     http: "0.0.0.0:9443" # Instead of :9000
    ```
 
 2. **Use TLS for HTTP server** (requires certificates)
@@ -694,7 +698,7 @@ To further harden the system:
 3. **Restrict callback URL to VPN network only**
    ```yaml
    listen:
-     http: "10.8.0.1:9000"  # VPN interface only
+     http: "10.8.0.1:9000" # VPN interface only
    ```
 
 4. **Keep the callback endpoint behind firewall or reverse-proxy controls**
@@ -707,9 +711,11 @@ To further harden the system:
    git pull
    make build
    sudo make install
-sudo systemctl restart openvpn-keycloak-auth
    ```
 
+sudo systemctl restart openvpn-keycloak-auth
+
+````
 ---
 
 ## Distribution Package
@@ -721,7 +727,7 @@ To create a distribution tarball for deployment on multiple servers:
 make dist
 
 # Creates: dist/openvpn-keycloak-auth-<version>-linux-amd64.tar.gz
-```
+````
 
 ### Deploy from Tarball
 
@@ -745,8 +751,8 @@ After successful installation:
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** 2026-02-15  
+**Document Version:** 1.0\
+**Last Updated:** 2026-02-15\
 **Platform:** Rocky Linux 9
 
 For questions or issues, consult the troubleshooting section or check project documentation.

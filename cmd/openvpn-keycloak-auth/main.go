@@ -189,14 +189,20 @@ func runAuth(cmd *cobra.Command, args []string) error {
 	credentialsFile := args[0]
 
 	// Load config to get socket path
-	// If config file doesn't exist, use default socket path
+	// If config load fails, fall back to the default socket path so a broken
+	// or missing config does not hard-fail auth before reaching the daemon.
 	socketPath := "/run/openvpn-keycloak-auth/auth.sock"
 
 	cfg, err := config.Load(configFile)
 	if err == nil {
 		socketPath = cfg.Listen.Socket
+	} else {
+		slog.Warn("failed to load config, using default socket path",
+			"config", configFile,
+			"socket", socketPath,
+			"error", err,
+		)
 	}
-	// If config load fails, we still try with the default socket path
 
 	// Create auth handler
 	handler := auth.NewHandler(socketPath)

@@ -9,6 +9,7 @@ WEB_AUTH::https://vpn.example.com:9000/auth/a1b2c3d4e5f6...
 **How it could leak:** Sniffing the OpenVPN control channel (unlikely -- it's TLS-encrypted), shoulder surfing, or reading logs.
 
 **What happens if attacker opens it:**
+
 - They get 302-redirected to Keycloak login page
 - They must **authenticate as the correct user** in Keycloak (password + MFA)
 - If they somehow do authenticate (e.g., they ARE the user on another device), the VPN connects for the original session -- **but the attacker's browser just showed a success page, they don't get a VPN tunnel themselves**
@@ -51,6 +52,7 @@ client_secret=SECRET                                          <-- only daemon kn
 **This is exactly what PKCE prevents.** Keycloak will reject a token exchange without the correct `code_verifier` that matches the `code_challenge` sent earlier. The attacker doesn't have the verifier (it's stored in the daemon's in-memory session, never exposed via any URL or HTTP response).
 
 Additionally:
+
 - Authorization codes are **single-use** -- if the daemon already exchanged it, replay fails
 - Authorization codes are **short-lived** (typically 30-60 seconds in Keycloak)
 - The `state` parameter is deleted from the session store after first use
@@ -62,6 +64,7 @@ Additionally:
 ## Scenario 4: Attacker is on the same network (MITM)
 
 All URLs use **HTTPS**. To MITM:
+
 - `vpn.example.com:9000` -- attacker needs a valid TLS cert for this domain
 - `keycloak.example.com` -- attacker needs a valid TLS cert for this domain
 
@@ -72,6 +75,7 @@ Without compromising a CA, this is not feasible.
 ## Scenario 5: Full browser compromise
 
 If the attacker has **full control of the user's browser** (malware, compromised extension), they could:
+
 1. Wait for the user to authenticate in Keycloak
 2. Intercept the callback **before** it reaches the daemon
 3. Send it to the daemon themselves
@@ -84,14 +88,14 @@ If the attacker also controls the user's machine... they already have full acces
 
 ## Summary
 
-| Attack | Blocked by | Risk |
-|--------|-----------|------|
-| Steal short URL `/auth/<state>` | Keycloak login required | Low |
-| Steal full Keycloak auth URL | Keycloak login required | Low |
-| Steal callback `?code=...&state=...` | PKCE (verifier never exposed) + single-use code + client_secret | Very low |
-| Replay callback after legitimate use | Single-use auth code + session deleted after first use | None |
-| MITM any URL | TLS on all hops | Very low |
-| Steal code + somehow get verifier | Verifier is in daemon memory only, never in any URL/response/log | Extremely low |
+| Attack                               | Blocked by                                                       | Risk          |
+| ------------------------------------ | ---------------------------------------------------------------- | ------------- |
+| Steal short URL `/auth/<state>`      | Keycloak login required                                          | Low           |
+| Steal full Keycloak auth URL         | Keycloak login required                                          | Low           |
+| Steal callback `?code=...&state=...` | PKCE (verifier never exposed) + single-use code + client_secret  | Very low      |
+| Replay callback after legitimate use | Single-use auth code + session deleted after first use           | None          |
+| MITM any URL                         | TLS on all hops                                                  | Very low      |
+| Steal code + somehow get verifier    | Verifier is in daemon memory only, never in any URL/response/log | Extremely low |
 
 ## Key Architectural Defense
 

@@ -31,14 +31,14 @@ This document provides a technical deep dive into the architecture, design decis
                        ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │                     OpenVPN Server                               │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │  Script-based Deferred Authentication (2.6+)              │ │
-│  │  - Calls auth script with via-file                        │ │
-│  │  - Expects exit code 2 (deferred)                         │ │
-│  │  - Reads auth_pending_file (WEB_AUTH:: URL)              │ │
-│  │  - Sends AUTH_PENDING to client                           │ │
-│  │  - Waits for auth_control_file (0 or 1)                   │ │
-│  └────────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │  Script-based Deferred Authentication (2.6+)               │  │
+│  │  - Calls auth script with via-file                         │  │
+│  │  - Expects exit code 2 (deferred)                          │  │
+│  │  - Reads auth_pending_file (WEB_AUTH:: URL)                │  │
+│  │  - Sends AUTH_PENDING to client                            │  │
+│  │  - Waits for auth_control_file (0 or 1)                    │  │
+│  └────────────────────────────────────────────────────────────┘  │
 └──────────────────────┬───────────────────────────────────────────┘
                        │
                        │ 2. Calls /etc/openvpn/scripts/auth-keycloak.sh
@@ -57,18 +57,18 @@ This document provides a technical deep dive into the architecture, design decis
                        ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │            Daemon (Go binary, serve mode, systemd)               │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │  Session Manager  │  IPC Server  │  HTTP Server            │ │
-│  │  - In-memory map  │  - Unix sock │  - OIDC callback        │ │
-│  │  - TTL cleanup    │  - JSON API  │  - Success/error pages  │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │  OIDC Provider                                              │ │
-│  │  - Authorization URL builder                               │ │
-│  │  - PKCE generator (S256)                                    │ │
-│  │  - Token exchanger                                          │ │
-│  │  - JWT validator (signature + claims)                       │ │
-│  └────────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │  Session Manager  │  IPC Server  │  HTTP Server            │  │
+│  │  - In-memory map  │  - Unix sock │  - OIDC callback        │  │
+│  │  - TTL cleanup    │  - JSON API  │  - Success/error pages  │  │
+│  └────────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │  OIDC Provider                                             │  │
+│  │  - Authorization URL builder                               │  │
+│  │  - PKCE generator (S256)                                   │  │
+│  │  - Token exchanger                                         │  │
+│  │  - JWT validator (signature + claims)                      │  │
+│  └────────────────────────────────────────────────────────────┘  │
 └──────────────────────┬──────────┬────────────────────────────────┘
                        │          │
                        │          │ 4. HTTPS (OIDC flow)
@@ -89,6 +89,7 @@ This document provides a technical deep dive into the architecture, design decis
 ### Core Principle
 
 **Script-based deferred authentication:** OpenVPN 2.6 allows auth scripts to:
+
 1. Return exit code 2 (deferred)
 2. Write a `auth_pending_file` with a URL
 3. Later write `auth_control_file` (0=failure, 1=success)
@@ -106,6 +107,7 @@ This eliminates the need for C plugins entirely!
 #### Mode 1: `serve` (Daemon)
 
 Runs as systemd service, handles:
+
 - Unix socket IPC server
 - HTTP server for OIDC callbacks
 - Session management with TTL cleanup
@@ -115,6 +117,7 @@ Runs as systemd service, handles:
 **Entry point:** `cmd/openvpn-keycloak-auth/main.go` → `serveCmd`
 
 **Goroutines:**
+
 - Main: HTTP server listener
 - IPC server: Unix socket listener
 - Session cleanup: Timer-based TTL expiration
@@ -123,6 +126,7 @@ Runs as systemd service, handles:
 #### Mode 2: `auth` (Auth Script)
 
 Called by OpenVPN for each authentication attempt:
+
 - Parse environment variables
 - Read credentials from via-file
 - Send IPC request to daemon
@@ -140,6 +144,7 @@ Display version information.
 #### Mode 4: `check-config`
 
 Validate configuration file:
+
 - YAML syntax
 - Required fields
 - Known YAML keys
@@ -203,6 +208,7 @@ exec /usr/local/bin/openvpn-keycloak-auth --config /etc/openvpn/keycloak-sso.yam
 ```
 
 **Why a wrapper?**
+
 - OpenVPN `--auth-user-pass-verify` expects a shell script
 - Easier to update just the binary without touching OpenVPN config
 - Can add environment setup if needed
@@ -324,6 +330,7 @@ exec /usr/local/bin/openvpn-keycloak-auth --config /etc/openvpn/keycloak-sso.yam
 ### Transport
 
 **Unix Domain Socket:**
+
 - Path: `/run/openvpn-keycloak-auth/auth.sock`
 - Permissions: `0660` (rw-rw----)
 - Owner: `openvpn:openvpn`
@@ -350,6 +357,7 @@ exec /usr/local/bin/openvpn-keycloak-auth --config /etc/openvpn/keycloak-sso.yam
 #### Auth Response (Daemon → Script)
 
 **Success (deferred):**
+
 ```json
 {
   "type": "auth_response",
@@ -360,6 +368,7 @@ exec /usr/local/bin/openvpn-keycloak-auth --config /etc/openvpn/keycloak-sso.yam
 ```
 
 **Error:**
+
 ```json
 {
   "type": "auth_response",
@@ -388,6 +397,7 @@ decoder.Decode(&response)
 ### Error Handling
 
 **IPC errors result in authentication failure:**
+
 - Socket not accessible → Auth failure
 - Timeout (5 seconds) → Auth failure
 - Malformed response → Auth failure
@@ -457,6 +467,7 @@ Create → [Active] → Callback → [Completed] → Delete
 ```
 
 **States:**
+
 1. **Created:** Session exists, waiting for callback
 2. **Active:** Before TTL expiration
 3. **Expired:** TTL passed, cleanup will delete
@@ -478,6 +489,7 @@ func (m *Manager) startCleanup() {
 ```
 
 **Cleanup process:**
+
 1. Lock sessions map
 2. Iterate all sessions
 3. If `time.Now().After(session.ExpiresAt)`:
@@ -486,6 +498,7 @@ func (m *Manager) startCleanup() {
 4. Unlock
 
 **Why write auth failure on expiry?**
+
 - OpenVPN is waiting for `auth_control_file`
 - Without it, connection hangs until hand-window timeout
 - Writing "0" immediately fails the authentication
@@ -532,6 +545,7 @@ https://keycloak.example.com/realms/myrealm/protocol/openid-connect/auth?
 **POST** `https://keycloak.example.com/realms/myrealm/protocol/openid-connect/token`
 
 **Body (form-encoded):**
+
 ```
 grant_type=authorization_code&
 code=xyz123...&
@@ -541,6 +555,7 @@ code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk
 ```
 
 **Response:**
+
 ```json
 {
   "access_token": "eyJhbG...",
@@ -599,24 +614,24 @@ Signature: <RS256 signature>
    if claims["iss"] != config.Issuer {
        return errors.New("invalid issuer")
    }
-   
+
    // Audience
    if claims["aud"] != config.ClientID {
        return errors.New("invalid audience")
    }
-   
+
    // Expiration
    exp := claims["exp"].(float64)
    if time.Now().Unix() > int64(exp) {
        return errors.New("token expired")
    }
-   
+
    // Username
    username := claims["preferred_username"].(string)
    if username != expectedUsername {
        return errors.New("username mismatch")
    }
-   
+
    // Roles (if required)
    if len(requiredRoles) > 0 {
        userRoles := extractRoles(claims, roleClaim)
@@ -643,12 +658,14 @@ OpenVPN creates temporary files for each authentication attempt:
 ### Writing Order (Critical!)
 
 **For success:**
+
 ```go
 // 1. Write auth_control_file with "1"
 os.WriteFile(authControlFile, []byte("1\n"), 0600)
 ```
 
 **For failure:**
+
 ```go
 // 1. Write reason to auth_failed_reason_file
 os.WriteFile(authFailedReasonFile, []byte(reason+"\n"), 0600)
@@ -658,6 +675,7 @@ os.WriteFile(authControlFile, []byte("0\n"), 0600)
 ```
 
 **For deferral:**
+
 ```go
 // Write auth_pending_file (exactly 3 lines!)
 content := fmt.Sprintf("%d\n%s\nWEB_AUTH::%s\n", timeout, method, authURL)
@@ -675,6 +693,7 @@ All temporary files created with `0600` (owner read/write only).
 ### Goroutines
 
 **Daemon mode:**
+
 ```
 Main goroutine
 ├─ HTTP server (blocking Listen)
@@ -685,12 +704,14 @@ Main goroutine
 ```
 
 **Per-request goroutines:**
+
 - HTTP request handlers (net/http automatically creates goroutines)
 - IPC connection handlers (one goroutine per connection)
 
 ### Synchronization
 
 **Session map:** Protected by `sync.RWMutex`
+
 ```go
 // Read lock (multiple concurrent readers OK)
 m.mu.RLock()
@@ -704,6 +725,7 @@ m.mu.Unlock()
 ```
 
 **Rate limiter:** Each IP has its own `rate.Limiter`
+
 ```go
 type IPRateLimiter struct {
     mu       sync.Mutex
@@ -722,6 +744,7 @@ type IPRateLimiter struct {
 ### Critical Paths
 
 **Auth script path:**
+
 ```go
 // If ANY error occurs:
 // 1. Log error
@@ -730,6 +753,7 @@ type IPRateLimiter struct {
 ```
 
 **Callback path:**
+
 ```go
 // Best-effort final result for known sessions with OpenVPN result paths.
 defer func() {
@@ -756,6 +780,7 @@ defer func() {
 ### Why Script-Based Auth (Not C Plugin)?
 
 **Pros:**
+
 - ✅ No C code (easier to maintain)
 - ✅ No CGO (easier to build)
 - ✅ No shared libraries (simpler deployment)
@@ -763,6 +788,7 @@ defer func() {
 - ✅ Easier debugging
 
 **Cons:**
+
 - ❌ Slightly higher overhead (exec process)
 - ❌ Limited to OpenVPN 2.6.2+
 
@@ -771,12 +797,14 @@ defer func() {
 ### Why Unix Socket IPC (Not HTTP)?
 
 **Pros:**
+
 - ✅ No network exposure
 - ✅ File permissions for security
 - ✅ Lower overhead
 - ✅ Simpler than HTTP
 
 **Cons:**
+
 - ❌ Local only (can't distribute across hosts)
 
 **Decision:** Unix socket is more secure and simpler.
@@ -784,11 +812,13 @@ defer func() {
 ### Why In-Memory Sessions (Not Redis)?
 
 **Pros:**
+
 - ✅ Simpler deployment (no external dependencies)
 - ✅ Faster access
 - ✅ Lower latency
 
 **Cons:**
+
 - ❌ Sessions lost on restart
 - ❌ Can't run multiple daemon instances
 - ❌ Memory usage grows with sessions
@@ -798,11 +828,13 @@ defer func() {
 ### Why Single Binary with Modes (Not Separate Binaries)?
 
 **Pros:**
+
 - ✅ Single file to distribute
 - ✅ Shared code (no duplication)
 - ✅ Consistent versioning
 
 **Cons:**
+
 - ❌ Slightly larger binary
 
 **Decision:** Single binary is simpler to manage.
@@ -810,11 +842,13 @@ defer func() {
 ### Why JSON Over Unix Socket (Not Protocol Buffers)?
 
 **Pros:**
+
 - ✅ Human-readable (easier debugging)
 - ✅ No schema compilation
 - ✅ Simpler implementation
 
 **Cons:**
+
 - ❌ Slightly larger messages
 - ❌ Slower serialization
 
@@ -827,6 +861,7 @@ defer func() {
 ### Latency Breakdown
 
 **Typical authentication flow:**
+
 ```
 Auth script execution:        50-100ms
   └─ IPC round-trip:           10-20ms
@@ -849,6 +884,7 @@ Total: ~5-30 seconds (mostly user interaction)
 ### Memory Usage
 
 **Typical:**
+
 - Base daemon: ~10MB
 - Per session: ~2KB
 - 1000 concurrent sessions: ~12MB total
@@ -856,13 +892,14 @@ Total: ~5-30 seconds (mostly user interaction)
 ### Throughput
 
 **Tested:**
+
 - 50 concurrent authentications: ✅ No issues
 - Rate limit: 10 req/s per IP (configurable)
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** 2026-02-15  
+**Document Version:** 1.0\
+**Last Updated:** 2026-02-15\
 **Audience:** Developers, architects, security reviewers
 
 For questions about architecture, see [CONTRIBUTING.md](../CONTRIBUTING.md) or open an issue.

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -175,14 +176,7 @@ func (c *Config) Validate() error {
 	if len(c.OIDC.Scopes) == 0 {
 		return fmt.Errorf("oidc.scopes must contain at least 'openid'")
 	}
-	hasOpenID := false
-	for _, scope := range c.OIDC.Scopes {
-		if scope == "openid" {
-			hasOpenID = true
-			break
-		}
-	}
-	if !hasOpenID {
+	if !slices.Contains(c.OIDC.Scopes, "openid") {
 		return fmt.Errorf("oidc.scopes must include 'openid'")
 	}
 

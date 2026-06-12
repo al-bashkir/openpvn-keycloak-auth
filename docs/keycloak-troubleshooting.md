@@ -20,6 +20,7 @@ Common issues and solutions when using Keycloak with OpenVPN SSO.
 ### Daemon Can't Connect to Keycloak
 
 **Symptom:**
+
 ```
 ERROR failed to create OIDC provider error="Get \"https://keycloak.example.com/realms/openvpn/.well-known/openid-configuration\": dial tcp: lookup keycloak.example.com: no such host"
 ```
@@ -48,7 +49,7 @@ ssh vpn-server "curl -v http://keycloak.example.com:8080/realms/openvpn/.well-kn
    ```bash
    # Check if port is open
    telnet keycloak.example.com 8080
-   
+
    # Or use nc
    nc -zv keycloak.example.com 8080
    ```
@@ -63,7 +64,7 @@ ssh vpn-server "curl -v http://keycloak.example.com:8080/realms/openvpn/.well-kn
    ```bash
    # Check service status
    sudo systemctl status keycloak
-   
+
    # Check container status (if using podman/docker)
    podman ps | grep keycloak
    ```
@@ -76,6 +77,7 @@ ssh vpn-server "curl -v http://keycloak.example.com:8080/realms/openvpn/.well-kn
 ### SSL/TLS Certificate Errors
 
 **Symptom:**
+
 ```
 ERROR x509: certificate signed by unknown authority
 ```
@@ -93,7 +95,7 @@ ERROR x509: certificate signed by unknown authority
    ```yaml
    # keycloak-sso.yaml
    oidc:
-     issuer: "http://keycloak.example.com:8080/realms/openvpn"  # HTTP not HTTPS
+     issuer: "http://keycloak.example.com:8080/realms/openvpn" # HTTP not HTTPS
    ```
 
 3. **Skip TLS verification** (DANGEROUS - testing only):
@@ -137,6 +139,7 @@ Browser opens to Keycloak, but immediately shows error.
 **Diagnosis:**
 
 Check the browser URL bar. You'll see parameters like:
+
 ```
 http://keycloak:8080/realms/openvpn/protocol/openid-connect/auth?
   client_id=openvpn&
@@ -171,6 +174,7 @@ http://keycloak:8080/realms/openvpn/protocol/openid-connect/auth?
 ### "No id_token in token response"
 
 **Symptom:**
+
 ```
 ERROR token exchange failed error_category=token_exchange_failed
 ```
@@ -195,7 +199,7 @@ curl -X POST http://keycloak:8080/realms/openvpn/protocol/openid-connect/token \
 
 1. **Client scope configuration**:
    - `openid` scope not requested or assigned
-   
+
 2. **Client type wrong**:
    - Client authentication enabled (confidential client)
    - Should be public client for PKCE
@@ -216,6 +220,7 @@ curl -X POST http://keycloak:8080/realms/openvpn/protocol/openid-connect/token \
 ### Token Contains Wrong Claims
 
 **Symptom:**
+
 ```
 ERROR username claim 'preferred_username' not found
 ```
@@ -230,6 +235,7 @@ echo "PASTE_ID_TOKEN_HERE" | cut -d. -f2 | base64 -d 2>/dev/null | jq .
 ```
 
 **Expected Claims:**
+
 ```json
 {
   "exp": 1708022400,
@@ -265,6 +271,7 @@ echo "PASTE_ID_TOKEN_HERE" | cut -d. -f2 | base64 -d 2>/dev/null | jq .
 ### "User does not have required roles"
 
 **Symptom:**
+
 ```
 ERROR token validation failed error_category=required_role_missing
 ```
@@ -299,7 +306,7 @@ The user's token doesn't contain the required VPN role.
    ```yaml
    # keycloak-sso.yaml
    oidc:
-     role_claim: "realm_access.roles"  # For realm roles
+     role_claim: "realm_access.roles" # For realm roles
      # role_claim: "resource_access.openvpn.roles"  # For client roles
    ```
 
@@ -333,7 +340,7 @@ Neither the ID token nor the verified access token contains `realm_access.roles`
        - openid
        - profile
        - email
-       - roles  # Add this
+       - roles # Add this
    ```
 
 ---
@@ -343,6 +350,7 @@ Neither the ID token nor the verified access token contains `realm_access.roles`
 ### "PKCE verification failed"
 
 **Symptom:**
+
 ```
 ERROR token exchange failed error_category=token_exchange_failed
 ```
@@ -413,12 +421,12 @@ The redirect URI in the authorization request doesn't match any of the registere
 
 **Common Mismatches:**
 
-| Authorization Request | Keycloak Config | Match? |
-|-----------------------|----------------|--------|
-| `http://vpn.example.com:9000/callback` | `http://vpn.example.com:9000/callback` | ✅ Yes |
-| `https://vpn.example.com:9000/callback` | `http://vpn.example.com:9000/callback` | ❌ No (HTTP vs HTTPS) |
-| `http://vpn.example.com:9000/callback` | `http://vpn.example.com/callback` | ❌ No (missing port) |
-| `http://10.0.0.1:9000/callback` | `http://vpn.example.com:9000/callback` | ❌ No (hostname vs IP) |
+| Authorization Request                   | Keycloak Config                        | Match?                 |
+| --------------------------------------- | -------------------------------------- | ---------------------- |
+| `http://vpn.example.com:9000/callback`  | `http://vpn.example.com:9000/callback` | ✅ Yes                 |
+| `https://vpn.example.com:9000/callback` | `http://vpn.example.com:9000/callback` | ❌ No (HTTP vs HTTPS)  |
+| `http://vpn.example.com:9000/callback`  | `http://vpn.example.com/callback`      | ❌ No (missing port)   |
+| `http://10.0.0.1:9000/callback`         | `http://vpn.example.com:9000/callback` | ❌ No (hostname vs IP) |
 
 **Solutions:**
 
@@ -493,6 +501,7 @@ curl -s http://keycloak:8080/realms/openvpn/.well-known/openid-configuration | j
 ```
 
 Expected issuer:
+
 ```json
 {
   "issuer": "http://keycloak:8080/realms/openvpn"
@@ -560,10 +569,10 @@ sudo journalctl -u openvpn-keycloak-auth | grep ERROR
    ```bash
    # Generate PKCE verifier
    VERIFIER=$(openssl rand -base64 32 | tr -d '=' | tr '+/' '-_')
-   
+
    # Generate challenge
    CHALLENGE=$(echo -n $VERIFIER | openssl dgst -sha256 -binary | base64 | tr -d '=' | tr '+/' '-_')
-   
+
    # Build URL
    echo "http://keycloak:8080/realms/openvpn/protocol/openid-connect/auth?client_id=openvpn&redirect_uri=http://vpn.example.com:9000/callback&response_type=code&scope=openid%20profile%20email&code_challenge=$CHALLENGE&code_challenge_method=S256&state=test123"
    ```
@@ -573,7 +582,7 @@ sudo journalctl -u openvpn-keycloak-auth | grep ERROR
 3. **Exchange code for token**:
    ```bash
    CODE="paste_code_here"
-   
+
    curl -X POST http://keycloak:8080/realms/openvpn/protocol/openid-connect/token \
      -d "grant_type=authorization_code" \
      -d "client_id=openvpn" \
@@ -586,15 +595,15 @@ sudo journalctl -u openvpn-keycloak-auth | grep ERROR
 
 ## Common Error Messages and Solutions
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| `failed to create OIDC provider` | Can't reach Keycloak | Check network, DNS, firewall |
-| `invalid redirect URI` | URI mismatch | Update Keycloak Valid redirect URIs |
-| `PKCE verification failed` | PKCE not configured | Enable S256 in Keycloak Advanced settings |
-| `user does not have required roles` | Missing role assignment | Assign vpn-user role to user |
-| `username claim not found` | Wrong claim path | Check username_claim in config |
-| `session not found or expired` | Session timeout | Increase session_timeout in config |
-| `token exchange failed` | Various token issues | Check client configuration, scopes |
+| Error                               | Cause                   | Solution                                  |
+| ----------------------------------- | ----------------------- | ----------------------------------------- |
+| `failed to create OIDC provider`    | Can't reach Keycloak    | Check network, DNS, firewall              |
+| `invalid redirect URI`              | URI mismatch            | Update Keycloak Valid redirect URIs       |
+| `PKCE verification failed`          | PKCE not configured     | Enable S256 in Keycloak Advanced settings |
+| `user does not have required roles` | Missing role assignment | Assign vpn-user role to user              |
+| `username claim not found`          | Wrong claim path        | Check username_claim in config            |
+| `session not found or expired`      | Session timeout         | Increase session_timeout in config        |
+| `token exchange failed`             | Various token issues    | Check client configuration, scopes        |
 
 ---
 
@@ -605,7 +614,7 @@ sudo journalctl -u openvpn-keycloak-auth | grep ERROR
    # keycloak-sso.yaml
    log:
      level: debug
-     format: text  # More readable than JSON for debugging
+     format: text # More readable than JSON for debugging
    ```
 
 2. **Check all logs**:
@@ -631,4 +640,4 @@ sudo journalctl -u openvpn-keycloak-auth | grep ERROR
 
 ---
 
-*Last updated: 2026-02-15 for Keycloak 25.0.6*
+_Last updated: 2026-02-15 for Keycloak 25.0.6_

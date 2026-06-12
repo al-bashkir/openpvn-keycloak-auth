@@ -259,33 +259,6 @@ func TestClaimResultWrite(t *testing.T) {
 	}
 }
 
-func TestResultWritten(t *testing.T) {
-	mgr := NewManager(5 * time.Minute)
-	defer mgr.Stop()
-
-	sess, err := mgr.Create("testuser", "cn", "192.0.2.1", "12345", "/tmp/acf", "/tmp/apf", "/tmp/arf")
-	if err != nil {
-		t.Fatalf("Create failed: %v", err)
-	}
-
-	if written, ok := mgr.ResultWritten(sess.ID); !ok || written {
-		t.Fatalf("ResultWritten() = (%v,%v), want (false,true)", written, ok)
-	}
-
-	if ok := mgr.MarkResultWritten(sess.ID); !ok {
-		t.Fatal("expected MarkResultWritten to return true")
-	}
-
-	if written, ok := mgr.ResultWritten(sess.ID); !ok || !written {
-		t.Fatalf("ResultWritten() = (%v,%v), want (true,true)", written, ok)
-	}
-
-	mgr.Delete(sess.ID)
-	if _, ok := mgr.ResultWritten(sess.ID); ok {
-		t.Fatal("expected ResultWritten() ok=false after delete")
-	}
-}
-
 func TestSessionExpiry(t *testing.T) {
 	mgr := NewManager(100 * time.Millisecond)
 	defer mgr.Stop()
