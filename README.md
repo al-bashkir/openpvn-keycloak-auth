@@ -135,7 +135,7 @@ openvpn --config client.ovpn
 
 **Requirements:**
 
-- Go 1.25+
+- Go 1.26+
 - OpenVPN 2.6.2+ (from EPEL on Rocky Linux 9)
 
 ```bash

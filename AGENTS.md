@@ -8,7 +8,7 @@ Key facts:
 
 - Target platform: Rocky Linux 9 or compatible Linux
 - OpenVPN target: Community Server 2.6.2+; deployment examples target 2.6.19
-- Language/toolchain: Go 1.25+
+- Language/toolchain: Go 1.26+
 - IdP: Keycloak via OIDC authorization code flow with PKCE
 - Binary: `openvpn-keycloak-auth`
 - License: MPL-2.0

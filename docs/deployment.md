@@ -24,7 +24,7 @@ This guide covers deployment of the OpenVPN Keycloak SSO authentication daemon o
 - **Operating System:** Rocky Linux 9 (or RHEL 9 derivative)
 - **Architecture:** x86_64 (amd64)
 - **OpenVPN:** Version 2.6.2 or later
-- **Go:** Version 1.25+ (for building from source)
+- **Go:** Version 1.26+ (for building from source)
 - **RAM:** Minimum 512MB (1GB recommended)
 - **Disk Space:** 50MB for binary and dependencies
 
