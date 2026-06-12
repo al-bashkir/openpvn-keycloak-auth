@@ -104,6 +104,7 @@ jobs:
       - name: Generate SBOM
         run: |
           go install github.com/anchore/syft/cmd/syft@v1.45.1
+          export PATH="$(go env GOPATH)/bin:${PATH}"
           syft dir:. -o cyclonedx-json > "dist/${BINARY_NAME}-${VERSION}-${GOOS}-${GOARCH}-sbom.json"
         env:
           GOOS: ${{ matrix.goos }}
