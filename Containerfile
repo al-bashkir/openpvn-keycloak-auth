@@ -16,7 +16,7 @@
 #     --build-arg BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 #     -o type=local,dest=build .
 
-FROM docker.io/golang:1.26-alpine3.21 AS build
+FROM docker.io/golang:1.26-alpine3.24 AS build
 
 WORKDIR /src
 
