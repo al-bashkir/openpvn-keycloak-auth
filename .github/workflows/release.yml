@@ -103,7 +103,9 @@ jobs:
 
       - name: Generate SBOM
         run: |
-          go install github.com/anchore/syft/cmd/syft@v1.45.1
+          # Install syft for the host arch; clearing GOOS/GOARCH avoids a
+          # cross-compiled binary landing in $GOPATH/bin/$GOOS_$GOARCH/.
+          GOOS= GOARCH= go install github.com/anchore/syft/cmd/syft@v1.45.1
           export PATH="$(go env GOPATH)/bin:${PATH}"
           syft dir:. -o cyclonedx-json > "dist/${BINARY_NAME}-${VERSION}-${GOOS}-${GOARCH}-sbom.json"
         env:
