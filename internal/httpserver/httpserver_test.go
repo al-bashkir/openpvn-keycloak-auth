@@ -68,13 +68,13 @@ func TestHealthEndpoint(t *testing.T) {
 		t.Errorf("expected Content-Type application/json, got %s", ct)
 	}
 
-	var healthResp HealthResponse
+	var healthResp map[string]string
 	if err := json.NewDecoder(resp.Body).Decode(&healthResp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	if healthResp.Status != "ok" {
-		t.Errorf("expected status 'ok', got '%s'", healthResp.Status)
+	if healthResp["status"] != "ok" {
+		t.Errorf("expected status 'ok', got '%s'", healthResp["status"])
 	}
 }
 
