@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/logsanitize"
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/oidc"
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/openvpn"
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/session"
@@ -190,11 +191,11 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 	// Extract username for logging (already validated by validator if AllowUsernameMismatch is false)
 	username, _ := tokenData.Claims[s.cfg.Auth.UsernameClaim].(string)
 
-	slog.Info("user authenticated successfully", // #nosec G706 -- values sanitized via sanitizeLog
+	slog.Info("user authenticated successfully", // #nosec G706 -- values sanitized via logsanitize.Sanitize
 		"session_id", session.ID,
-		"username", sanitizeLog(username),
-		"expected_username", sanitizeLog(session.Username),
-		"ip", sanitizeLog(session.UntrustedIP),
+		"username", logsanitize.Sanitize(username),
+		"expected_username", logsanitize.Sanitize(session.Username),
+		"ip", logsanitize.Sanitize(session.UntrustedIP),
 	)
 
 	// Authentication successful!
@@ -230,8 +231,8 @@ func (s *Server) writeAuthSuccess(sess *session.Session) error {
 
 	slog.Info("auth success written",
 		"session_id", sess.ID,
-		"username", sanitizeLog(sess.Username),
-		"ip", sanitizeLog(sess.UntrustedIP),
+		"username", logsanitize.Sanitize(sess.Username),
+		"ip", logsanitize.Sanitize(sess.UntrustedIP),
 	)
 
 	_ = s.sessionMgr.MarkResultWritten(sess.ID)
@@ -242,9 +243,9 @@ func (s *Server) writeAuthSuccess(sess *session.Session) error {
 // writeAuthFailure writes failure to the OpenVPN control file and deletes the session.
 func (s *Server) writeAuthFailure(sess *session.Session, reason string) {
 	if s.sessionMgr == nil {
-		slog.Error("session manager is nil, cannot write auth failure", // #nosec G706 -- values sanitized via sanitizeLog
+		slog.Error("session manager is nil, cannot write auth failure", // #nosec G706 -- values sanitized via logsanitize.Sanitize
 			"session_id", sess.ID,
-			"reason", sanitizeLog(reason),
+			"reason", logsanitize.Sanitize(reason),
 		)
 		return
 	}
@@ -270,10 +271,10 @@ func (s *Server) writeAuthFailure(sess *session.Session, reason string) {
 		return
 	}
 
-	slog.Info("auth failure written", // #nosec G706 -- values sanitized via sanitizeLog
+	slog.Info("auth failure written", // #nosec G706 -- values sanitized via logsanitize.Sanitize
 		"session_id", sess.ID,
-		"username", sanitizeLog(sess.Username),
-		"reason", sanitizeLog(reason),
+		"username", logsanitize.Sanitize(sess.Username),
+		"reason", logsanitize.Sanitize(reason),
 	)
 
 	_ = s.sessionMgr.MarkResultWritten(sess.ID)

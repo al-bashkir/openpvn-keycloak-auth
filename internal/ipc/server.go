@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/logsanitize"
 )
 
 const (
@@ -122,9 +124,13 @@ func (s *Server) acceptLoop(ctx context.Context) {
 // handleConnection handles a single IPC connection
 func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 	defer s.wg.Done()
-	s.trackConn(conn)
+	s.mu.Lock()
+	s.conns[conn] = struct{}{}
+	s.mu.Unlock()
 	defer func() {
-		s.untrackConn(conn)
+		s.mu.Lock()
+		delete(s.conns, conn)
+		s.mu.Unlock()
 		_ = conn.Close()
 	}()
 	select {
@@ -162,9 +168,9 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 	// Username, IP and CommonName originate from the VPN client and client
 	// certificate, both of which are external inputs. Sanitize before logging.
 	slog.Info("auth request received",
-		"username", sanitizeIPCValue(req.Username),
-		"ip", sanitizeIPCValue(req.UntrustedIP),
-		"common_name", sanitizeIPCValue(req.CommonName),
+		"username", logsanitize.Sanitize(req.Username),
+		"ip", logsanitize.Sanitize(req.UntrustedIP),
+		"common_name", logsanitize.Sanitize(req.CommonName),
 	)
 
 	// Call handler
@@ -198,21 +204,6 @@ func (s *Server) sendErrorResponse(conn net.Conn, errMsg string) {
 	if err := enc.Encode(resp); err != nil {
 		slog.Error("failed to send error response", "error", err)
 	}
-}
-
-func (s *Server) trackConn(conn net.Conn) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.conns == nil {
-		s.conns = make(map[net.Conn]struct{})
-	}
-	s.conns[conn] = struct{}{}
-}
-
-func (s *Server) untrackConn(conn net.Conn) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	delete(s.conns, conn)
 }
 
 // Stop stops the IPC server gracefully
