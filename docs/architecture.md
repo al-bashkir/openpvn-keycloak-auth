@@ -55,7 +55,7 @@ This document provides a technical deep dive into the architecture, design decis
 │  - Returns exit code 2                                           │
 └──────────────────────┬───────────────────────────────────────────┘
                        │
-                        │ 3. Unix socket: /run/openvpn-keycloak-auth/auth.sock
+                       │ 3. Unix socket: /run/openvpn-keycloak-auth/auth.sock
                        ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │            Daemon (Go binary, serve mode, systemd)               │
@@ -675,22 +675,22 @@ type Session struct {
     // Identifiers
     ID                   string    // 64-char hex (32 bytes crypto/rand)
     State                string    // 32-char hex (16 bytes crypto/rand)
-    
+
     // User info
     Username             string    // Keycloak username
     CommonName           string    // OpenVPN common name
     UntrustedIP          string    // Client IP
     UntrustedPort        string    // Client port
-    
+
     // PKCE
     CodeVerifier         string    // 43-char base64url (32 bytes crypto/rand)
     CodeChallenge        string    // SHA256(verifier), base64url
-    
+
     // OpenVPN files
     AuthControlFile      string    // /tmp/openvpn_acf_*.tmp
     AuthPendingFile      string    // /tmp/openvpn_apf_*.tmp
     AuthFailedReasonFile string    // /tmp/openvpn_arf_*.tmp
-    
+
     // Lifecycle
     CreatedAt            time.Time
     ExpiresAt            time.Time // CreatedAt + TTL
