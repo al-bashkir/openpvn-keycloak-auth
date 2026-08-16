@@ -5,32 +5,21 @@ import (
 	"net/http"
 )
 
-// renderSuccess renders the success page
-func (s *Server) renderSuccess(w http.ResponseWriter, message string) {
-	data := map[string]string{
-		"Message": message,
-	}
-
+// render writes an embedded HTML template with the given status.
+func (s *Server) render(w http.ResponseWriter, tmpl string, status int, data map[string]string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(status)
 
-	if err := s.templates.ExecuteTemplate(w, "success.html", data); err != nil {
-		slog.Error("failed to render success template", "error", err)
+	if err := s.templates.ExecuteTemplate(w, tmpl, data); err != nil {
+		slog.Error("failed to render template", "template", tmpl, "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
-// renderError renders the error page
+func (s *Server) renderSuccess(w http.ResponseWriter, message string) {
+	s.render(w, "success.html", http.StatusOK, map[string]string{"Message": message})
+}
+
 func (s *Server) renderError(w http.ResponseWriter, errMsg string) {
-	data := map[string]string{
-		"Error": errMsg,
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusBadRequest)
-
-	if err := s.templates.ExecuteTemplate(w, "error.html", data); err != nil {
-		slog.Error("failed to render error template", "error", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-	}
+	s.render(w, "error.html", http.StatusBadRequest, map[string]string{"Error": errMsg})
 }

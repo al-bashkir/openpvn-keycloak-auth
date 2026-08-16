@@ -8,27 +8,14 @@ import (
 	"time"
 )
 
-// Client is the IPC client used by the auth script to communicate with the daemon
-type Client struct {
-	socketPath string
-	timeout    time.Duration
-}
+// dialTimeout bounds both the connect and, absent a context deadline, the
+// request/response exchange.
+const dialTimeout = 5 * time.Second
 
-// NewClient creates a new IPC client
-func NewClient(socketPath string) *Client {
-	return &Client{
-		socketPath: socketPath,
-		timeout:    5 * time.Second,
-	}
-}
-
-// SendAuthRequest sends an authentication request to the daemon and waits for response
-func (c *Client) SendAuthRequest(ctx context.Context, req *AuthRequest) (*AuthResponse, error) {
-	// Set request type
-	req.Type = MessageTypeAuthRequest
-
-	// Connect to Unix socket with timeout
-	conn, err := net.DialTimeout("unix", c.socketPath, c.timeout)
+// SendAuthRequest sends an authentication request to the daemon over the Unix
+// socket at socketPath and waits for the response.
+func SendAuthRequest(ctx context.Context, socketPath string, req *AuthRequest) (*AuthResponse, error) {
+	conn, err := net.DialTimeout("unix", socketPath, dialTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to daemon: %w", err)
 	}
@@ -37,28 +24,19 @@ func (c *Client) SendAuthRequest(ctx context.Context, req *AuthRequest) (*AuthRe
 	// Set overall deadline
 	deadline, ok := ctx.Deadline()
 	if !ok {
-		deadline = time.Now().Add(c.timeout)
+		deadline = time.Now().Add(dialTimeout)
 	}
 	if err := conn.SetDeadline(deadline); err != nil {
 		return nil, fmt.Errorf("failed to set connection deadline: %w", err)
 	}
 
-	// Send request
-	enc := json.NewEncoder(conn)
-	if err := enc.Encode(req); err != nil {
+	if err := json.NewEncoder(conn).Encode(req); err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 
-	// Read response
 	var resp AuthResponse
-	dec := json.NewDecoder(conn)
-	if err := dec.Decode(&resp); err != nil {
+	if err := json.NewDecoder(conn).Decode(&resp); err != nil {
 		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	// Validate response type
-	if resp.Type != MessageTypeAuthResponse {
-		return nil, fmt.Errorf("invalid response type: %s", resp.Type)
 	}
 
 	return &resp, nil

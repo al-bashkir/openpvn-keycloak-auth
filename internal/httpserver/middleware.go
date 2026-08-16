@@ -5,7 +5,6 @@ import (
 	"net"
 	"net/http"
 	"runtime/debug"
-	"strings"
 	"sync"
 	"time"
 
@@ -66,7 +65,6 @@ type IPRateLimiter struct {
 	rate     rate.Limit
 	burst    int
 	ttl      time.Duration // entries are evicted after this duration of inactivity
-	maxSize  int           // maximum number of tracked IPs
 }
 
 func newIPRateLimiter(r rate.Limit, b int) *IPRateLimiter {
@@ -75,7 +73,6 @@ func newIPRateLimiter(r rate.Limit, b int) *IPRateLimiter {
 		rate:     r,
 		burst:    b,
 		ttl:      5 * time.Minute,
-		maxSize:  10000,
 	}
 
 	// Start background eviction goroutine
@@ -94,11 +91,6 @@ func (i *IPRateLimiter) getLimiter(ip string) *rate.Limiter {
 		return entry.limiter
 	}
 
-	// Evict oldest entries if at capacity
-	if len(i.limiters) >= i.maxSize {
-		i.evictOldest()
-	}
-
 	limiter := rate.NewLimiter(i.rate, i.burst)
 	i.limiters[ip] = &ipEntry{
 		limiter:  limiter,
@@ -108,7 +100,8 @@ func (i *IPRateLimiter) getLimiter(ip string) *rate.Limiter {
 	return limiter
 }
 
-// evictLoop periodically removes stale entries.
+// evictLoop periodically removes stale entries. It is what bounds the map:
+// an IP that stops calling is dropped within ttl + one tick.
 func (i *IPRateLimiter) evictLoop() {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
@@ -122,23 +115,6 @@ func (i *IPRateLimiter) evictLoop() {
 			}
 		}
 		i.mu.Unlock()
-	}
-}
-
-// evictOldest removes the oldest entry. Must be called with mu held.
-func (i *IPRateLimiter) evictOldest() {
-	var oldestIP string
-	var oldestTime time.Time
-
-	for ip, entry := range i.limiters {
-		if oldestIP == "" || entry.lastSeen.Before(oldestTime) {
-			oldestIP = ip
-			oldestTime = entry.lastSeen
-		}
-	}
-
-	if oldestIP != "" {
-		delete(i.limiters, oldestIP)
 	}
 }
 
@@ -178,10 +154,10 @@ func extractIP(r *http.Request) string {
 	return ip
 }
 
+// redactRequestPath keeps the session state out of request logs.
 func redactRequestPath(path string) string {
-	idx := strings.LastIndex(path, "/auth/")
-	if idx != -1 {
-		return logsanitize.Sanitize(path[:idx] + "/auth/{state}")
+	if prefix, _, ok := splitAuthPath(path); ok {
+		return logsanitize.Sanitize(prefix + "/auth/{state}")
 	}
 	return logsanitize.Sanitize(path)
 }

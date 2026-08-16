@@ -22,6 +22,7 @@ func TestNewServer(t *testing.T) {
 		Listen: config.ListenConfig{
 			HTTP: ":9000",
 		},
+		OIDC: config.OIDCConfig{RedirectURI: "https://vpn.example.com/callback"},
 		TLS: config.TLSConfig{
 			Enabled: false,
 		},
@@ -45,6 +46,7 @@ func TestNewServer(t *testing.T) {
 func TestHealthEndpoint(t *testing.T) {
 	cfg := &config.Config{
 		Listen: config.ListenConfig{HTTP: ":9000"},
+		OIDC:   config.OIDCConfig{RedirectURI: "https://vpn.example.com/callback"},
 	}
 
 	server, err := NewServer(cfg, nil, nil)
@@ -95,8 +97,7 @@ func TestAuthRedirectEndpoint(t *testing.T) {
 	}
 
 	// Create a session with a known state and auth URL
-	sess, err := sessionMgr.Create("testuser", "", "192.0.2.1", "12345",
-		"/tmp/acf", "/tmp/apf", "/tmp/arf")
+	sess, err := sessionMgr.Create("testuser", "192.0.2.1", "/tmp/acf", "/tmp/arf")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,8 +183,7 @@ func TestAuthRedirectEndpointWithBasePath(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sess, err := sessionMgr.Create("testuser", "", "192.0.2.1", "12345",
-		"/tmp/acf", "/tmp/apf", "/tmp/arf")
+	sess, err := sessionMgr.Create("testuser", "192.0.2.1", "/tmp/acf", "/tmp/arf")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -283,8 +283,8 @@ func TestCallbackEndpointMissingCode(t *testing.T) {
 	tmpDir := t.TempDir()
 	authControlFile := tmpDir + "/auth_control"
 	authFailedReasonFile := tmpDir + "/auth_failed"
-	sess, err := sessionMgr.Create("testuser", "", "192.0.2.1", "12345",
-		authControlFile, tmpDir+"/auth_pending", authFailedReasonFile)
+	sess, err := sessionMgr.Create("testuser", "192.0.2.1",
+		authControlFile, authFailedReasonFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -349,8 +349,8 @@ func TestCallbackConcurrentSameState(t *testing.T) {
 	authControlFile := tmpDir + "/auth_control"
 	authFailedReasonFile := tmpDir + "/auth_failed"
 
-	sess, err := sessionMgr.Create("u", "", "192.0.2.1", "1",
-		authControlFile, tmpDir+"/auth_pending", authFailedReasonFile)
+	sess, err := sessionMgr.Create("u", "192.0.2.1",
+		authControlFile, authFailedReasonFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -429,6 +429,7 @@ func TestCallbackEndpointOIDCError(t *testing.T) {
 func TestRenderSuccess(t *testing.T) {
 	cfg := &config.Config{
 		Listen: config.ListenConfig{HTTP: ":9000"},
+		OIDC:   config.OIDCConfig{RedirectURI: "https://vpn.example.com/callback"},
 	}
 
 	server, err := NewServer(cfg, nil, nil)
@@ -461,6 +462,7 @@ func TestRenderSuccess(t *testing.T) {
 func TestRenderError(t *testing.T) {
 	cfg := &config.Config{
 		Listen: config.ListenConfig{HTTP: ":9000"},
+		OIDC:   config.OIDCConfig{RedirectURI: "https://vpn.example.com/callback"},
 	}
 
 	server, err := NewServer(cfg, nil, nil)
@@ -493,6 +495,7 @@ func TestRenderError(t *testing.T) {
 func TestSecurityHeaders(t *testing.T) {
 	cfg := &config.Config{
 		Listen: config.ListenConfig{HTTP: ":9000"},
+		OIDC:   config.OIDCConfig{RedirectURI: "https://vpn.example.com/callback"},
 	}
 
 	server, err := NewServer(cfg, nil, nil)
@@ -529,6 +532,7 @@ func TestSecurityHeaders(t *testing.T) {
 func TestRateLimiting(t *testing.T) {
 	cfg := &config.Config{
 		Listen: config.ListenConfig{HTTP: ":9000"},
+		OIDC:   config.OIDCConfig{RedirectURI: "https://vpn.example.com/callback"},
 	}
 
 	server, err := NewServer(cfg, nil, nil)
@@ -568,6 +572,7 @@ func TestRateLimiting(t *testing.T) {
 func TestGracefulShutdown(t *testing.T) {
 	cfg := &config.Config{
 		Listen: config.ListenConfig{HTTP: "127.0.0.1:0"}, // Random port
+		OIDC:   config.OIDCConfig{RedirectURI: "https://vpn.example.com/callback"},
 	}
 
 	server, err := NewServer(cfg, nil, nil)
@@ -719,8 +724,9 @@ func TestAuthStateFromPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := authStateFromPath(tt.path); got != tt.want {
-				t.Fatalf("authStateFromPath(%q) = %q, want %q", tt.path, got, tt.want)
+			_, got, _ := splitAuthPath(tt.path)
+			if got != tt.want {
+				t.Fatalf("splitAuthPath(%q) state = %q, want %q", tt.path, got, tt.want)
 			}
 		})
 	}

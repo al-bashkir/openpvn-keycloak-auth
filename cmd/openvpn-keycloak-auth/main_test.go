@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/auth"
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/ipc"
 )
 
@@ -131,7 +132,6 @@ func TestRunAuth_Deferred(t *testing.T) {
 		return &ipc.AuthResponse{
 			Status:    ipc.StatusDeferred,
 			SessionID: "test-session-123",
-			AuthURL:   "http://localhost/auth",
 		}, nil
 	})
 	if err := server.Start(context.Background()); err != nil {
@@ -176,7 +176,7 @@ func TestRunAuth_Deferred(t *testing.T) {
 	if err := runAuth(nil, []string{credsPath}); err != nil {
 		t.Fatalf("runAuth failed: %v", err)
 	}
-	if overrideExitCode != ExitDeferred {
-		t.Fatalf("overrideExitCode = %d, want %d", overrideExitCode, ExitDeferred)
+	if overrideExitCode != auth.ExitDeferred {
+		t.Fatalf("overrideExitCode = %d, want %d", overrideExitCode, auth.ExitDeferred)
 	}
 }

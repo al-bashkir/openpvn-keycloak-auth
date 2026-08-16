@@ -8,104 +8,43 @@ import (
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/config"
 )
 
-// Validator provides additional token validation beyond what go-oidc does.
-// It validates username claims and enforces role/group requirements.
-type Validator struct {
-	oidcCfg *config.OIDCConfig
-	authCfg *config.AuthConfig
-}
-
-// NewValidator creates a new token validator.
-func NewValidator(oidcCfg *config.OIDCConfig, authCfg *config.AuthConfig) *Validator {
-	return &Validator{
-		oidcCfg: oidcCfg,
-		authCfg: authCfg,
-	}
-}
-
-// ValidateToken performs additional validation beyond what go-oidc does.
-// It validates the username claim and required roles (if configured).
+// Validate performs the policy checks that go-oidc does not: the username
+// claim must match the VPN username (unless auth.allow_username_mismatch is
+// set), and the user must hold one of oidc.required_roles.
 //
-// Note: go-oidc already validates:
-// - JWT signature via JWKS
-// - Standard claims: iss, aud, exp, iat, nbf
-//
-// This function adds:
-// - Username claim extraction and validation
-// - Role/group enforcement
-func (v *Validator) ValidateToken(claims map[string]interface{}, expectedUsername string) error {
-	// 1. Validate username claim
-	if err := v.validateUsername(claims, expectedUsername); err != nil {
-		return err
-	}
-
-	// 2. Validate required roles (if configured)
-	if len(v.oidcCfg.RequiredRoles) > 0 {
-		if err := v.validateRoles(claims); err != nil {
-			return err
+// go-oidc already validates the JWT signature via JWKS and the standard
+// iss/aud/exp/iat/nbf claims.
+func Validate(cfg *config.Config, claims map[string]interface{}, expectedUsername string) error {
+	if !cfg.Auth.AllowUsernameMismatch {
+		value, err := getNestedClaim(claims, cfg.Auth.UsernameClaim)
+		if err != nil {
+			return fmt.Errorf("username claim '%s' not found: %w", cfg.Auth.UsernameClaim, err)
+		}
+		username, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("username claim '%s' is not a string", cfg.Auth.UsernameClaim)
+		}
+		if username != expectedUsername {
+			return fmt.Errorf("username mismatch: expected '%s', got '%s'", expectedUsername, username)
 		}
 	}
 
-	return nil
-}
-
-// validateUsername extracts and validates the username claim.
-func (v *Validator) validateUsername(claims map[string]interface{}, expectedUsername string) error {
-	// Extract username from configured claim
-	username, err := getClaimString(claims, v.authCfg.UsernameClaim)
-	if err != nil {
-		return fmt.Errorf("username claim '%s' not found: %w", v.authCfg.UsernameClaim, err)
-	}
-
-	// Check if it matches expected username
-	if username != expectedUsername {
-		return fmt.Errorf("username mismatch: expected '%s', got '%s'", expectedUsername, username)
-	}
-
-	return nil
-}
-
-// ValidateRoles validates that the user has at least one of the required roles.
-// It is a no-op when no roles are configured.
-func (v *Validator) ValidateRoles(claims map[string]interface{}) error {
-	if len(v.oidcCfg.RequiredRoles) == 0 {
+	// Roles are enforced even when the VPN username is allowed to differ.
+	if len(cfg.OIDC.RequiredRoles) == 0 {
 		return nil
 	}
-	return v.validateRoles(claims)
-}
 
-// validateRoles validates that the user has at least one of the required roles.
-func (v *Validator) validateRoles(claims map[string]interface{}) error {
-	// Extract roles from configured claim path (e.g., "realm_access.roles")
-	roles, err := getRolesFromClaim(claims, v.oidcCfg.RoleClaim)
+	roles, err := getRolesFromClaim(claims, cfg.OIDC.RoleClaim)
 	if err != nil {
 		return fmt.Errorf("failed to extract roles: %w", err)
 	}
-
-	// Check if user has at least one of the required roles
-	for _, requiredRole := range v.oidcCfg.RequiredRoles {
+	for _, requiredRole := range cfg.OIDC.RequiredRoles {
 		if slices.Contains(roles, requiredRole) {
-			return nil // User has required role
+			return nil
 		}
 	}
 
-	return fmt.Errorf("user does not have required roles: %v (user roles: %v)", v.oidcCfg.RequiredRoles, roles)
-}
-
-// getClaimString extracts a string claim, supporting dot notation for nested claims.
-// For example: "email", "preferred_username", "realm_access.roles"
-func getClaimString(claims map[string]interface{}, path string) (string, error) {
-	value, err := getNestedClaim(claims, path)
-	if err != nil {
-		return "", err
-	}
-
-	str, ok := value.(string)
-	if !ok {
-		return "", fmt.Errorf("claim '%s' is not a string", path)
-	}
-
-	return str, nil
+	return fmt.Errorf("user does not have required roles: %v (user roles: %v)", cfg.OIDC.RequiredRoles, roles)
 }
 
 // getRolesFromClaim extracts roles as a slice of strings.

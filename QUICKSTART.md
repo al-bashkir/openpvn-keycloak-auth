@@ -119,7 +119,7 @@ sudo cp config/openvpn-server.conf.example /etc/openvpn/server/server.conf
 # Edit VPN network settings as needed
 
 # Generate certificates (if not done)
-# See docs/openvpn-server-setup.md for Easy-RSA instructions
+# See docs/deployment.md#openvpn-server-setup for Easy-RSA instructions
 ```
 
 ## Step 6: Start OpenVPN Server (10 seconds)
@@ -211,7 +211,7 @@ sudo journalctl -u openvpn-keycloak-auth -f
    - Enable "Configure OTP"
 
 3. **Configure Roles** for access control
-   - See `docs/keycloak-setup.md`
+   - See `docs/keycloak.md`
 
 4. **Set up monitoring**
    - Check logs regularly
@@ -237,14 +237,13 @@ If something doesn't work:
    - Certificate issues: Verify `ca.crt` is correct
 
 4. **Get help:**
-   - See `docs/keycloak-troubleshooting.md`
+   - See `docs/keycloak.md`
    - Check GitHub issues
 
 ## Documentation
 
-- **Full Setup:** `docs/deployment.md`
-- **Keycloak Config:** `docs/keycloak-setup.md`
-- **OpenVPN Config:** `docs/openvpn-server-setup.md`
+- **Full Setup (daemon + OpenVPN server):** `docs/deployment.md`
+- **Keycloak Config:** `docs/keycloak.md`
 - **Client Setup:** `docs/client-setup.md`
 - **Security:** `docs/security.md`
 - **Testing:** `docs/testing.md`
@@ -253,8 +252,8 @@ If something doesn't work:
 
 Not quite 5 minutes? That's okay! The detailed guides will walk you through each step:
 
-- **20-minute setup:** `docs/deployment.md` - Step-by-step with explanations
-- **Full deployment:** `docs/openvpn-server-setup.md` - Complete PKI setup, certificates, etc.
+- **Step-by-step with explanations:** `docs/deployment.md`
+- **Complete PKI setup, certificates, server config:** `docs/deployment.md#openvpn-server-setup`
 
 ---
 

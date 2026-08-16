@@ -8,12 +8,9 @@ import (
 )
 
 func TestValidateToken_UsernameOnly(t *testing.T) {
-	oidcCfg := &config.OIDCConfig{}
-	authCfg := &config.AuthConfig{
-		UsernameClaim: "preferred_username",
+	cfg := &config.Config{
+		Auth: config.AuthConfig{UsernameClaim: "preferred_username"},
 	}
-
-	validator := NewValidator(oidcCfg, authCfg)
 
 	tests := []struct {
 		name            string
@@ -59,7 +56,7 @@ func TestValidateToken_UsernameOnly(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validator.ValidateToken(tt.claims, tt.expectedUser)
+			err := Validate(cfg, tt.claims, tt.expectedUser)
 
 			if tt.wantErr {
 				if err == nil {
@@ -78,15 +75,13 @@ func TestValidateToken_UsernameOnly(t *testing.T) {
 }
 
 func TestValidateToken_WithRoles(t *testing.T) {
-	oidcCfg := &config.OIDCConfig{
-		RequiredRoles: []string{"vpn-user"},
-		RoleClaim:     "realm_access.roles",
+	cfg := &config.Config{
+		OIDC: config.OIDCConfig{
+			RequiredRoles: []string{"vpn-user"},
+			RoleClaim:     "realm_access.roles",
+		},
+		Auth: config.AuthConfig{UsernameClaim: "preferred_username"},
 	}
-	authCfg := &config.AuthConfig{
-		UsernameClaim: "preferred_username",
-	}
-
-	validator := NewValidator(oidcCfg, authCfg)
 
 	tests := []struct {
 		name            string
@@ -152,7 +147,7 @@ func TestValidateToken_WithRoles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validator.ValidateToken(tt.claims, tt.expectedUser)
+			err := Validate(cfg, tt.claims, tt.expectedUser)
 
 			if tt.wantErr {
 				if err == nil {
@@ -359,15 +354,13 @@ func TestGetRolesFromClaim(t *testing.T) {
 }
 
 func TestValidateToken_MultipleRequiredRoles(t *testing.T) {
-	oidcCfg := &config.OIDCConfig{
-		RequiredRoles: []string{"vpn-user", "vpn-admin"},
-		RoleClaim:     "realm_access.roles",
+	cfg := &config.Config{
+		OIDC: config.OIDCConfig{
+			RequiredRoles: []string{"vpn-user", "vpn-admin"},
+			RoleClaim:     "realm_access.roles",
+		},
+		Auth: config.AuthConfig{UsernameClaim: "preferred_username"},
 	}
-	authCfg := &config.AuthConfig{
-		UsernameClaim: "preferred_username",
-	}
-
-	validator := NewValidator(oidcCfg, authCfg)
 
 	// User has one of the required roles (should pass)
 	claims := map[string]interface{}{
@@ -377,30 +370,62 @@ func TestValidateToken_MultipleRequiredRoles(t *testing.T) {
 		},
 	}
 
-	err := validator.ValidateToken(claims, "testuser")
+	err := Validate(cfg, claims, "testuser")
 	if err != nil {
 		t.Errorf("expected no error, got: %v", err)
 	}
 }
 
 func TestValidateToken_NoRequiredRoles(t *testing.T) {
-	oidcCfg := &config.OIDCConfig{
-		RequiredRoles: []string{}, // No roles required
-		RoleClaim:     "realm_access.roles",
+	cfg := &config.Config{
+		OIDC: config.OIDCConfig{
+			RequiredRoles: []string{}, // No roles required
+			RoleClaim:     "realm_access.roles",
+		},
+		Auth: config.AuthConfig{UsernameClaim: "preferred_username"},
 	}
-	authCfg := &config.AuthConfig{
-		UsernameClaim: "preferred_username",
-	}
-
-	validator := NewValidator(oidcCfg, authCfg)
 
 	// User doesn't need any roles
 	claims := map[string]interface{}{
 		"preferred_username": "testuser",
 	}
 
-	err := validator.ValidateToken(claims, "testuser")
+	err := Validate(cfg, claims, "testuser")
 	if err != nil {
 		t.Errorf("expected no error when no roles required, got: %v", err)
+	}
+}
+
+func TestValidate_AllowUsernameMismatchStillEnforcesRoles(t *testing.T) {
+	cfg := &config.Config{
+		OIDC: config.OIDCConfig{
+			RequiredRoles: []string{"vpn-user"},
+			RoleClaim:     "realm_access.roles",
+		},
+		Auth: config.AuthConfig{
+			UsernameClaim:         "preferred_username",
+			AllowUsernameMismatch: true,
+		},
+	}
+
+	// Username differs from the VPN username, which is allowed here.
+	claims := map[string]interface{}{
+		"preferred_username": "someone-else",
+		"realm_access": map[string]interface{}{
+			"roles": []string{"vpn-user"},
+		},
+	}
+	if err := Validate(cfg, claims, "testuser"); err != nil {
+		t.Errorf("expected mismatched username to be accepted, got: %v", err)
+	}
+
+	// Roles are still enforced.
+	claims["realm_access"] = map[string]interface{}{"roles": []string{"other-role"}}
+	err := Validate(cfg, claims, "testuser")
+	if err == nil {
+		t.Fatal("expected missing role to be rejected")
+	}
+	if !strings.Contains(err.Error(), "does not have required roles") {
+		t.Errorf("error = %v, want a required-roles error", err)
 	}
 }

@@ -24,7 +24,6 @@ func TestClientServerCommunication(t *testing.T) {
 		return &AuthResponse{
 			Status:    StatusDeferred,
 			SessionID: "test-session-123",
-			AuthURL:   "https://keycloak.example.com/auth?session=123",
 		}, nil
 	}
 
@@ -44,9 +43,6 @@ func TestClientServerCommunication(t *testing.T) {
 	// Give server time to start
 	time.Sleep(100 * time.Millisecond)
 
-	// Create client
-	client := NewClient(socketPath)
-
 	// Send request
 	req := &AuthRequest{
 		Username:             "testuser",
@@ -58,23 +54,17 @@ func TestClientServerCommunication(t *testing.T) {
 		AuthFailedReasonFile: "/tmp/test_arf",
 	}
 
-	resp, err := client.SendAuthRequest(ctx, req)
+	resp, err := SendAuthRequest(ctx, socketPath, req)
 	if err != nil {
 		t.Fatalf("SendAuthRequest failed: %v", err)
 	}
 
 	// Validate response
-	if resp.Type != MessageTypeAuthResponse {
-		t.Errorf("expected type %s, got %s", MessageTypeAuthResponse, resp.Type)
-	}
 	if resp.Status != StatusDeferred {
 		t.Errorf("expected status %s, got %s", StatusDeferred, resp.Status)
 	}
 	if resp.SessionID != "test-session-123" {
 		t.Errorf("expected session_id test-session-123, got %s", resp.SessionID)
-	}
-	if resp.AuthURL == "" {
-		t.Error("expected auth_url to be set")
 	}
 }
 
@@ -109,15 +99,13 @@ func TestServerHandlerError(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	client := NewClient(socketPath)
-
 	req := &AuthRequest{
 		Username:        "testuser",
 		AuthControlFile: "/tmp/test_acf",
 		AuthPendingFile: "/tmp/test_apf",
 	}
 
-	resp, err := client.SendAuthRequest(ctx, req)
+	resp, err := SendAuthRequest(ctx, socketPath, req)
 	if err != nil {
 		t.Fatalf("SendAuthRequest failed: %v", err)
 	}
@@ -132,13 +120,11 @@ func TestServerHandlerError(t *testing.T) {
 
 func TestClientConnectionFailure(t *testing.T) {
 	// Try to connect to non-existent socket
-	client := NewClient("/nonexistent/path/test.sock")
-
 	req := &AuthRequest{
 		Username: "testuser",
 	}
 
-	_, err := client.SendAuthRequest(context.Background(), req)
+	_, err := SendAuthRequest(context.Background(), "/nonexistent/path/test.sock", req)
 	if err == nil {
 		t.Error("expected error when connecting to non-existent socket")
 	}
@@ -207,9 +193,8 @@ func TestServerGracefulShutdown(t *testing.T) {
 
 	// Start a request in background
 	go func() {
-		client := NewClient(socketPath)
 		req := &AuthRequest{Username: "testuser"}
-		_, _ = client.SendAuthRequest(context.Background(), req)
+		_, _ = SendAuthRequest(context.Background(), socketPath, req)
 	}()
 
 	time.Sleep(50 * time.Millisecond)
@@ -323,12 +308,11 @@ func TestMultipleConcurrentRequests(t *testing.T) {
 
 	for i := 0; i < numRequests; i++ {
 		go func(n int) {
-			client := NewClient(socketPath)
 			req := &AuthRequest{
 				Username: string(rune('A' + n)),
 			}
 
-			resp, err := client.SendAuthRequest(context.Background(), req)
+			resp, err := SendAuthRequest(context.Background(), socketPath, req)
 			if err != nil {
 				errors <- err
 				return
@@ -380,12 +364,10 @@ func TestClientTimeoutViaContext(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	client := NewClient(socketPath)
-
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 
-	if _, err := client.SendAuthRequest(ctx, &AuthRequest{Username: "testuser"}); err == nil {
+	if _, err := SendAuthRequest(ctx, socketPath, &AuthRequest{Username: "testuser"}); err == nil {
 		t.Error("expected timeout error")
 	}
 }

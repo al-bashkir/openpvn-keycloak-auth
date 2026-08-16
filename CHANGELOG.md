@@ -250,7 +250,7 @@ This is the initial release. No migration required.
 
 **IMPORTANT:** Before deploying to production:
 
-1. Review and complete the [Security Checklist](docs/security-checklist.md)
+1. Review and complete the [Security Checklist](docs/security.md)
 2. Follow all recommendations in the [Security Guide](docs/security.md)
 3. Ensure proper TLS configuration for all components
 4. Review and harden systemd service configuration
