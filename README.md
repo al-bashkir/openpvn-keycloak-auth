@@ -58,36 +58,36 @@ Traditional VPN authentication requires managing passwords, LDAP integration, or
 
 OpenVPN 2.6 introduced **script-based deferred authentication** (exit code 2) and `auth_pending_file` support, making SSO possible without C plugins!
 
-```
-┌────────┐         ┌─────────┐         ┌─────────┐         ┌──────────┐
-│ User   │────────▶│ OpenVPN │────────▶│ Daemon  │────────▶│ Keycloak │
-│ Client │         │ Server  │         │         │         │          │
-└────────┘         └─────────┘         └─────────┘         └──────────┘
-    │                   │                   │                    │
-    │ 1. Connect        │                   │                    │
-    │──────────────────▶│                   │                    │
-    │                   │ 2. Call auth script                    │
-    │                   │──────────────────▶│                    │
-    │                   │                   │ 3. Generate PKCE   │
-    │                   │ 4. Exit code 2    │                    │
-    │                   │◀──────────────────│                    │
-    │ 5. Open browser   │                   │                    │
-    │◀──────────────────│                   │                    │
-    │                   │                   │                    │
-    │ 6. Redirect to Keycloak (with PKCE challenge)              │
-    │───────────────────────────────────────────────────────────▶│
-    │ 7. User login + MFA                                        │
-    │◀──────────────────────────────────────────────────────────▶│
-    │                   │                   │                    │
-    │ 8. Callback (with authorization code) │                    │
-    │──────────────────────────────────────▶│                    │
-    │                   │                   │ 9. Exchange code   │
-    │                   │                   │───────────────────▶│
-    │                   │                   │ 10. Validate token │
-    │                   │ 11. Write success │                    │
-    │                   │◀──────────────────│                    │
-    │ 12. VPN connected │                   │                    │
-    │◀──────────────────│                   │                    │
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as User Client
+    participant O as OpenVPN Server
+    participant D as Daemon
+    participant K as Keycloak
+
+    C->>O: Connect (username + placeholder password)
+    O->>D: Call auth script (IPC over Unix socket)
+    activate D
+    D->>D: Generate PKCE verifier/challenge + state
+    D-->>O: Exit code 2 (deferred auth) + auth_pending_file
+    deactivate D
+    O-->>C: Open browser (authorization URL)
+
+    C->>K: Authorization request (PKCE challenge, state)
+    K-->>C: Login form
+    C->>K: Credentials + MFA
+    K-->>C: Redirect with authorization code
+
+    C->>D: GET /callback (code, state)
+    activate D
+    D->>D: Validate state (CSRF)
+    D->>K: Token request (code + PKCE verifier)
+    K-->>D: ID token / access token
+    D->>D: Validate JWT via JWKS, check claims and roles
+    D->>O: Write auth control file (success)
+    deactivate D
+    O-->>C: VPN connected
 ```
 
 ## Quick Start
