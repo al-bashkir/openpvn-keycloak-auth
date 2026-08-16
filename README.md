@@ -101,7 +101,7 @@ cd openvpn-keycloak-auth
 make build
 sudo make install
 
-# 2. Configure Keycloak (see docs/keycloak-setup.md)
+# 2. Configure Keycloak (see docs/keycloak.md)
 # - Create realm "vpn"
 # - Create public client "openvpn" with PKCE (S256)
 # - Create test user
@@ -204,22 +204,16 @@ See [`config/openvpn-keycloak-auth.yaml.example`](config/openvpn-keycloak-auth.y
 ### Getting Started
 
 - **[QUICKSTART.md](QUICKSTART.md)** - 5-minute deployment guide
-- **[docs/deployment.md](docs/deployment.md)** - Complete deployment guide for Rocky Linux 9
-- **[docs/keycloak-setup.md](docs/keycloak-setup.md)** - Configure Keycloak realm and client (25.0.6)
-- **[docs/openvpn-server-setup.md](docs/openvpn-server-setup.md)** - OpenVPN server configuration
+- **[docs/deployment.md](docs/deployment.md)** - Daemon + OpenVPN server deployment on Rocky Linux 9, including PKI, hardening, and troubleshooting
+- **[docs/keycloak.md](docs/keycloak.md)** - Configure the Keycloak realm and client (25.0.6), plus Keycloak troubleshooting
 - **[docs/client-setup.md](docs/client-setup.md)** - Client setup for all platforms
 
 ### Technical Documentation
 
-- **[docs/architecture.md](docs/architecture.md)** - System architecture and design
-- **[docs/security.md](docs/security.md)** - Security model, threat analysis, best practices
+- **[docs/architecture.md](docs/architecture.md)** - System architecture, phase-by-phase auth flow, IPC protocol
+- **[docs/security.md](docs/security.md)** - Security model, threat analysis, attack surface, checklist, incident response
 - **[docs/testing.md](docs/testing.md)** - Testing guide, manual test cases
 - **[AGENTS.md](AGENTS.md)** - Developer guide, project conventions
-
-### Troubleshooting
-
-- **[docs/keycloak-troubleshooting.md](docs/keycloak-troubleshooting.md)** - Keycloak-specific issues
-- **[docs/security-checklist.md](docs/security-checklist.md)** - Security assessment checklist
 
 ## Supported Clients
 

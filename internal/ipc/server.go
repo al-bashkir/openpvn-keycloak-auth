@@ -12,8 +12,6 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
-
-	"github.com/al-bashkir/openvpn-keycloak-auth/internal/logsanitize"
 )
 
 const (
@@ -158,22 +156,7 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 		return
 	}
 
-	// Validate request type
-	if req.Type != MessageTypeAuthRequest {
-		slog.Error("invalid request type", "type", req.Type)
-		s.sendErrorResponse(conn, "invalid request type")
-		return
-	}
-
-	// Username, IP and CommonName originate from the VPN client and client
-	// certificate, both of which are external inputs. Sanitize before logging.
-	slog.Info("auth request received",
-		"username", logsanitize.Sanitize(req.Username),
-		"ip", logsanitize.Sanitize(req.UntrustedIP),
-		"common_name", logsanitize.Sanitize(req.CommonName),
-	)
-
-	// Call handler
+	// Call handler (it logs the request; see daemon.handleAuthRequest)
 	resp, err := s.handler(ctx, &req)
 	if err != nil {
 		slog.Error("handler error", "error", err)
@@ -182,7 +165,6 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 	}
 
 	// Send response
-	resp.Type = MessageTypeAuthResponse
 	enc := json.NewEncoder(conn)
 	if err := enc.Encode(resp); err != nil {
 		slog.Error("failed to send response", "error", err)
@@ -195,7 +177,6 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 // sendErrorResponse sends an error response to the client
 func (s *Server) sendErrorResponse(conn net.Conn, errMsg string) {
 	resp := &AuthResponse{
-		Type:   MessageTypeAuthResponse,
 		Status: StatusError,
 		Error:  errMsg,
 	}

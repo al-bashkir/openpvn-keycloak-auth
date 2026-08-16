@@ -11,7 +11,6 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
@@ -41,29 +40,10 @@ type AuthFlowData struct {
 	AuthURL string
 }
 
-// TokenData contains the tokens and claims returned from the OIDC provider.
-type TokenData struct {
-	// AccessToken is the OAuth2 access token
-	AccessToken string `json:"-"`
-
-	// RefreshToken is the OAuth2 refresh token (if available)
-	RefreshToken string `json:"-"`
-
-	// IDToken is the raw OIDC ID token (JWT); tagged json:"-" because it
-	// encodes identity claims in a base64-decodable payload.
-	IDToken string `json:"-"`
-
-	// Claims are the parsed claims from the ID token
-	Claims map[string]interface{}
-
-	// Expiry is when the access token expires
-	Expiry time.Time
-}
-
 // StartAuthFlow initiates an OIDC authorization flow with PKCE.
 // It generates the PKCE verifier/challenge and state parameter,
 // constructs the authorization URL, and returns the flow data.
-func (p *Provider) StartAuthFlow(ctx context.Context) (*AuthFlowData, error) {
+func (p *Provider) StartAuthFlow() (*AuthFlowData, error) {
 	// Generate PKCE verifier and challenge
 	verifier, err := generateCodeVerifier()
 	if err != nil {
@@ -99,11 +79,14 @@ func (p *Provider) StartAuthFlow(ctx context.Context) (*AuthFlowData, error) {
 	}, nil
 }
 
-// ExchangeCode exchanges an authorization code for tokens.
-// It uses the PKCE code verifier to complete the flow.
-// The ID token is verified (signature, issuer, audience, expiry) and its nonce
-// is checked against expectedNonce before returning.
-func (p *Provider) ExchangeCode(ctx context.Context, code, codeVerifier, expectedNonce string) (*TokenData, error) {
+// ExchangeCode exchanges an authorization code for tokens and returns the
+// verified ID token claims. It uses the PKCE code verifier to complete the
+// flow. The ID token is verified (signature, issuer, audience, expiry) and its
+// nonce is checked against expectedNonce before the claims are returned.
+//
+// Only the claims are returned: the access, refresh, and ID tokens are not
+// needed past this point and are deliberately not retained.
+func (p *Provider) ExchangeCode(ctx context.Context, code, codeVerifier, expectedNonce string) (map[string]interface{}, error) {
 	// Exchange authorization code for tokens
 	token, err := p.oauth2Config.Exchange(ctx, code,
 		oauth2.SetAuthURLParam("code_verifier", codeVerifier),
@@ -143,13 +126,7 @@ func (p *Provider) ExchangeCode(ctx context.Context, code, codeVerifier, expecte
 		return nil, fmt.Errorf("failed to verify access token claims: %w", err)
 	}
 
-	return &TokenData{
-		AccessToken:  token.AccessToken,
-		RefreshToken: token.RefreshToken,
-		IDToken:      rawIDToken,
-		Claims:       claims,
-		Expiry:       token.Expiry,
-	}, nil
+	return claims, nil
 }
 
 // mergeAccessTokenClaims verifies a JWT access token and merges role-related
@@ -182,6 +159,11 @@ func (p *Provider) mergeAccessTokenClaims(ctx context.Context, accessToken, toke
 	return nil
 }
 
+// mergeMissingClaim fills in a claim the ID token lacks. The recursion is not
+// decoration: Keycloak routinely puts resource_access.account in the ID token
+// while the client's own roles live in resource_access.<client> in the access
+// token, so a shallow "set if absent" would drop the roles that authorize the
+// VPN and lock out valid users. Existing values are never overwritten.
 func mergeMissingClaim(dst map[string]interface{}, key string, src interface{}) bool {
 	dstVal, exists := dst[key]
 	if !exists {

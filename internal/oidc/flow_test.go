@@ -298,15 +298,15 @@ func newExchangeCodeFixture(t *testing.T) *exchangeCodeFixture {
 func TestExchangeCode_NonceMatch(t *testing.T) {
 	fx := newExchangeCodeFixture(t)
 
-	td, err := fx.provider.ExchangeCode(context.Background(), "code", "verifier", "expected-nonce")
+	claims, err := fx.provider.ExchangeCode(context.Background(), "code", "verifier", "expected-nonce")
 	if err != nil {
 		t.Fatalf("ExchangeCode failed: %v", err)
 	}
-	if td == nil || td.IDToken == "" {
-		t.Fatal("expected token data with id_token")
+	if claims == nil {
+		t.Fatal("expected claims to be returned")
 	}
-	if td.Claims["sub"] != "user-123" {
-		t.Errorf("sub = %v, want user-123", td.Claims["sub"])
+	if claims["sub"] != "user-123" {
+		t.Errorf("sub = %v, want user-123", claims["sub"])
 	}
 }
 

@@ -7,10 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
-	"path"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -152,10 +150,13 @@ func (d *Daemon) Run() error {
 func handleAuthRequest(ctx context.Context, cfg *config.Config, oidcProvider *oidc.Provider,
 	sessionMgr *session.Manager, req *ipc.AuthRequest) (*ipc.AuthResponse, error) {
 
+	// Username, IP, port and CommonName originate from the VPN client and its
+	// certificate, all external inputs. Sanitize before logging.
 	slog.Info("auth request received",
 		"username", logsanitize.Sanitize(req.Username),
 		"ip", logsanitize.Sanitize(req.UntrustedIP),
 		"port", logsanitize.Sanitize(req.UntrustedPort),
+		"common_name", logsanitize.Sanitize(req.CommonName),
 	)
 
 	if err := validateOpenVPNResultPath("auth_control_file", req.AuthControlFile); err != nil {
@@ -178,11 +179,8 @@ func handleAuthRequest(ctx context.Context, cfg *config.Config, oidcProvider *oi
 	// Create session
 	sess, err := sessionMgr.Create(
 		req.Username,
-		req.CommonName,
 		req.UntrustedIP,
-		req.UntrustedPort,
 		req.AuthControlFile,
-		req.AuthPendingFile,
 		req.AuthFailedReasonFile,
 	)
 	if err != nil {
@@ -192,7 +190,7 @@ func handleAuthRequest(ctx context.Context, cfg *config.Config, oidcProvider *oi
 	slog.Debug("session created", "session_id", sess.ID)
 
 	// Start OIDC flow
-	flowData, err := oidcProvider.StartAuthFlow(ctx)
+	flowData, err := oidcProvider.StartAuthFlow()
 	if err != nil {
 		sessionMgr.Delete(sess.ID)
 		return nil, fmt.Errorf("failed to start OIDC flow: %w", err)
@@ -255,10 +253,8 @@ func handleAuthRequest(ctx context.Context, cfg *config.Config, oidcProvider *oi
 
 	// Return response to auth script
 	return &ipc.AuthResponse{
-		Type:      ipc.MessageTypeAuthResponse,
-		Status:    "deferred",
+		Status:    ipc.StatusDeferred,
 		SessionID: sess.ID,
-		AuthURL:   shortAuthURL,
 	}, nil
 }
 
@@ -298,22 +294,12 @@ const webAuthPrefix = "WEB_AUTH::"
 // It validates that the resulting "WEB_AUTH::<url>\n" line does not exceed the limit
 // to prevent truncated/invalid URLs from reaching the client.
 func buildShortAuthURL(redirectURI, state string) (string, error) {
-	u, err := url.Parse(redirectURI)
+	u, err := config.ParseRedirectURI(redirectURI)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse redirect_uri: %w", err)
+		return "", err
 	}
 
-	redirectPath := u.Path
-	if redirectPath == "" || redirectPath == "/" || path.Clean(redirectPath) != redirectPath {
-		return "", fmt.Errorf("redirect_uri must include a canonical non-root callback path")
-	}
-
-	basePath := path.Dir(redirectPath)
-	if basePath == "." {
-		basePath = "/"
-	}
-
-	u.Path = path.Join(basePath, "auth", state)
+	u.Path = config.AuthPrefix(u) + state
 	u.RawQuery = ""
 	u.Fragment = ""
 

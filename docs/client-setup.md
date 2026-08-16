@@ -1222,7 +1222,7 @@ nc -v vpn.example.com 1194
 
 1. **This documentation:**
    - `docs/client-setup.md` (this file)
-   - `docs/keycloak-troubleshooting.md` (Keycloak and OIDC troubleshooting)
+   - `docs/keycloak.md` (Keycloak and OIDC troubleshooting)
    - `README.md` (project overview)
 
 2. **Check logs:**

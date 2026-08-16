@@ -213,7 +213,6 @@ func TestHandlerRun(t *testing.T) {
 		return &ipc.AuthResponse{
 			Status:    ipc.StatusDeferred,
 			SessionID: "test-session-123",
-			AuthURL:   "https://keycloak.example.com/auth",
 		}, nil
 	}
 
@@ -243,10 +242,9 @@ func TestHandlerRun(t *testing.T) {
 	}
 
 	// Create handler
-	authHandler := NewHandler(socketPath)
 
 	// Run auth
-	exitCode := authHandler.Run(context.Background(), credsFile.Name())
+	exitCode := Run(context.Background(), socketPath, credsFile.Name())
 
 	if exitCode != ExitDeferred {
 		t.Errorf("expected exit code %d (deferred), got %d", ExitDeferred, exitCode)
@@ -297,8 +295,7 @@ func TestHandlerRunDaemonError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	authHandler := NewHandler(socketPath)
-	exitCode := authHandler.Run(context.Background(), credsFile.Name())
+	exitCode := Run(context.Background(), socketPath, credsFile.Name())
 
 	if exitCode != ExitFailure {
 		t.Errorf("expected exit code %d (failure), got %d", ExitFailure, exitCode)
@@ -326,8 +323,7 @@ func TestHandlerRunNoDaemon(t *testing.T) {
 	}
 
 	// Try to connect to non-existent daemon
-	authHandler := NewHandler("/nonexistent/socket.sock")
-	exitCode := authHandler.Run(context.Background(), credsFile.Name())
+	exitCode := Run(context.Background(), "/nonexistent/socket.sock", credsFile.Name())
 
 	if exitCode != ExitFailure {
 		t.Errorf("expected exit code %d (failure), got %d", ExitFailure, exitCode)

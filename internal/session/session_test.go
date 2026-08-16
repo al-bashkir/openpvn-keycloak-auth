@@ -28,15 +28,7 @@ func TestCreateSession(t *testing.T) {
 	mgr := NewManager(5 * time.Minute)
 	defer mgr.Stop()
 
-	session, err := mgr.Create(
-		"testuser",
-		"testuser-cn",
-		"192.0.2.1",
-		"12345",
-		"/tmp/acf",
-		"/tmp/apf",
-		"/tmp/arf",
-	)
+	session, err := mgr.Create("testuser", "192.0.2.1", "/tmp/acf", "/tmp/arf")
 
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
@@ -67,7 +59,7 @@ func TestGetSession(t *testing.T) {
 	mgr := NewManager(5 * time.Minute)
 	defer mgr.Stop()
 
-	created, err := mgr.Create("testuser", "cn", "192.0.2.1", "12345", "/tmp/acf", "/tmp/apf", "/tmp/arf")
+	created, err := mgr.Create("testuser", "192.0.2.1", "/tmp/acf", "/tmp/arf")
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -93,7 +85,7 @@ func TestUpdateOIDCFlow(t *testing.T) {
 	mgr := NewManager(5 * time.Minute)
 	defer mgr.Stop()
 
-	session, err := mgr.Create("testuser", "cn", "192.0.2.1", "12345", "/tmp/acf", "/tmp/apf", "/tmp/arf")
+	session, err := mgr.Create("testuser", "192.0.2.1", "/tmp/acf", "/tmp/arf")
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -131,7 +123,7 @@ func TestGetByState(t *testing.T) {
 	mgr := NewManager(5 * time.Minute)
 	defer mgr.Stop()
 
-	session, err := mgr.Create("testuser", "cn", "192.0.2.1", "12345", "/tmp/acf", "/tmp/apf", "/tmp/arf")
+	session, err := mgr.Create("testuser", "192.0.2.1", "/tmp/acf", "/tmp/arf")
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -162,7 +154,7 @@ func TestDeleteSession(t *testing.T) {
 	mgr := NewManager(5 * time.Minute)
 	defer mgr.Stop()
 
-	session, err := mgr.Create("testuser", "cn", "192.0.2.1", "12345", "/tmp/acf", "/tmp/apf", "/tmp/arf")
+	session, err := mgr.Create("testuser", "192.0.2.1", "/tmp/acf", "/tmp/arf")
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -203,7 +195,7 @@ func TestMarkResultWritten(t *testing.T) {
 	mgr := NewManager(5 * time.Minute)
 	defer mgr.Stop()
 
-	sess, err := mgr.Create("testuser", "cn", "192.0.2.1", "12345", "/tmp/acf", "/tmp/apf", "/tmp/arf")
+	sess, err := mgr.Create("testuser", "192.0.2.1", "/tmp/acf", "/tmp/arf")
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -235,7 +227,7 @@ func TestClaimResultWrite(t *testing.T) {
 	mgr := NewManager(5 * time.Minute)
 	defer mgr.Stop()
 
-	sess, err := mgr.Create("testuser", "cn", "192.0.2.1", "12345", "/tmp/acf", "/tmp/apf", "/tmp/arf")
+	sess, err := mgr.Create("testuser", "192.0.2.1", "/tmp/acf", "/tmp/arf")
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -263,7 +255,7 @@ func TestSessionExpiry(t *testing.T) {
 	mgr := NewManager(100 * time.Millisecond)
 	defer mgr.Stop()
 
-	session, err := mgr.Create("testuser", "cn", "192.0.2.1", "12345", "/tmp/acf", "/tmp/apf", "/tmp/arf")
+	session, err := mgr.Create("testuser", "192.0.2.1", "/tmp/acf", "/tmp/arf")
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -290,7 +282,7 @@ func TestCleanup(t *testing.T) {
 
 	// Create multiple sessions
 	for i := 0; i < 5; i++ {
-		_, err := mgr.Create("testuser", "cn", "192.0.2.1", "12345", "/tmp/acf", "/tmp/apf", "/tmp/arf")
+		_, err := mgr.Create("testuser", "192.0.2.1", "/tmp/acf", "/tmp/arf")
 		if err != nil {
 			t.Fatalf("Create failed: %v", err)
 		}
@@ -319,7 +311,7 @@ func TestConcurrentAccess(t *testing.T) {
 	done := make(chan bool)
 	for i := 0; i < 10; i++ {
 		go func() {
-			_, err := mgr.Create("testuser", "cn", "192.0.2.1", "12345", "/tmp/acf", "/tmp/apf", "/tmp/arf")
+			_, err := mgr.Create("testuser", "192.0.2.1", "/tmp/acf", "/tmp/arf")
 			if err != nil {
 				t.Errorf("Create failed: %v", err)
 			}
