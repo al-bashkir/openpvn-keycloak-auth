@@ -3,8 +3,19 @@ name: Test and Build
 on:
   push:
     branches: [main, develop]
+    paths-ignore: &docs
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".gitignore"
+      - ".graphifyignore"
+      - "graphify-out/**"
+      - ".claude/**"
+      - ".opencode/**"
+      - ".plan/**"
   pull_request:
     branches: [main]
+    paths-ignore: *docs
 
 permissions:
   contents: read

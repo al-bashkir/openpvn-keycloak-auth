@@ -1,0 +1,53 @@
+# Satisfies required status checks (Test, Lint, Security Scan, Build (linux, *))
+# for docs-only changes that test.yml skips via paths-ignore.
+# Job names MUST stay in sync with test.yml.
+name: Test and Build
+
+on:
+  pull_request:
+    branches: [main]
+    paths: &docs
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".gitignore"
+      - ".graphifyignore"
+      - "graphify-out/**"
+      - ".claude/**"
+      - ".opencode/**"
+      - ".plan/**"
+  push:
+    branches: [main, develop]
+    paths: *docs
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "docs-only change, skipped"
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "docs-only change, skipped"
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux]
+        goarch: [amd64, arm64]
+    steps:
+      - run: echo "docs-only change, skipped"
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "docs-only change, skipped"
