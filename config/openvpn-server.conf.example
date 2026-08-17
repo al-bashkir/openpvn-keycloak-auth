@@ -8,7 +8,7 @@
 # Copy this file to: /etc/openvpn/server/server.conf
 # Then customize for your environment
 #
-# Documentation: See docs/openvpn-server-setup.md
+# Documentation: See docs/deployment.md
 #
 
 # ============================================================

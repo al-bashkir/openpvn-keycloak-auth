@@ -5,11 +5,12 @@ import (
 	"net"
 	"net/http"
 	"runtime/debug"
-	"strings"
 	"sync"
 	"time"
 
 	"golang.org/x/time/rate"
+
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/logsanitize"
 )
 
 // loggingMiddleware logs HTTP requests
@@ -17,17 +18,17 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		slog.Info("http request", // #nosec G706 -- values sanitized via sanitizeLog
-			"method", sanitizeLog(r.Method),
+		slog.Info("http request", // #nosec G706 -- values sanitized via logsanitize.Sanitize
+			"method", logsanitize.Sanitize(r.Method),
 			"path", redactRequestPath(r.URL.Path),
-			"remote_addr", sanitizeLog(r.RemoteAddr),
-			"user_agent", sanitizeLog(r.Header.Get("User-Agent")),
+			"remote_addr", logsanitize.Sanitize(r.RemoteAddr),
+			"user_agent", logsanitize.Sanitize(r.Header.Get("User-Agent")),
 		)
 
 		next.ServeHTTP(w, r)
 
-		slog.Debug("http request completed", // #nosec G706 -- values sanitized via sanitizeLog
-			"method", sanitizeLog(r.Method),
+		slog.Debug("http request completed", // #nosec G706 -- values sanitized via logsanitize.Sanitize
+			"method", logsanitize.Sanitize(r.Method),
 			"path", redactRequestPath(r.URL.Path),
 			"duration_ms", time.Since(start).Milliseconds(),
 		)
@@ -64,7 +65,6 @@ type IPRateLimiter struct {
 	rate     rate.Limit
 	burst    int
 	ttl      time.Duration // entries are evicted after this duration of inactivity
-	maxSize  int           // maximum number of tracked IPs
 }
 
 func newIPRateLimiter(r rate.Limit, b int) *IPRateLimiter {
@@ -73,7 +73,6 @@ func newIPRateLimiter(r rate.Limit, b int) *IPRateLimiter {
 		rate:     r,
 		burst:    b,
 		ttl:      5 * time.Minute,
-		maxSize:  10000,
 	}
 
 	// Start background eviction goroutine
@@ -92,11 +91,6 @@ func (i *IPRateLimiter) getLimiter(ip string) *rate.Limiter {
 		return entry.limiter
 	}
 
-	// Evict oldest entries if at capacity
-	if len(i.limiters) >= i.maxSize {
-		i.evictOldest()
-	}
-
 	limiter := rate.NewLimiter(i.rate, i.burst)
 	i.limiters[ip] = &ipEntry{
 		limiter:  limiter,
@@ -106,7 +100,8 @@ func (i *IPRateLimiter) getLimiter(ip string) *rate.Limiter {
 	return limiter
 }
 
-// evictLoop periodically removes stale entries.
+// evictLoop periodically removes stale entries. It is what bounds the map:
+// an IP that stops calling is dropped within ttl + one tick.
 func (i *IPRateLimiter) evictLoop() {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
@@ -123,24 +118,9 @@ func (i *IPRateLimiter) evictLoop() {
 	}
 }
 
-// evictOldest removes the oldest entry. Must be called with mu held.
-func (i *IPRateLimiter) evictOldest() {
-	var oldestIP string
-	var oldestTime time.Time
-
-	for ip, entry := range i.limiters {
-		if oldestIP == "" || entry.lastSeen.Before(oldestTime) {
-			oldestIP = ip
-			oldestTime = entry.lastSeen
-		}
-	}
-
-	if oldestIP != "" {
-		delete(i.limiters, oldestIP)
-	}
-}
-
-// Global rate limiter: 10 requests per second per IP, burst of 50
+// Global rate limiter: 10 requests per second per IP, burst of 50.
+// ponytail: process-lifetime singleton; its evictLoop goroutine intentionally
+// has no stop channel. Add one only if rate limiting becomes per-Server.
 var globalLimiter = newIPRateLimiter(10, 50)
 
 // rateLimitMiddleware implements rate limiting
@@ -150,8 +130,8 @@ func rateLimitMiddleware(next http.Handler) http.Handler {
 		limiter := globalLimiter.getLimiter(ip)
 
 		if !limiter.Allow() {
-			slog.Warn("rate limit exceeded", // #nosec G706 -- values sanitized via sanitizeLog
-				"ip", sanitizeLog(ip),
+			slog.Warn("rate limit exceeded", // #nosec G706 -- values sanitized via logsanitize.Sanitize
+				"ip", logsanitize.Sanitize(ip),
 				"path", redactRequestPath(r.URL.Path),
 			)
 			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
@@ -174,12 +154,12 @@ func extractIP(r *http.Request) string {
 	return ip
 }
 
+// redactRequestPath keeps the session state out of request logs.
 func redactRequestPath(path string) string {
-	idx := strings.LastIndex(path, "/auth/")
-	if idx != -1 {
-		return sanitizeLog(path[:idx] + "/auth/{state}")
+	if prefix, _, ok := splitAuthPath(path); ok {
+		return logsanitize.Sanitize(prefix + "/auth/{state}")
 	}
-	return sanitizeLog(path)
+	return logsanitize.Sanitize(path)
 }
 
 // securityHeadersMiddleware adds security headers to responses.

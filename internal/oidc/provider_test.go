@@ -51,7 +51,7 @@ func TestNewProviderAndStartAuthFlow(t *testing.T) {
 		t.Fatalf("NewProvider failed: %v", err)
 	}
 
-	flow, err := p.StartAuthFlow(context.Background())
+	flow, err := p.StartAuthFlow()
 	if err != nil {
 		t.Fatalf("StartAuthFlow failed: %v", err)
 	}

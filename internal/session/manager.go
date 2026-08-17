@@ -49,29 +49,21 @@ func (m *Manager) Stop() {
 // Create creates a new session with the given parameters.
 // The session ID is generated using crypto/rand (64 hex characters).
 // Returns the new session or an error.
-func (m *Manager) Create(username, commonName, untrustedIP, untrustedPort string,
-	authControlFile, authPendingFile, authFailedReasonFile string) (*Session, error) {
-
+func (m *Manager) Create(username, untrustedIP, authControlFile, authFailedReasonFile string) (*Session, error) {
 	// Generate session ID
 	sessionID, err := generateSessionID()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate session ID: %w", err)
 	}
 
-	now := time.Now()
-
 	// Create session
 	session := &Session{
 		ID:                   sessionID,
 		Username:             username,
-		CommonName:           commonName,
 		UntrustedIP:          untrustedIP,
-		UntrustedPort:        untrustedPort,
 		AuthControlFile:      authControlFile,
-		AuthPendingFile:      authPendingFile,
 		AuthFailedReasonFile: authFailedReasonFile,
-		CreatedAt:            now,
-		ExpiresAt:            now.Add(m.sessionTimeout),
+		ExpiresAt:            time.Now().Add(m.sessionTimeout),
 	}
 
 	// Store session
@@ -107,6 +99,7 @@ func (m *Manager) UpdateOIDCFlow(sessionID, state, codeVerifier, nonce, authURL 
 
 // Get retrieves a session by its ID.
 // Returns an error if the session is not found or has expired.
+// Sole consumer is the test suite; the daemon looks sessions up by state.
 func (m *Manager) Get(sessionID string) (*Session, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -116,7 +109,6 @@ func (m *Manager) Get(sessionID string) (*Session, error) {
 		return nil, fmt.Errorf("session not found")
 	}
 
-	// Check expiry
 	if time.Now().After(session.ExpiresAt) {
 		return nil, fmt.Errorf("session expired")
 	}
@@ -207,7 +199,7 @@ func (m *Manager) Delete(sessionID string) {
 }
 
 // Count returns the current number of active sessions.
-// Useful for monitoring and testing.
+// Sole consumer is the test suite, which uses it to observe cleanup and expiry.
 func (m *Manager) Count() int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

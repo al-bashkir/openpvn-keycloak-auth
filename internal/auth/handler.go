@@ -19,22 +19,10 @@ const (
 	ExitDeferred = 2 // Auth deferred (SSO flow initiated)
 )
 
-// Handler handles authentication requests from OpenVPN
-type Handler struct {
-	socketPath string
-}
-
-// NewHandler creates a new auth handler
-func NewHandler(socketPath string) *Handler {
-	return &Handler{
-		socketPath: socketPath,
-	}
-}
-
-// Run executes the auth script logic
-// It reads OpenVPN environment, parses credentials, sends request to daemon,
-// and returns the appropriate exit code
-func (h *Handler) Run(ctx context.Context, credentialsFile string) int {
+// Run executes the auth script logic: it reads the OpenVPN environment,
+// parses credentials, sends the request to the daemon listening on socketPath,
+// and returns the exit code OpenVPN expects.
+func Run(ctx context.Context, socketPath, credentialsFile string) int {
 	// Parse OpenVPN environment variables
 	env, err := ParseEnv()
 	if err != nil {
@@ -84,9 +72,6 @@ func (h *Handler) Run(ctx context.Context, credentialsFile string) int {
 		"pending_method", pendingMethod,
 	)
 
-	// Create IPC client
-	client := ipc.NewClient(h.socketPath)
-
 	// Build auth request (password intentionally excluded from IPC)
 	req := &ipc.AuthRequest{
 		Username:             env.Username,
@@ -100,7 +85,7 @@ func (h *Handler) Run(ctx context.Context, credentialsFile string) int {
 	}
 
 	// Send request to daemon
-	resp, err := client.SendAuthRequest(ctx, req)
+	resp, err := ipc.SendAuthRequest(ctx, socketPath, req)
 	if err != nil {
 		slog.Error("failed to communicate with daemon", "error", err)
 		fmt.Fprintf(os.Stderr, "Error: daemon communication failed: %v\n", err)
@@ -120,7 +105,6 @@ func (h *Handler) Run(ctx context.Context, credentialsFile string) int {
 			"session_id", resp.SessionID,
 			"username", logsanitize.Sanitize(env.Username),
 		)
-		slog.Debug("auth URL generated", "url_length", len(resp.AuthURL))
 
 		// Auth is deferred - daemon will handle the SSO flow
 		// and write to auth_control_file when complete

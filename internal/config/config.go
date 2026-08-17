@@ -82,8 +82,12 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
-	// Apply environment variable overrides
-	cfg.applyEnvOverrides()
+	// The client secret may be supplied out-of-band so it never has to live in
+	// the config file (systemd EnvironmentFile, secrets manager, container env).
+	// No other setting is overridable: everything else belongs in the file.
+	if v := os.Getenv("OVPN_SSO_OIDC_CLIENT_SECRET"); v != "" {
+		cfg.OIDC.ClientSecret = v
+	}
 
 	// Validate
 	if err := cfg.Validate(); err != nil {
@@ -119,39 +123,6 @@ func DefaultConfig() *Config {
 	}
 }
 
-// applyEnvOverrides applies environment variable overrides
-func (c *Config) applyEnvOverrides() {
-	// OIDC overrides
-	if v := os.Getenv("OVPN_SSO_OIDC_ISSUER"); v != "" {
-		c.OIDC.Issuer = v
-	}
-	if v := os.Getenv("OVPN_SSO_OIDC_CLIENT_ID"); v != "" {
-		c.OIDC.ClientID = v
-	}
-	if v := os.Getenv("OVPN_SSO_OIDC_CLIENT_SECRET"); v != "" {
-		c.OIDC.ClientSecret = v
-	}
-	if v := os.Getenv("OVPN_SSO_OIDC_REDIRECT_URI"); v != "" {
-		c.OIDC.RedirectURI = v
-	}
-
-	// Log overrides
-	if v := os.Getenv("OVPN_SSO_LOG_LEVEL"); v != "" {
-		c.Log.Level = v
-	}
-	if v := os.Getenv("OVPN_SSO_LOG_FORMAT"); v != "" {
-		c.Log.Format = v
-	}
-
-	// Listen overrides
-	if v := os.Getenv("OVPN_SSO_LISTEN_HTTP"); v != "" {
-		c.Listen.HTTP = v
-	}
-	if v := os.Getenv("OVPN_SSO_LISTEN_SOCKET"); v != "" {
-		c.Listen.Socket = v
-	}
-}
-
 // Validate checks that the configuration is valid
 func (c *Config) Validate() error {
 	// Validate OIDC config
@@ -169,7 +140,7 @@ func (c *Config) Validate() error {
 	if c.OIDC.RedirectURI == "" {
 		return fmt.Errorf("oidc.redirect_uri is required")
 	}
-	if err := validateRedirectURI(c.OIDC.RedirectURI); err != nil {
+	if _, err := ParseRedirectURI(c.OIDC.RedirectURI); err != nil {
 		return err
 	}
 
@@ -275,27 +246,39 @@ func validateIssuerURL(rawURL string) error {
 	return nil
 }
 
-func validateRedirectURI(rawURL string) error {
+// ParseRedirectURI parses and validates oidc.redirect_uri. It is the single
+// definition of a usable callback URL: absolute HTTP(S), no userinfo or
+// fragment, and a canonical non-root path that does not collide with /health.
+// Config validation, the HTTP route table, and short auth URL construction all
+// go through it so the three cannot drift apart.
+func ParseRedirectURI(rawURL string) (*url.URL, error) {
 	parsed, err := validateHTTPURL("oidc.redirect_uri", rawURL)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if parsed.Path == "" || parsed.Path == "/" {
-		return fmt.Errorf("oidc.redirect_uri must include a non-root callback path")
+		return nil, fmt.Errorf("oidc.redirect_uri must include a non-root callback path")
 	}
 	if path.Clean(parsed.Path) != parsed.Path {
-		return fmt.Errorf("oidc.redirect_uri path must be canonical")
+		return nil, fmt.Errorf("oidc.redirect_uri path must be canonical")
 	}
-	if isReservedCallbackPath(parsed.Path) {
-		return fmt.Errorf("oidc.redirect_uri path is reserved")
+	if parsed.Path == "/health" {
+		return nil, fmt.Errorf("oidc.redirect_uri path is reserved")
 	}
 
-	return nil
+	return parsed, nil
 }
 
-func isReservedCallbackPath(callbackPath string) bool {
-	return callbackPath == "/health"
+// AuthPrefix returns the "/auth/" subtree that sits beside the callback path,
+// e.g. "https://host/vpn/callback" yields "/vpn/auth/". The trailing slash
+// makes it an http.ServeMux subtree pattern.
+func AuthPrefix(u *url.URL) string {
+	base := path.Dir(u.Path)
+	if base == "." {
+		base = "/"
+	}
+	return path.Join(base, "auth") + "/"
 }
 
 // SetupLogging configures the global slog logger based on the LogConfig.

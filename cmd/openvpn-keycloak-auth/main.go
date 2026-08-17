@@ -28,12 +28,9 @@ var (
 	logFormat  string
 )
 
-// Exit codes
-const (
-	ExitError    = 1
-	ExitDeferred = 2 // Special: auth deferred (only for auth command)
-	ExitConfig   = 3
-)
+// Exit codes. 1 (failure) and 2 (deferred) live in the auth package, which
+// owns the contract with OpenVPN; 3 is this CLI's own config-error code.
+const ExitConfig = 3
 
 var rootCmd = &cobra.Command{
 	Use:   "openvpn-keycloak-auth",
@@ -137,7 +134,7 @@ func init() {
 func main() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(ExitError)
+		os.Exit(auth.ExitFailure)
 	}
 
 	// If a subcommand set a specific exit code, use it.
@@ -204,11 +201,8 @@ func runAuth(cmd *cobra.Command, args []string) error {
 		)
 	}
 
-	// Create auth handler
-	handler := auth.NewHandler(socketPath)
-
 	// Run auth -- exit code is applied in main() after cobra finishes
-	overrideExitCode = handler.Run(context.Background(), credentialsFile)
+	overrideExitCode = auth.Run(context.Background(), socketPath, credentialsFile)
 	return nil
 }
 

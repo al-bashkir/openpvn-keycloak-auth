@@ -240,16 +240,7 @@ func TestNewAndHandleAuthRequest_Success(t *testing.T) {
 		t.Fatalf("expected full auth URL to contain PKCE params, got: %s", sess.AuthURL)
 	}
 
-	if resp.AuthURL == "" {
-		t.Fatal("expected short auth URL to be set")
-	}
-	if !strings.Contains(resp.AuthURL, "/auth/") {
-		t.Fatalf("expected short auth URL to contain /auth/, got: %s", resp.AuthURL)
-	}
-	if !strings.HasSuffix(resp.AuthURL, "/auth/"+sess.State) {
-		t.Fatalf("expected short auth URL to end with /auth/<state>, got: %s", resp.AuthURL)
-	}
-
+	// The short auth URL only reaches the client through auth_pending_file.
 	content, err := os.ReadFile(req.AuthPendingFile)
 	if err != nil {
 		t.Fatalf("failed to read auth_pending_file: %v", err)
@@ -264,8 +255,15 @@ func TestNewAndHandleAuthRequest_Success(t *testing.T) {
 	if lines[1] != "webauth" {
 		t.Fatalf("method line = %q, want %q", lines[1], "webauth")
 	}
-	if lines[2] != "WEB_AUTH::"+resp.AuthURL {
-		t.Fatalf("WEB_AUTH line = %q, want %q", lines[2], "WEB_AUTH::"+resp.AuthURL)
+	shortAuthURL := strings.TrimPrefix(lines[2], "WEB_AUTH::")
+	if shortAuthURL == lines[2] {
+		t.Fatalf("WEB_AUTH line = %q, want a WEB_AUTH:: prefix", lines[2])
+	}
+	if !strings.HasSuffix(shortAuthURL, "/auth/"+sess.State) {
+		t.Fatalf("expected short auth URL to end with /auth/<state>, got: %s", shortAuthURL)
+	}
+	if len("WEB_AUTH::")+len(shortAuthURL)+1 > maxWebAuthLineLen {
+		t.Fatalf("WEB_AUTH line exceeds OpenVPN's %d-byte limit: %q", maxWebAuthLineLen, lines[2])
 	}
 }
 

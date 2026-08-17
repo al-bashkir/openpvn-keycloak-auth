@@ -14,8 +14,10 @@ This document covers security considerations, best practices, and hardening reco
 8. [Keycloak Security](#keycloak-security)
 9. [OpenVPN Security](#openvpn-security)
 10. [Threat Model](#threat-model)
-11. [Security Checklist](#security-checklist)
-12. [Incident Response](#incident-response)
+11. [Attack Surface: URL Interception](#attack-surface-url-interception)
+12. [Security Checklist](#security-checklist)
+13. [Compliance Frameworks](#compliance-frameworks)
+14. [Incident Response](#incident-response)
 
 ---
 
@@ -880,62 +882,146 @@ firewall-cmd --reload
 - Client-side malware (user's responsibility)
 - Social engineering (user education)
 
-### Attack Scenarios
+---
 
-**Scenario 1: Stolen Authorization Code**
+## Attack Surface: URL Interception
 
-_Attack:_ Attacker intercepts authorization code
+Three URLs travel outside the daemon during a login: the short `WEB_AUTH::` link,
+the full Keycloak authorization URL, and the callback URL carrying the
+authorization code. This section walks through what an attacker gains by
+capturing each one.
 
-_Mitigation:_
+### Scenario 1: Attacker captures the short URL
 
-- PKCE prevents use of stolen code (attacker doesn't have verifier)
-- Code is one-time use only
-- Code expires in 60 seconds
+```
+WEB_AUTH::https://vpn.example.com:9000/auth/a1b2c3d4e5f6...
+```
 
-**Scenario 2: Stolen Access Token**
+**How it could leak:** Sniffing the OpenVPN control channel (unlikely -- it's TLS-encrypted), shoulder surfing, or reading logs.
 
-_Attack:_ Attacker steals access token from network or logs
+**What happens if attacker opens it:**
 
-_Mitigation:_
+- They get 302-redirected to Keycloak login page
+- They must **authenticate as the correct user** in Keycloak (password + MFA)
+- If they somehow do authenticate (e.g., they ARE the user on another device), the VPN connects for the original session -- **but the attacker's browser just showed a success page, they don't get a VPN tunnel themselves**
+- The `auth_control_file` write grants access to the **original OpenVPN session**, not to the attacker's machine
 
-- Tokens never logged
-- TLS encrypts network traffic
-- Short token lifetime (5 minutes)
-- Token only valid for specific client
+**Risk: Low.** The URL is just a redirect to "please log in." Without Keycloak credentials, it's useless.
 
-**Scenario 3: CSRF Attack**
+### Scenario 2: Attacker captures the full Keycloak auth URL
 
-_Attack:_ Attacker tricks user into using attacker's authorization code
+```
+https://keycloak.example.com/realms/.../auth?client_id=openvpn&code_challenge=E9Mel...&state=a1b2c3...
+```
 
-_Mitigation:_
+**Same situation as Scenario 1** -- this URL just leads to a login page. The `code_challenge` is a **hash** of the PKCE verifier (S256). The attacker cannot reverse it. They still need Keycloak credentials.
 
-- State parameter ties callback to specific session
-- State is random and unpredictable
-- State validated before accepting code
+**Risk: Low.**
 
-**Scenario 4: Session Fixation**
+### Scenario 3: Attacker captures the callback URL (the dangerous one)
 
-_Attack:_ Attacker forces user to use known session ID
+```
+https://vpn.example.com:9000/callback?code=AUTH_CODE&state=a1b2c3d4...
+```
 
-_Mitigation:_
+**How it could leak:** Browser history, HTTP referer header, proxy logs, browser extension, malware on user's machine.
 
-- Session ID generated server-side from crypto/rand
-- New session ID for each authentication attempt
-- Session ID tied to OpenVPN connection
+**What happens if attacker replays it:**
 
-**Scenario 5: DoS via Unlimited Requests**
+The attacker has the `authorization_code`. But the daemon exchanges it with Keycloak using:
 
-_Attack:_ Attacker floods callback endpoint
+```
+code=AUTH_CODE
+code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk  <-- only daemon knows this
+client_secret=SECRET                                          <-- only daemon knows this
+```
 
-_Mitigation:_
+**This is exactly what PKCE prevents.** Keycloak will reject a token exchange without the correct `code_verifier` that matches the `code_challenge` sent earlier. The attacker doesn't have the verifier (it's stored in the daemon's in-memory session, never exposed via any URL or HTTP response).
 
-- Rate limiting (10 req/s per IP)
-- Firewall can block abusive IPs
-- systemd resource limits prevent resource exhaustion
+Additionally:
+
+- Authorization codes are **single-use** -- if the daemon already exchanged it, replay fails
+- Authorization codes are **short-lived** (typically 30-60 seconds in Keycloak)
+- The `state` parameter is deleted from the session store after first use
+
+**Risk: Very low** thanks to PKCE + single-use codes + client_secret.
+
+### Scenario 4: Attacker is on the same network (MITM)
+
+All URLs use **HTTPS**. To MITM:
+
+- `vpn.example.com:9000` -- attacker needs a valid TLS cert for this domain
+- `keycloak.example.com` -- attacker needs a valid TLS cert for this domain
+
+Without compromising a CA, this is not feasible.
+
+### Scenario 5: Full browser compromise
+
+If the attacker has **full control of the user's browser** (malware, compromised extension), they could:
+
+1. Wait for the user to authenticate in Keycloak
+2. Intercept the callback **before** it reaches the daemon
+3. Send it to the daemon themselves
+
+But this gives them nothing extra -- the `auth_control_file` write connects the **original VPN session** (from the original user's machine). The attacker's machine doesn't get a tunnel.
+
+If the attacker also controls the user's machine... they already have full access anyway.
+
+### Summary
+
+| Attack                               | Blocked by                                                       | Risk          |
+| ------------------------------------ | ---------------------------------------------------------------- | ------------- |
+| Steal short URL `/auth/<state>`      | Keycloak login required                                          | Low           |
+| Steal full Keycloak auth URL         | Keycloak login required                                          | Low           |
+| Steal callback `?code=...&state=...` | PKCE (verifier never exposed) + single-use code + client_secret  | Very low      |
+| Replay callback after legitimate use | Single-use auth code + session deleted after first use           | None          |
+| MITM any URL                         | TLS on all hops                                                  | Very low      |
+| Steal code + somehow get verifier    | Verifier is in daemon memory only, never in any URL/response/log | Extremely low |
+
+### Key Architectural Defense
+
+**The secret (PKCE verifier) and the authorization code never travel through the same channel.** The code goes through the browser; the verifier stays in daemon memory. An attacker would need to compromise both the browser flow AND the daemon's memory simultaneously.
+
+Two further classes of attack are worth naming explicitly:
+
+**Session fixation.** Session IDs are generated server-side from `crypto/rand`, a
+new one per authentication attempt, and each is tied to one OpenVPN connection.
+An attacker cannot force a known session ID.
+
+**DoS via unlimited requests.** The callback endpoint is rate limited to 10
+req/s per IP; the firewall can block abusive sources, and the systemd resource
+limits cap what a flood can consume.
 
 ---
 
 ## Security Checklist
+
+Use this during initial deployment, security audits, and regular reviews.
+
+### Scored Assessment
+
+Score each category against the corresponding section of this document, then
+total. The verification commands live in those sections -- Network Security,
+Authentication Flow Security, Token Security, File Permissions, systemd
+Hardening, Logging Security -- rather than being repeated here.
+
+**Security Score:** ___/100
+
+| Category             | Weight | Score | Verify against                                                                                         |
+| -------------------- | ------ | ----- | ------------------------------------------------------------------------------------------------------ |
+| Network Security     | 20     | __/20 | [Network Security](#network-security)                                                                  |
+| Authentication       | 25     | __/25 | [Authentication Flow Security](#authentication-flow-security), [Keycloak Security](#keycloak-security) |
+| Authorization        | 15     | __/15 | [Token Security](#token-security)                                                                      |
+| System Hardening     | 20     | __/20 | [File Permissions](#file-permissions), [systemd Hardening](#systemd-hardening)                         |
+| Logging & Monitoring | 10     | __/10 | [Logging Security](#logging-security)                                                                  |
+| Maintenance          | 10     | __/10 | [Regular Maintenance](#regular-maintenance)                                                            |
+
+**Grade:**
+
+- 90-100: Excellent -- maintain posture, review quarterly
+- 75-89: Good -- address failed checks, enable MFA if missing
+- 60-74: Needs improvement -- prioritize Network and Authentication gaps, fix within 30 days
+- <60: Urgent -- do not deploy to production; fix and retest
 
 ### Deployment Checklist
 
@@ -1043,6 +1129,39 @@ fi
 echo ""
 echo "=== Checks Complete ==="
 ```
+
+---
+
+## Compliance Frameworks
+
+### PCI DSS
+
+If processing payment card data over VPN:
+
+- [ ] Strong authentication (MFA) ✅ Supported
+- [ ] Encryption in transit (TLS) ✅ Supported
+- [ ] Audit logging ✅ Supported
+- [ ] Access control (role-based) ✅ Supported
+- [ ] Regular security testing ⚠️ Manual
+
+### HIPAA
+
+If transmitting PHI over VPN:
+
+- [ ] Access control (unique user IDs) ✅ Supported
+- [ ] Audit logging ✅ Supported
+- [ ] Encryption ✅ Supported
+- [ ] Session timeout ✅ Supported
+- [ ] Emergency access procedure ⚠️ Manual
+
+### GDPR
+
+For EU user data:
+
+- [ ] Data minimization (only log necessary data) ✅ Implemented
+- [ ] Right to erasure (user deletion) ⚠️ Manual in Keycloak
+- [ ] Data breach notification ⚠️ Manual process
+- [ ] Privacy by design ✅ Implemented
 
 ---
 

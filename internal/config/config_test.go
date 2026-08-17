@@ -313,10 +313,8 @@ oidc:
 	}
 }
 
-func TestEnvironmentOverrides(t *testing.T) {
-	// Set environment variables
+func TestClientSecretEnvOverride(t *testing.T) {
 	t.Setenv("OVPN_SSO_OIDC_CLIENT_SECRET", "env-secret")
-	t.Setenv("OVPN_SSO_LOG_LEVEL", "debug")
 
 	configYAML := `
 oidc:
@@ -351,8 +349,9 @@ log:
 		t.Errorf("expected client_secret='env-secret', got '%s'", cfg.OIDC.ClientSecret)
 	}
 
-	if cfg.Log.Level != "debug" {
-		t.Errorf("expected log level 'debug', got '%s'", cfg.Log.Level)
+	// Nothing else is overridable: the file still wins for log level.
+	if cfg.Log.Level != "info" {
+		t.Errorf("expected log level 'info' from file, got '%s'", cfg.Log.Level)
 	}
 }
 

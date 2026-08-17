@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/al-bashkir/openvpn-keycloak-auth/internal/logsanitize"
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/oidc"
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/openvpn"
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/session"
@@ -18,8 +19,8 @@ import (
 // to the full Keycloak authorization URL stored in the session.
 func (s *Server) handleAuthRedirect(w http.ResponseWriter, r *http.Request) {
 	// Extract state from URL path: /auth/{state}
-	state := authStateFromPath(r.URL.Path)
-	if state == "" {
+	_, state, ok := splitAuthPath(r.URL.Path)
+	if !ok || state == "" {
 		s.renderError(w, "Invalid auth URL")
 		return
 	}
@@ -156,7 +157,7 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// Exchange code for tokens (also verifies id_token nonce binding)
-	tokenData, err := s.oidcProvider.ExchangeCode(r.Context(), code, session.CodeVerifier, session.Nonce)
+	claims, err := s.oidcProvider.ExchangeCode(r.Context(), code, session.CodeVerifier, session.Nonce)
 	if err != nil {
 		slog.Error("token exchange failed", // #nosec G706 -- raw provider-controlled error details intentionally omitted
 			"session_id", session.ID,
@@ -167,17 +168,8 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate token claims
-	validator := oidc.NewValidator(&s.cfg.OIDC, &s.cfg.Auth)
-
-	var validationErr error
-	if s.cfg.Auth.AllowUsernameMismatch {
-		// Roles are still enforced even when the VPN username is allowed to differ.
-		validationErr = validator.ValidateRoles(tokenData.Claims)
-	} else {
-		validationErr = validator.ValidateToken(tokenData.Claims, session.Username)
-	}
-	if validationErr != nil {
+	// Validate token claims against username and role policy
+	if validationErr := oidc.Validate(s.cfg, claims, session.Username); validationErr != nil {
 		slog.Error("token validation failed", // #nosec G706 -- raw token-controlled claim values intentionally omitted
 			"session_id", session.ID,
 			"error_category", validationFailureCategory(validationErr),
@@ -187,14 +179,14 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Extract username for logging (already validated by validator if AllowUsernameMismatch is false)
-	username, _ := tokenData.Claims[s.cfg.Auth.UsernameClaim].(string)
+	// Extract username for logging (already validated unless AllowUsernameMismatch is set)
+	username, _ := claims[s.cfg.Auth.UsernameClaim].(string)
 
-	slog.Info("user authenticated successfully", // #nosec G706 -- values sanitized via sanitizeLog
+	slog.Info("user authenticated successfully", // #nosec G706 -- values sanitized via logsanitize.Sanitize
 		"session_id", session.ID,
-		"username", sanitizeLog(username),
-		"expected_username", sanitizeLog(session.Username),
-		"ip", sanitizeLog(session.UntrustedIP),
+		"username", logsanitize.Sanitize(username),
+		"expected_username", logsanitize.Sanitize(session.Username),
+		"ip", logsanitize.Sanitize(session.UntrustedIP),
 	)
 
 	// Authentication successful!
@@ -230,8 +222,8 @@ func (s *Server) writeAuthSuccess(sess *session.Session) error {
 
 	slog.Info("auth success written",
 		"session_id", sess.ID,
-		"username", sanitizeLog(sess.Username),
-		"ip", sanitizeLog(sess.UntrustedIP),
+		"username", logsanitize.Sanitize(sess.Username),
+		"ip", logsanitize.Sanitize(sess.UntrustedIP),
 	)
 
 	_ = s.sessionMgr.MarkResultWritten(sess.ID)
@@ -242,9 +234,9 @@ func (s *Server) writeAuthSuccess(sess *session.Session) error {
 // writeAuthFailure writes failure to the OpenVPN control file and deletes the session.
 func (s *Server) writeAuthFailure(sess *session.Session, reason string) {
 	if s.sessionMgr == nil {
-		slog.Error("session manager is nil, cannot write auth failure", // #nosec G706 -- values sanitized via sanitizeLog
+		slog.Error("session manager is nil, cannot write auth failure", // #nosec G706 -- values sanitized via logsanitize.Sanitize
 			"session_id", sess.ID,
-			"reason", sanitizeLog(reason),
+			"reason", logsanitize.Sanitize(reason),
 		)
 		return
 	}
@@ -270,10 +262,10 @@ func (s *Server) writeAuthFailure(sess *session.Session, reason string) {
 		return
 	}
 
-	slog.Info("auth failure written", // #nosec G706 -- values sanitized via sanitizeLog
+	slog.Info("auth failure written", // #nosec G706 -- values sanitized via logsanitize.Sanitize
 		"session_id", sess.ID,
-		"username", sanitizeLog(sess.Username),
-		"reason", sanitizeLog(reason),
+		"username", logsanitize.Sanitize(sess.Username),
+		"reason", logsanitize.Sanitize(reason),
 	)
 
 	_ = s.sessionMgr.MarkResultWritten(sess.ID)
@@ -309,10 +301,13 @@ func validationFailureCategory(err error) string {
 	}
 }
 
-func authStateFromPath(path string) string {
-	idx := strings.LastIndex(path, "/auth/")
+// splitAuthPath splits a request path at its "/auth/" segment, returning the
+// prefix before it and the state after it. ok is false when the path is not a
+// short auth link.
+func splitAuthPath(p string) (prefix, state string, ok bool) {
+	idx := strings.LastIndex(p, "/auth/")
 	if idx == -1 {
-		return ""
+		return "", "", false
 	}
-	return path[idx+len("/auth/"):]
+	return p[:idx], p[idx+len("/auth/"):], true
 }

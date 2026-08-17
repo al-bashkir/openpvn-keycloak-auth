@@ -96,28 +96,23 @@ tls:
 log:
   # Log level: debug, info, warn, error
   # Recommendation: info for production, debug for troubleshooting
-  # Can be overridden with --log-level flag or OVPN_SSO_LOG_LEVEL env var
+  # Can be overridden with the --log-level flag
   level: "info"
 
   # Log format: json, text
   # json is recommended for production (structured logging)
   # text is more readable for development
-  # Can be overridden with --log-format flag or OVPN_SSO_LOG_FORMAT env var
+  # Can be overridden with the --log-format flag
   format: "json"
 
 # ==========================================
 # Notes
 # ==========================================
 #
-# Environment Variable Overrides:
-#   OVPN_SSO_OIDC_ISSUER          - Override oidc.issuer
-#   OVPN_SSO_OIDC_CLIENT_ID       - Override oidc.client_id
-#   OVPN_SSO_OIDC_CLIENT_SECRET   - Override oidc.client_secret
-#   OVPN_SSO_OIDC_REDIRECT_URI    - Override oidc.redirect_uri
-#   OVPN_SSO_LOG_LEVEL            - Override log.level
-#   OVPN_SSO_LOG_FORMAT           - Override log.format
-#   OVPN_SSO_LISTEN_HTTP          - Override listen.http
-#   OVPN_SSO_LISTEN_SOCKET        - Override listen.socket
+# Environment Variable Override:
+#   OVPN_SSO_OIDC_CLIENT_SECRET   - Override oidc.client_secret, so the secret
+#                                   never has to be written to this file.
+#                                   Every other setting is file-only.
 #
 # File Permissions:
 #   This file contains the client secret when confidential clients are used.
@@ -130,5 +125,5 @@ log:
 #     openvpn-keycloak-auth check-config --config /etc/openvpn/keycloak-sso.yaml
 #
 # Documentation:
-#   See docs/keycloak-setup.md for Keycloak configuration instructions
-#   See docs/keycloak-troubleshooting.md for common issues
+#   See docs/keycloak.md for Keycloak configuration instructions
+#   See docs/keycloak.md for common issues

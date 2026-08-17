@@ -8,8 +8,6 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
-	"net/url"
-	"path"
 	"time"
 
 	"github.com/al-bashkir/openvpn-keycloak-auth/internal/config"
@@ -46,12 +44,20 @@ func NewServer(cfg *config.Config, oidcProvider *oidc.Provider, sessionMgr *sess
 		sessionMgr:   sessionMgr,
 	}
 
-	// Register routes
-	for _, route := range callbackAndAuthRoutes(cfg.OIDC.RedirectURI) {
-		s.mux.HandleFunc(route.callback, s.handleCallback)
-		s.mux.HandleFunc(route.auth, s.handleAuthRedirect)
+	// Register routes. The redirect_uri was validated at config load, so a
+	// parse failure here means the config was built by hand in a test.
+	redirect, err := config.ParseRedirectURI(cfg.OIDC.RedirectURI)
+	if err != nil {
+		return nil, err
 	}
-	s.mux.HandleFunc("/health", s.handleHealth)
+	s.mux.HandleFunc(redirect.Path, s.handleCallback)
+	s.mux.HandleFunc(config.AuthPrefix(redirect), s.handleAuthRedirect)
+	s.mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := w.Write([]byte(`{"status":"ok"}` + "\n")); err != nil {
+			slog.Error("failed to write health response", "error", err)
+		}
+	})
 
 	// Wrap with middleware
 	handler := loggingMiddleware(s.mux)
@@ -76,33 +82,6 @@ func NewServer(cfg *config.Config, oidcProvider *oidc.Provider, sessionMgr *sess
 	}
 
 	return s, nil
-}
-
-type authRoutes struct {
-	callback string
-	auth     string
-}
-
-func callbackAndAuthRoutes(redirectURI string) []authRoutes {
-	u, err := url.Parse(redirectURI)
-	if err != nil {
-		return nil
-	}
-
-	callbackPath := u.Path
-	if callbackPath == "" || callbackPath == "/" || path.Clean(callbackPath) != callbackPath || callbackPath == "/health" {
-		return nil
-	}
-
-	basePath := path.Dir(callbackPath)
-	if basePath == "." {
-		basePath = "/"
-	}
-
-	return []authRoutes{{
-		callback: callbackPath,
-		auth:     path.Join(basePath, "auth") + "/",
-	}}
 }
 
 // Start starts the HTTP server

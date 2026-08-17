@@ -24,7 +24,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
-          go-version: "1.26"
+          go-version: "1.26.6"
           cache: true
 
       - name: Download dependencies
@@ -64,7 +64,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
-          go-version: "1.26"
+          go-version: "1.26.6"
           cache: true
 
       - name: Run golangci-lint
@@ -89,7 +89,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
-          go-version: "1.26"
+          go-version: "1.26.6"
           cache: true
 
       - name: Build binary
@@ -124,7 +124,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
-          go-version: "1.26"
+          go-version: "1.26.6"
           cache: true
 
       - name: Run govulncheck
@@ -195,7 +195,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
-          go-version: "1.26"
+          go-version: "1.26.6"
           cache: true
 
       - name: Start Keycloak (dev mode)
