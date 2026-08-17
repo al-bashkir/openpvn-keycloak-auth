@@ -396,7 +396,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
 - ✅ Security hardening
 - ✅ CI/CD pipeline
 
-**v1.1 (Planned):**
+**v1.\* (Planned):**
 
 - [ ] Prometheus metrics endpoint
 - [ ] Grafana dashboard
@@ -441,7 +441,7 @@ A: Yes! You can use client certificates AND SSO together. Just don't set `auth-u
 A: New authentications will fail. Existing VPN sessions continue working (they don't re-auth).
 
 **Q: Can I run multiple daemon instances?**
-A: Not currently recommended (in-memory sessions). v1.1 will support shared session store for multi-instance deployments.
+A: Not currently recommended (in-memory sessions). A future v1.x release will support shared session store for multi-instance deployments.
 
 **Q: Is this production-ready?**
 A: It is designed for production-style deployment with security hardening and automated tests, but you should validate the full OpenVPN + Keycloak browser flow in your own environment before relying on it.
